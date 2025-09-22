@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: hoteleria_db_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hoteleria_multitenant
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - hoteleria_network
+
+  # Backend API (Express) - Development mode with hot reload
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: hoteleria_backend_dev
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+      - "9229:9229"  # Debug port
+    environment:
+      NODE_ENV: development
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: hoteleria_multitenant
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      JWT_SECRET: dev-jwt-secret-key
+      PORT: 3001
+    depends_on:
+      - db
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - hoteleria_network
+
+  # Frontend (React) - Development mode with hot reload
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: hoteleria_frontend_dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_URL: http://localhost:3001
+      CHOKIDAR_USEPOLLING: true
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - hoteleria_network
+
+volumes:
+  postgres_data_dev:
+
+networks:
+  hoteleria_network:
+    driver: bridge
