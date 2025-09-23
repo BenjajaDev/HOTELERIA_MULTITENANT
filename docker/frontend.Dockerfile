@@ -1,10 +1,21 @@
-FROM node:18-alpine as build
+# Etapa de construcción
+FROM node:22-alpine AS build
 WORKDIR /app
-COPY ./react-app/package*.json ./react-app/
-RUN cd react-app && npm install
-COPY ./frontend/react-app ./react-app
-RUN cd react-app && npm run build
 
+# Copiar solo package.json y package-lock.json
+COPY ./frontend/react-app/package*.json ./
+
+# Instalar dependencias
+RUN npm install
+
+# Copiar el resto de la aplicación
+COPY ./frontend/react-app ./
+
+# Construir el proyecto
+RUN npm run build
+
+# Etapa final: Nginx para servir archivos estáticos
 FROM nginx:1.25-alpine
-COPY --from=build /app/react-app/dist /usr/share/nginx/html
+COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
