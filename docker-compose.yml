@@ -1,0 +1,38 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:15
+    container_name: hotel_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hotel_manager
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/backend.Dockerfile
+    container_name: hotel_backend
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hotel_manager
+      POSTGRES_HOST: db
+    depends_on:
+      - db
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build:
+      context: ./docker
+      dockerfile: frontend.Dockerfile
+    container_name: hotel_frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
