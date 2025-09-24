@@ -9,7 +9,16 @@ import reservasRouter from "./routes/reservas.js";
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors());
+// Configuración CORS super permisiva
+app.use(cors({
+  origin: "*", // Permite todos los orígenes
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Métodos permitidos
+  allowedHeaders: ["Content-Type", "Authorization"], // Headers permitidos
+}));
+
+// Manejo de preflight (OPTIONS)
+app.options("*", cors());
+
 app.use(bodyParser.json());
 
 // Rutas
