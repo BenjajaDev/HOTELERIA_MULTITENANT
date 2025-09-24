@@ -6,93 +6,108 @@ DB_USER="postgres"
 DB_NAME="hotel_manager"
 
 # SQL a ejecutar
-SQL=$(cat <<EOF
+SQL=$(cat <<'EOF'
+-- Asegurar que la tabla hotel tenga columna created_at
+ALTER TABLE hotel
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
+
 -- Crear tenants
-INSERT INTO tenant (nombre) VALUES ('Hotel Stella') RETURNING tenant_id;
-INSERT INTO tenant (nombre) VALUES ('Hotel Madero') RETURNING tenant_id;
+WITH stella AS (
+  INSERT INTO tenant (nombre) VALUES ('Hotel Stella')
+  RETURNING tenant_id
+),
+madero AS (
+  INSERT INTO tenant (nombre) VALUES ('Hotel Madero')
+  RETURNING tenant_id
+),
 
--- Crear usuarios con hash de contraseña (contraseña = admin123 en bcrypt)
--- Admins
-INSERT INTO usuario (email, password_hash, nombre)
-VALUES (
-  'admin@hotel.com',
-  '\$2b\$10\$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2',
-  'Administrador Hotel Stella'
-) RETURNING usuario_id;
+-- Crear hoteles asociados a cada tenant
+hotel_stella AS (
+  INSERT INTO hotel (tenant_id, nombre, direccion, telefono, created_at)
+  SELECT stella.tenant_id, 'Hotel Stella', 'Av. Principal 123', '+56911111111', NOW()
+  FROM stella
+  RETURNING hotel_id, tenant_id
+),
+hotel_madero AS (
+  INSERT INTO hotel (tenant_id, nombre, direccion, telefono, created_at)
+  SELECT madero.tenant_id, 'Hotel Madero', 'Calle Secundaria 456', '+56922222222', NOW()
+  FROM madero
+  RETURNING hotel_id, tenant_id
+),
 
-INSERT INTO usuario (email, password_hash, nombre)
-VALUES (
-  'admin2@hotel.com',
-  '\$2b\$10\$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2',
-  'Administrador Hotel Madero'
-) RETURNING usuario_id;
+-- Crear usuarios
+admin_stella AS (
+  INSERT INTO usuario (email, password_hash, nombre)
+  VALUES (
+    'admin@hotel.com',
+    '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2',
+    'Administrador Hotel Stella'
+  )
+  RETURNING usuario_id
+),
+admin_madero AS (
+  INSERT INTO usuario (email, password_hash, nombre)
+  VALUES (
+    'admin2@hotel.com',
+    '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2',
+    'Administrador Hotel Madero'
+  )
+  RETURNING usuario_id
+),
+recep_stella AS (
+  INSERT INTO usuario (email, password_hash, nombre)
+  VALUES (
+    'recep_stella@hotel.com',
+    '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2',
+    'Recepcionista Hotel Stella'
+  )
+  RETURNING usuario_id
+),
+recep_madero AS (
+  INSERT INTO usuario (email, password_hash, nombre)
+  VALUES (
+    'recep_madero@hotel.com',
+    '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2',
+    'Recepcionista Hotel Madero'
+  )
+  RETURNING usuario_id
+),
+huesped_stella AS (
+  INSERT INTO usuario (email, password_hash, nombre)
+  VALUES (
+    'huesped_stella@hotel.com',
+    '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2',
+    'Huésped Hotel Stella'
+  )
+  RETURNING usuario_id
+),
+huesped_madero AS (
+  INSERT INTO usuario (email, password_hash, nombre)
+  VALUES (
+    'huesped_madero@hotel.com',
+    '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2',
+    'Huésped Hotel Madero'
+  )
+  RETURNING usuario_id
+)
 
--- Recepcionistas
-INSERT INTO usuario (email, password_hash, nombre)
-VALUES (
-  'recep_stella@hotel.com',
-  '\$2b\$10\$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2',
-  'Recepcionista Hotel Stella'
-) RETURNING usuario_id;
-
-INSERT INTO usuario (email, password_hash, nombre)
-VALUES (
-  'recep_madero@hotel.com',
-  '\$2b\$10\$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2',
-  'Recepcionista Hotel Madero'
-) RETURNING usuario_id;
-
--- Huéspedes
-INSERT INTO usuario (email, password_hash, nombre)
-VALUES (
-  'huesped_stella@hotel.com',
-  '\$2b\$10\$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2',
-  'Huésped Hotel Stella'
-) RETURNING usuario_id;
-
-INSERT INTO usuario (email, password_hash, nombre)
-VALUES (
-  'huesped_madero@hotel.com',
-  '\$2b\$10\$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2',
-  'Huésped Hotel Madero'
-) RETURNING usuario_id;
-
--- Asignar usuarios a tenants con roles
--- Admins
+-- Asignar usuarios a tenants
 INSERT INTO tenant_usuario (tenant_id, usuario_id, rol)
-SELECT t.tenant_id, u.usuario_id, 'admin'
-FROM tenant t, usuario u
-WHERE t.nombre = 'Hotel Stella' AND u.email = 'admin@hotel.com';
-
-INSERT INTO tenant_usuario (tenant_id, usuario_id, rol)
-SELECT t.tenant_id, u.usuario_id, 'admin'
-FROM tenant t, usuario u
-WHERE t.nombre = 'Hotel Madero' AND u.email = 'admin2@hotel.com';
-
--- Recepcionistas
-INSERT INTO tenant_usuario (tenant_id, usuario_id, rol)
-SELECT t.tenant_id, u.usuario_id, 'recepcionista'
-FROM tenant t, usuario u
-WHERE t.nombre = 'Hotel Stella' AND u.email = 'recep_stella@hotel.com';
-
-INSERT INTO tenant_usuario (tenant_id, usuario_id, rol)
-SELECT t.tenant_id, u.usuario_id, 'recepcionista'
-FROM tenant t, usuario u
-WHERE t.nombre = 'Hotel Madero' AND u.email = 'recep_madero@hotel.com';
-
--- Huéspedes
-INSERT INTO tenant_usuario (tenant_id, usuario_id, rol)
-SELECT t.tenant_id, u.usuario_id, 'huesped'
-FROM tenant t, usuario u
-WHERE t.nombre = 'Hotel Stella' AND u.email = 'huesped_stella@hotel.com';
-
-INSERT INTO tenant_usuario (tenant_id, usuario_id, rol)
-SELECT t.tenant_id, u.usuario_id, 'huesped'
-FROM tenant t, usuario u
-WHERE t.nombre = 'Hotel Madero' AND u.email = 'huesped_madero@hotel.com';
+SELECT stella.tenant_id, admin_stella.usuario_id, 'admin' FROM stella, admin_stella
+UNION ALL
+SELECT madero.tenant_id, admin_madero.usuario_id, 'admin' FROM madero, admin_madero
+UNION ALL
+SELECT stella.tenant_id, recep_stella.usuario_id, 'recepcionista' FROM stella, recep_stella
+UNION ALL
+SELECT madero.tenant_id, recep_madero.usuario_id, 'recepcionista' FROM madero, recep_madero
+UNION ALL
+SELECT stella.tenant_id, huesped_stella.usuario_id, 'huesped' FROM stella, huesped_stella
+UNION ALL
+SELECT madero.tenant_id, huesped_madero.usuario_id, 'huesped' FROM madero, huesped_madero;
 
 -- Mostrar resultados
 TABLE tenant;
+TABLE hotel;
 TABLE usuario;
 TABLE tenant_usuario;
 EOF

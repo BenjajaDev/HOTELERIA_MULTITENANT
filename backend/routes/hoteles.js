@@ -6,23 +6,41 @@ const router = express.Router();
 // GET /api/hoteles
 router.get("/", async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM hotel");
+    const result = await pool.query(`
+      SELECT h.*, t.nombre AS tenant_nombre
+      FROM hotel h
+      JOIN tenant t ON h.tenant_id = t.tenant_id
+      ORDER BY h.created_at DESC NULLS LAST
+    `);
     res.json(result.rows);
   } catch (err) {
+    console.error("Error al obtener hoteles:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // POST /api/hoteles
 router.post("/", async (req, res) => {
-  const { tenant_id, nombre, direccion, telefono, email } = req.body;
+  const { nombre, direccion, telefono, email } = req.body;
+
   try {
-    const result = await pool.query(
-      "INSERT INTO hotel (tenant_id, nombre, direccion, telefono, email) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+    // 1. Crear tenant con el nombre del hotel
+    const tenantResult = await pool.query(
+      "INSERT INTO tenant (nombre) VALUES ($1) RETURNING tenant_id",
+      [nombre]
+    );
+    const tenant_id = tenantResult.rows[0].tenant_id;
+
+    // 2. Crear hotel asociado al tenant
+    const hotelResult = await pool.query(
+      `INSERT INTO hotel (tenant_id, nombre, direccion, telefono, email) 
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
       [tenant_id, nombre, direccion, telefono, email]
     );
-    res.status(201).json(result.rows[0]);
+
+    res.status(201).json(hotelResult.rows[0]);
   } catch (err) {
+    console.error("Error al crear hotel:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -41,6 +59,7 @@ router.put("/:id", async (req, res) => {
     }
     res.json(result.rows[0]);
   } catch (err) {
+    console.error("Error al actualizar hotel:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -58,6 +77,7 @@ router.delete("/:id", async (req, res) => {
     }
     res.json({ message: "Hotel eliminado", hotel: result.rows[0] });
   } catch (err) {
+    console.error("Error al eliminar hotel:", err);
     res.status(500).json({ error: err.message });
   }
 });
