@@ -63,6 +63,25 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// backend/routes/usuarios.js
+router.get("/me", async (req, res) => {
+  try {
+    // 🔹 Supongamos que ya tienes userId desde el token o sesión
+    const userId = req.user.id; 
+    const result = await pool.query(
+      "SELECT id, email, role, hotel_id FROM usuario WHERE id = $1",
+      [userId]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Error al obtener usuario:", err);
+    res.status(500).json({ error: "Error al obtener usuario" });
+  }
+});
+
 // -------------------------
 // REGISTRO de huésped
 // -------------------------

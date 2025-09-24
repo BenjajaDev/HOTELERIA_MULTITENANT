@@ -5,6 +5,7 @@ import { pool } from "./models/db.js";
 import hotelesRouter from "./routes/hoteles.js";
 import usuariosRouter from "./routes/usuarios.js";
 import reservasRouter from "./routes/reservas.js";
+import gestion_habitacionesRouter from "./routes/gestion_habitaciones.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -25,6 +26,7 @@ app.use(bodyParser.json());
 app.use("/api/hoteles", hotelesRouter);
 app.use("/api/usuarios", usuariosRouter);
 app.use("/api/reservas", reservasRouter);
+app.use("/api/habitaciones", gestion_habitacionesRouter);
 
 app.get("/", (req, res) => {
   res.send("API Hotel Manager funcionando 🚀");

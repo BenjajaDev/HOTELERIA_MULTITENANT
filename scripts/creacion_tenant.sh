@@ -89,6 +89,28 @@ huesped_madero AS (
     'Huésped Hotel Madero'
   )
   RETURNING usuario_id
+),
+
+-- Crear habitaciones para Hotel Stella
+habitaciones_stella AS (
+  INSERT INTO habitacion (tenant_id, hotel_id, numero, tipo, precio_noche, estado)
+  SELECT tenant_id, hotel_id, 101, 'simple', 30000, 'disponible' FROM hotel_stella
+  UNION ALL
+  SELECT tenant_id, hotel_id, 102, 'doble', 45000, 'ocupada' FROM hotel_stella
+  UNION ALL
+  SELECT tenant_id, hotel_id, 201, 'suite', 80000, 'limpieza' FROM hotel_stella
+  RETURNING habitacion_id
+),
+
+-- Crear habitaciones para Hotel Madero
+habitaciones_madero AS (
+  INSERT INTO habitacion (tenant_id, hotel_id, numero, tipo, precio_noche, estado)
+  SELECT tenant_id, hotel_id, 101, 'simple', 28000, 'disponible' FROM hotel_madero
+  UNION ALL
+  SELECT tenant_id, hotel_id, 102, 'doble', 42000, 'ocupada' FROM hotel_madero
+  UNION ALL
+  SELECT tenant_id, hotel_id, 201, 'suite', 75000, 'limpieza' FROM hotel_madero
+  RETURNING habitacion_id
 )
 
 -- Asignar usuarios a tenants
@@ -110,6 +132,7 @@ TABLE tenant;
 TABLE hotel;
 TABLE usuario;
 TABLE tenant_usuario;
+TABLE habitacion;
 EOF
 )
 
