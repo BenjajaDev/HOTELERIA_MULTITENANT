@@ -7,10 +7,6 @@ DB_NAME="hotel_manager"
 
 # SQL a ejecutar
 SQL=$(cat <<'EOF'
--- Asegurar que la tabla hotel tenga columna created_at
-ALTER TABLE hotel
-  ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
-
 -- Crear tenants
 WITH stella AS (
   INSERT INTO tenant (nombre) VALUES ('Hotel Stella')
@@ -23,14 +19,14 @@ madero AS (
 
 -- Crear hoteles asociados a cada tenant
 hotel_stella AS (
-  INSERT INTO hotel (tenant_id, nombre, direccion, telefono, created_at)
-  SELECT stella.tenant_id, 'Hotel Stella', 'Av. Principal 123', '+56911111111', NOW()
+  INSERT INTO hotel (tenant_id, nombre, direccion, telefono, email)
+  SELECT stella.tenant_id, 'Hotel Stella', 'Av. Principal 123', '+56911111111', 'contacto@stella.com'
   FROM stella
   RETURNING hotel_id, tenant_id
 ),
 hotel_madero AS (
-  INSERT INTO hotel (tenant_id, nombre, direccion, telefono, created_at)
-  SELECT madero.tenant_id, 'Hotel Madero', 'Calle Secundaria 456', '+56922222222', NOW()
+  INSERT INTO hotel (tenant_id, nombre, direccion, telefono, email)
+  SELECT madero.tenant_id, 'Hotel Madero', 'Calle Secundaria 456', '+56922222222', 'contacto@madero.com'
   FROM madero
   RETURNING hotel_id, tenant_id
 ),
@@ -94,38 +90,38 @@ huesped_madero AS (
 -- Crear habitaciones para Hotel Stella
 habitaciones_stella AS (
   INSERT INTO habitacion (tenant_id, hotel_id, numero, tipo, precio_noche, estado)
-  SELECT tenant_id, hotel_id, 101, 'simple', 30000, 'disponible' FROM hotel_stella
+  SELECT tenant_id, hotel_id, 101, 'simple'::tipo_habitacion_enum, 30000, 'disponible'::estado_habitacion_enum FROM hotel_stella
   UNION ALL
-  SELECT tenant_id, hotel_id, 102, 'doble', 45000, 'ocupada' FROM hotel_stella
+  SELECT tenant_id, hotel_id, 102, 'doble'::tipo_habitacion_enum, 45000, 'ocupada'::estado_habitacion_enum FROM hotel_stella
   UNION ALL
-  SELECT tenant_id, hotel_id, 201, 'suite', 80000, 'limpieza' FROM hotel_stella
+  SELECT tenant_id, hotel_id, 201, 'suite'::tipo_habitacion_enum, 80000, 'limpieza'::estado_habitacion_enum FROM hotel_stella
   RETURNING habitacion_id
 ),
 
 -- Crear habitaciones para Hotel Madero
 habitaciones_madero AS (
   INSERT INTO habitacion (tenant_id, hotel_id, numero, tipo, precio_noche, estado)
-  SELECT tenant_id, hotel_id, 101, 'simple', 28000, 'disponible' FROM hotel_madero
+  SELECT tenant_id, hotel_id, 101, 'simple'::tipo_habitacion_enum, 28000, 'disponible'::estado_habitacion_enum FROM hotel_madero
   UNION ALL
-  SELECT tenant_id, hotel_id, 102, 'doble', 42000, 'ocupada' FROM hotel_madero
+  SELECT tenant_id, hotel_id, 102, 'doble'::tipo_habitacion_enum, 42000, 'ocupada'::estado_habitacion_enum FROM hotel_madero
   UNION ALL
-  SELECT tenant_id, hotel_id, 201, 'suite', 75000, 'limpieza' FROM hotel_madero
+  SELECT tenant_id, hotel_id, 201, 'suite'::tipo_habitacion_enum, 75000, 'limpieza'::estado_habitacion_enum FROM hotel_madero
   RETURNING habitacion_id
 )
 
 -- Asignar usuarios a tenants
 INSERT INTO tenant_usuario (tenant_id, usuario_id, rol)
-SELECT stella.tenant_id, admin_stella.usuario_id, 'admin' FROM stella, admin_stella
+SELECT stella.tenant_id, admin_stella.usuario_id, 'admin'::rol_enum FROM stella, admin_stella
 UNION ALL
-SELECT madero.tenant_id, admin_madero.usuario_id, 'admin' FROM madero, admin_madero
+SELECT madero.tenant_id, admin_madero.usuario_id, 'admin'::rol_enum FROM madero, admin_madero
 UNION ALL
-SELECT stella.tenant_id, recep_stella.usuario_id, 'recepcionista' FROM stella, recep_stella
+SELECT stella.tenant_id, recep_stella.usuario_id, 'recepcionista'::rol_enum FROM stella, recep_stella
 UNION ALL
-SELECT madero.tenant_id, recep_madero.usuario_id, 'recepcionista' FROM madero, recep_madero
+SELECT madero.tenant_id, recep_madero.usuario_id, 'recepcionista'::rol_enum FROM madero, recep_madero
 UNION ALL
-SELECT stella.tenant_id, huesped_stella.usuario_id, 'huesped' FROM stella, huesped_stella
+SELECT stella.tenant_id, huesped_stella.usuario_id, 'huesped'::rol_enum FROM stella, huesped_stella
 UNION ALL
-SELECT madero.tenant_id, huesped_madero.usuario_id, 'huesped' FROM madero, huesped_madero;
+SELECT madero.tenant_id, huesped_madero.usuario_id, 'huesped'::rol_enum FROM madero, huesped_madero;
 
 -- Mostrar resultados
 TABLE tenant;
