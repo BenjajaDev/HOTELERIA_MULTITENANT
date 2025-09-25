@@ -34,6 +34,17 @@ CREATE TABLE hotel (
     email VARCHAR(200)
 );
 
+-- Nueva tabla sucursal
+CREATE TABLE sucursal (
+    sucursal_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID REFERENCES tenant(tenant_id),
+    hotel_id UUID REFERENCES hotel(hotel_id),
+    nombre VARCHAR(80),
+    direccion VARCHAR(140),
+    telefono VARCHAR(12),
+    email VARCHAR(200)
+);
+
 CREATE TABLE habitacion (
     habitacion_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID REFERENCES tenant(tenant_id),
