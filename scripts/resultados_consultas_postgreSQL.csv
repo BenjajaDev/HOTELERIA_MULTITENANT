@@ -1,0 +1,178 @@
+section,table_schema,table_name,column_name,data_type,is_nullable,column_default
+section,table_schema,table_name,column_name,data_type,is_nullable,column_default
+Columnas,public,audit_log,audit_id,bigint,NO,nextval('audit_log_audit_id_seq'::regclass)
+Columnas,public,audit_log,table_name,text,YES,
+Columnas,public,audit_log,action,text,YES,
+Columnas,public,audit_log,record_id,uuid,YES,
+Columnas,public,audit_log,changed_at,timestamp without time zone,YES,now()
+Columnas,public,audit_log,changed_by,text,YES,CURRENT_USER
+Columnas,public,audit_log,extra,jsonb,YES,
+Columnas,public,detalle_pago,detalle_pago_id,uuid,NO,uuid_generate_v4()
+Columnas,public,detalle_pago,pago_id,uuid,YES,
+Columnas,public,detalle_pago,descripcion,text,YES,
+Columnas,public,detalle_pago,fecha_pago,timestamp without time zone,YES,
+Columnas,public,detalle_pago,hora_confirmacion,timestamp without time zone,YES,
+Columnas,public,detalle_pago,referencia_transaccion,character varying,YES,
+Columnas,public,detalle_pago,comprobante_url,character varying,YES,
+Columnas,public,habitacion,habitacion_id,uuid,NO,uuid_generate_v4()
+Columnas,public,habitacion,tenant_id,uuid,YES,
+Columnas,public,habitacion,hotel_id,uuid,YES,
+Columnas,public,habitacion,numero,integer,YES,
+Columnas,public,habitacion,tipo,USER-DEFINED,YES,
+Columnas,public,habitacion,precio_noche,integer,YES,
+Columnas,public,habitacion,estado,USER-DEFINED,YES,'disponible'::estado_habitacion_enum
+Columnas,public,hotel,hotel_id,uuid,NO,uuid_generate_v4()
+Columnas,public,hotel,tenant_id,uuid,YES,
+Columnas,public,hotel,nombre,character varying,YES,
+Columnas,public,hotel,direccion,character varying,YES,
+Columnas,public,hotel,telefono,character varying,YES,
+Columnas,public,hotel,email,character varying,YES,
+Columnas,public,hotel,created_at,timestamp without time zone,YES,now()
+Columnas,public,huesped,huesped_id,uuid,NO,uuid_generate_v4()
+Columnas,public,huesped,tenant_id,uuid,YES,
+Columnas,public,huesped,nombre_completo,character varying,YES,
+Columnas,public,huesped,email,character varying,YES,
+Columnas,public,huesped,telefono,character varying,YES,
+Columnas,public,huesped,documento,text,YES,
+Columnas,public,huesped,created_at,timestamp without time zone,YES,now()
+Columnas,public,pago,pago_id,uuid,NO,uuid_generate_v4()
+Columnas,public,pago,tenant_id,uuid,YES,
+Columnas,public,pago,reserva_id,uuid,YES,
+Columnas,public,pago,monto,integer,YES,
+Columnas,public,pago,metodo,USER-DEFINED,YES,
+Columnas,public,pago,fecha,timestamp without time zone,YES,now()
+Columnas,public,pago,estado,USER-DEFINED,YES,'pendiente'::estado_pago_enum
+Columnas,public,reserva,reserva_id,uuid,NO,uuid_generate_v4()
+Columnas,public,reserva,tenant_id,uuid,YES,
+Columnas,public,reserva,habitacion_id,uuid,YES,
+Columnas,public,reserva,huesped_id,uuid,YES,
+Columnas,public,reserva,fecha_inicio,date,YES,
+Columnas,public,reserva,fecha_fin,date,YES,
+Columnas,public,reserva,estado,USER-DEFINED,YES,'pendiente'::estado_reserva_enum
+Columnas,public,reserva,total,integer,YES,
+Columnas,public,reserva,created_at,timestamp without time zone,YES,now()
+Columnas,public,sucursal,sucursal_id,uuid,NO,uuid_generate_v4()
+Columnas,public,sucursal,tenant_id,uuid,YES,
+Columnas,public,sucursal,hotel_id,uuid,YES,
+Columnas,public,sucursal,nombre,character varying,YES,
+Columnas,public,sucursal,direccion,character varying,YES,
+Columnas,public,sucursal,telefono,character varying,YES,
+Columnas,public,sucursal,email,character varying,YES,
+Columnas,public,sucursal,created_at,timestamp without time zone,YES,now()
+Columnas,public,tenant,tenant_id,uuid,NO,uuid_generate_v4()
+Columnas,public,tenant,nombre,character varying,NO,
+Columnas,public,tenant,created_at,timestamp without time zone,YES,now()
+Columnas,public,tenant_usuario,tenant_id,uuid,NO,
+Columnas,public,tenant_usuario,usuario_id,uuid,NO,
+Columnas,public,tenant_usuario,rol,USER-DEFINED,NO,
+Columnas,public,usuario,usuario_id,uuid,NO,uuid_generate_v4()
+Columnas,public,usuario,email,character varying,NO,
+Columnas,public,usuario,password_hash,character varying,NO,
+Columnas,public,usuario,nombre,character varying,YES,
+Columnas,public,usuario,created_at,timestamp without time zone,YES,now()
+section,table_name,column_name
+section,table_name,column_name
+PrimaryKey,audit_log,audit_id
+PrimaryKey,detalle_pago,detalle_pago_id
+PrimaryKey,habitacion,habitacion_id
+PrimaryKey,hotel,hotel_id
+PrimaryKey,huesped,huesped_id
+PrimaryKey,pago,pago_id
+PrimaryKey,reserva,reserva_id
+PrimaryKey,sucursal,sucursal_id
+PrimaryKey,tenant,tenant_id
+PrimaryKey,tenant_usuario,tenant_id
+PrimaryKey,tenant_usuario,usuario_id
+PrimaryKey,usuario,usuario_id
+section,table_name,column_name,foreign_table,foreign_column
+section,table_name,column_name,foreign_table,foreign_column
+ForeignKey,detalle_pago,pago_id,pago,pago_id
+ForeignKey,habitacion,hotel_id,hotel,hotel_id
+ForeignKey,habitacion,tenant_id,tenant,tenant_id
+ForeignKey,hotel,tenant_id,tenant,tenant_id
+ForeignKey,huesped,tenant_id,tenant,tenant_id
+ForeignKey,pago,reserva_id,reserva,reserva_id
+ForeignKey,pago,tenant_id,tenant,tenant_id
+ForeignKey,reserva,habitacion_id,habitacion,habitacion_id
+ForeignKey,reserva,huesped_id,huesped,huesped_id
+ForeignKey,reserva,tenant_id,tenant,tenant_id
+ForeignKey,sucursal,hotel_id,hotel,hotel_id
+ForeignKey,sucursal,tenant_id,tenant,tenant_id
+ForeignKey,tenant_usuario,tenant_id,tenant,tenant_id
+ForeignKey,tenant_usuario,usuario_id,usuario,usuario_id
+section,table_schema,tablename,indexname,indexdef
+section,table_schema,tablename,indexname,indexdef
+Index,public,audit_log,audit_log_pkey,CREATE UNIQUE INDEX audit_log_pkey ON public.audit_log USING btree (audit_id)
+Index,public,detalle_pago,detalle_pago_pago_id_key,CREATE UNIQUE INDEX detalle_pago_pago_id_key ON public.detalle_pago USING btree (pago_id)
+Index,public,detalle_pago,detalle_pago_pkey,CREATE UNIQUE INDEX detalle_pago_pkey ON public.detalle_pago USING btree (detalle_pago_id)
+Index,public,habitacion,habitacion_pkey,CREATE UNIQUE INDEX habitacion_pkey ON public.habitacion USING btree (habitacion_id)
+Index,public,habitacion,idx_habitacion_hotel,CREATE INDEX idx_habitacion_hotel ON public.habitacion USING btree (hotel_id)
+Index,public,habitacion,idx_habitacion_numero,CREATE INDEX idx_habitacion_numero ON public.habitacion USING btree (numero)
+Index,public,habitacion,idx_habitacion_tenant,CREATE INDEX idx_habitacion_tenant ON public.habitacion USING btree (tenant_id)
+Index,public,hotel,hotel_pkey,CREATE UNIQUE INDEX hotel_pkey ON public.hotel USING btree (hotel_id)
+Index,public,hotel,idx_hotel_nombre,CREATE INDEX idx_hotel_nombre ON public.hotel USING btree (nombre)
+Index,public,hotel,idx_hotel_tenant,CREATE INDEX idx_hotel_tenant ON public.hotel USING btree (tenant_id)
+Index,public,huesped,huesped_pkey,CREATE UNIQUE INDEX huesped_pkey ON public.huesped USING btree (huesped_id)
+Index,public,huesped,idx_huesped_email,CREATE INDEX idx_huesped_email ON public.huesped USING btree (email)
+Index,public,huesped,idx_huesped_tenant,CREATE INDEX idx_huesped_tenant ON public.huesped USING btree (tenant_id)
+Index,public,pago,idx_pago_reserva,CREATE INDEX idx_pago_reserva ON public.pago USING btree (reserva_id)
+Index,public,pago,idx_pago_tenant,CREATE INDEX idx_pago_tenant ON public.pago USING btree (tenant_id)
+Index,public,pago,pago_pkey,CREATE UNIQUE INDEX pago_pkey ON public.pago USING btree (pago_id)
+Index,public,reserva,idx_reserva_habitacion,CREATE INDEX idx_reserva_habitacion ON public.reserva USING btree (habitacion_id)
+Index,public,reserva,idx_reserva_huesped,CREATE INDEX idx_reserva_huesped ON public.reserva USING btree (huesped_id)
+Index,public,reserva,idx_reserva_tenant,CREATE INDEX idx_reserva_tenant ON public.reserva USING btree (tenant_id)
+Index,public,reserva,reserva_pkey,CREATE UNIQUE INDEX reserva_pkey ON public.reserva USING btree (reserva_id)
+Index,public,sucursal,idx_sucursal_hotel,CREATE INDEX idx_sucursal_hotel ON public.sucursal USING btree (hotel_id)
+Index,public,sucursal,idx_sucursal_tenant,CREATE INDEX idx_sucursal_tenant ON public.sucursal USING btree (tenant_id)
+Index,public,sucursal,sucursal_pkey,CREATE UNIQUE INDEX sucursal_pkey ON public.sucursal USING btree (sucursal_id)
+Index,public,tenant,tenant_pkey,CREATE UNIQUE INDEX tenant_pkey ON public.tenant USING btree (tenant_id)
+Index,public,tenant_usuario,idx_tenant_usuario_tenant,CREATE INDEX idx_tenant_usuario_tenant ON public.tenant_usuario USING btree (tenant_id)
+Index,public,tenant_usuario,idx_tenant_usuario_usuario,CREATE INDEX idx_tenant_usuario_usuario ON public.tenant_usuario USING btree (usuario_id)
+Index,public,tenant_usuario,tenant_usuario_pkey,"CREATE UNIQUE INDEX tenant_usuario_pkey ON public.tenant_usuario USING btree (tenant_id, usuario_id)"
+Index,public,usuario,idx_usuario_email,CREATE INDEX idx_usuario_email ON public.usuario USING btree (email)
+Index,public,usuario,usuario_email_key,CREATE UNIQUE INDEX usuario_email_key ON public.usuario USING btree (email)
+Index,public,usuario,usuario_pkey,CREATE UNIQUE INDEX usuario_pkey ON public.usuario USING btree (usuario_id)
+section,policyname,tablename,permissive,roles,cmd,qual,with_check
+section,policyname,tablename,permissive,roles,cmd,qual,with_check
+RLS,tenant_isolation_detalle_pago,detalle_pago,PERMISSIVE,{public},ALL,"(pago_id IN ( SELECT pago.pago_id
+   FROM pago
+  WHERE (pago.tenant_id = (current_setting('app.current_tenant'::text))::uuid)))",
+RLS,tenant_isolation_habitacion,habitacion,PERMISSIVE,{public},ALL,(tenant_id = (current_setting('app.current_tenant'::text))::uuid),
+RLS,tenant_isolation_hotel,hotel,PERMISSIVE,{public},ALL,(tenant_id = (current_setting('app.current_tenant'::text))::uuid),
+RLS,tenant_isolation_huesped,huesped,PERMISSIVE,{public},ALL,(tenant_id = (current_setting('app.current_tenant'::text))::uuid),
+RLS,tenant_isolation_pago,pago,PERMISSIVE,{public},ALL,(tenant_id = (current_setting('app.current_tenant'::text))::uuid),
+RLS,tenant_isolation_reserva,reserva,PERMISSIVE,{public},ALL,(tenant_id = (current_setting('app.current_tenant'::text))::uuid),
+RLS,tenant_isolation_sucursal,sucursal,PERMISSIVE,{public},ALL,(tenant_id = (current_setting('app.current_tenant'::text))::uuid),
+section,schema,enum_name,value
+section,schema,enum_name,value
+Enum,public,estado_habitacion_enum,disponible
+Enum,public,estado_habitacion_enum,ocupada
+Enum,public,estado_habitacion_enum,limpieza
+Enum,public,estado_pago_enum,pagado
+Enum,public,estado_pago_enum,pendiente
+Enum,public,estado_reserva_enum,pendiente
+Enum,public,estado_reserva_enum,confirmada
+Enum,public,estado_reserva_enum,cancelada
+Enum,public,metodo_pago_enum,tarjeta
+Enum,public,metodo_pago_enum,efectivo
+Enum,public,metodo_pago_enum,transferencia
+Enum,public,rol_enum,admin
+Enum,public,rol_enum,recepcionista
+Enum,public,rol_enum,huesped
+Enum,public,tipo_habitacion_enum,simple
+Enum,public,tipo_habitacion_enum,doble
+Enum,public,tipo_habitacion_enum,suite
+section,function_name,definition
+section,function_name,definition
+Function,log_pago_changes,"CREATE OR REPLACE FUNCTION public.log_pago_changes()  RETURNS trigger  LANGUAGE plpgsql AS $function$ DECLARE   rec_id uuid;   payload jsonb; BEGIN   IF TG_OP = 'DELETE' THEN     rec_id := OLD.pago_id;     payload := to_jsonb(OLD);   ELSE     rec_id := NEW.pago_id;     payload := to_jsonb(NEW);   END IF;   INSERT INTO audit_log(table_name, action, record_id, extra)   VALUES ('pago', TG_OP, rec_id, payload);   RETURN NEW; END; $function$ "
+Function,log_reserva_changes,"CREATE OR REPLACE FUNCTION public.log_reserva_changes()  RETURNS trigger  LANGUAGE plpgsql AS $function$ DECLARE   rec_id uuid;   payload jsonb; BEGIN   IF TG_OP = 'DELETE' THEN     rec_id := OLD.reserva_id;     payload := to_jsonb(OLD);   ELSE     rec_id := NEW.reserva_id;     payload := to_jsonb(NEW);   END IF;   INSERT INTO audit_log(table_name, action, record_id, extra)   VALUES ('reserva', TG_OP, rec_id, payload);   RETURN NEW; END; $function$ "
+Function,uuid_generate_v1,"CREATE OR REPLACE FUNCTION public.uuid_generate_v1()  RETURNS uuid  LANGUAGE c  PARALLEL SAFE STRICT AS '$libdir/uuid-ossp', $function$uuid_generate_v1$function$ "
+Function,uuid_generate_v1mc,"CREATE OR REPLACE FUNCTION public.uuid_generate_v1mc()  RETURNS uuid  LANGUAGE c  PARALLEL SAFE STRICT AS '$libdir/uuid-ossp', $function$uuid_generate_v1mc$function$ "
+Function,uuid_generate_v3,"CREATE OR REPLACE FUNCTION public.uuid_generate_v3(namespace uuid, name text)  RETURNS uuid  LANGUAGE c  IMMUTABLE PARALLEL SAFE STRICT AS '$libdir/uuid-ossp', $function$uuid_generate_v3$function$ "
+Function,uuid_generate_v4,"CREATE OR REPLACE FUNCTION public.uuid_generate_v4()  RETURNS uuid  LANGUAGE c  PARALLEL SAFE STRICT AS '$libdir/uuid-ossp', $function$uuid_generate_v4$function$ "
+Function,uuid_generate_v5,"CREATE OR REPLACE FUNCTION public.uuid_generate_v5(namespace uuid, name text)  RETURNS uuid  LANGUAGE c  IMMUTABLE PARALLEL SAFE STRICT AS '$libdir/uuid-ossp', $function$uuid_generate_v5$function$ "
+Function,uuid_nil,"CREATE OR REPLACE FUNCTION public.uuid_nil()  RETURNS uuid  LANGUAGE c  IMMUTABLE PARALLEL SAFE STRICT AS '$libdir/uuid-ossp', $function$uuid_nil$function$ "
+Function,uuid_ns_dns,"CREATE OR REPLACE FUNCTION public.uuid_ns_dns()  RETURNS uuid  LANGUAGE c  IMMUTABLE PARALLEL SAFE STRICT AS '$libdir/uuid-ossp', $function$uuid_ns_dns$function$ "
+Function,uuid_ns_oid,"CREATE OR REPLACE FUNCTION public.uuid_ns_oid()  RETURNS uuid  LANGUAGE c  IMMUTABLE PARALLEL SAFE STRICT AS '$libdir/uuid-ossp', $function$uuid_ns_oid$function$ "
+Function,uuid_ns_url,"CREATE OR REPLACE FUNCTION public.uuid_ns_url()  RETURNS uuid  LANGUAGE c  IMMUTABLE PARALLEL SAFE STRICT AS '$libdir/uuid-ossp', $function$uuid_ns_url$function$ "
+Function,uuid_ns_x500,"CREATE OR REPLACE FUNCTION public.uuid_ns_x500()  RETURNS uuid  LANGUAGE c  IMMUTABLE PARALLEL SAFE STRICT AS '$libdir/uuid-ossp', $function$uuid_ns_x500$function$ "
