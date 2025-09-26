@@ -35,17 +35,26 @@ export const api = {
   },
 
   // 🔹 Obtener habitaciones del hotel del usuario logueado
-  getHabitacionesDelUsuario: async () => {
-    const res = await fetch(`${BASE}/api/habitaciones/del-usuario`);
+  getHabitacionesDelUsuario: async ({ tenantId, usuarioId, hotelId }) => {
+    const params = new URLSearchParams();
+    if (tenantId) params.set("tenantId", tenantId);
+    if (usuarioId) params.set("usuarioId", usuarioId);
+    if (hotelId) params.set("hotelId", hotelId);
+    const res = await fetch(`${BASE}/api/habitaciones/del-usuario?${params.toString()}`);
     if (!res.ok) throw await res.json();
     return res.json();
   },
 
-  updateHabitacion: async (habitacionId, data) => {
+  updateHabitacion: async (habitacionId, { estado, tenantId, usuarioId, hotelId }) => {
     const res = await fetch(`${BASE}/api/habitaciones/${habitacionId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        estado,
+        tenantId,
+        usuarioId,
+        hotelId,
+      }),
     });
     if (!res.ok) throw await res.json();
     return res.json();

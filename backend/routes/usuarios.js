@@ -9,56 +9,127 @@ const router = express.Router();
 // LOGIN de usuario
 // -------------------------
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  const {
+    email,
+    password,
+    tenantId: tenantIdFromBody,
+    tenant_id: tenantIdSnake,
+    hotelId,
+    hotel_id: hotelIdSnake,
+  } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email y contraseña son requeridos" });
+  }
+
+  // Permitir tenantId en camelCase o snake_case; idem para hotelId
+  const requestedTenantId = tenantIdFromBody || tenantIdSnake;
+  const requestedHotelId = hotelId || hotelIdSnake;
+
+  if (!requestedTenantId && !requestedHotelId) {
+    return res
+      .status(400)
+      .json({ error: "Debe indicar el tenant (hotel) al que desea ingresar" });
+  }
 
   try {
-    // 1. Buscar usuario
-    const result = await pool.query(
-      "SELECT * FROM usuario WHERE email = $1",
+    const userResult = await pool.query(
+      "SELECT usuario_id, email, password_hash, nombre FROM usuario WHERE email = $1",
       [email]
     );
 
-    if (result.rows.length === 0) {
+    if (userResult.rows.length === 0) {
       return res.status(401).json({ error: "Usuario no encontrado" });
     }
 
-    const user = result.rows[0];
+    const user = userResult.rows[0];
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
 
-    // 2. Verificar contraseña
-    const match = await bcrypt.compare(password, user.password_hash);
-    if (!match) {
+    if (!passwordMatch) {
       return res.status(401).json({ error: "Contraseña incorrecta" });
     }
 
-    // 3. Buscar rol en tenant_usuario
-    const rolResult = await pool.query(
-      "SELECT rol FROM tenant_usuario WHERE usuario_id = $1 LIMIT 1",
-      [user.usuario_id]
-    );
+    let tenantId = requestedTenantId;
+    let hotelInfo = null;
 
-    if (rolResult.rows.length === 0) {
-      return res.status(403).json({ error: "El usuario no tiene rol asignado" });
+    if (requestedHotelId) {
+      const hotelResult = await pool.query(
+        "SELECT hotel_id, tenant_id, nombre FROM hotel WHERE hotel_id = $1",
+        [requestedHotelId]
+      );
+
+      if (hotelResult.rows.length === 0) {
+        return res.status(404).json({ error: "Hotel no encontrado" });
+      }
+
+      hotelInfo = hotelResult.rows[0];
+      tenantId = tenantId || hotelInfo.tenant_id;
     }
 
-    const rol = rolResult.rows[0].rol;
+    if (!tenantId) {
+      return res
+        .status(400)
+        .json({ error: "No se pudo determinar el tenant para el usuario" });
+    }
 
-    // 4. Mensaje personalizado
+    const membershipResult = await pool.query(
+      `SELECT tu.rol, tu.tenant_id, t.nombre AS tenant_nombre
+       FROM tenant_usuario tu
+       JOIN tenant t ON t.tenant_id = tu.tenant_id
+       WHERE tu.usuario_id = $1 AND tu.tenant_id = $2
+       LIMIT 1`,
+      [user.usuario_id, tenantId]
+    );
+
+    if (membershipResult.rows.length === 0) {
+      return res.status(403).json({ error: "No tiene acceso al tenant seleccionado" });
+    }
+
+    const membership = membershipResult.rows[0];
+
+    if (!hotelInfo) {
+      const hotelResult = await pool.query(
+        `SELECT hotel_id, nombre
+         FROM hotel
+         WHERE tenant_id = $1
+         ORDER BY created_at ASC
+         LIMIT 1`,
+        [tenantId]
+      );
+      hotelInfo = hotelResult.rows[0] || null;
+    } else if (hotelInfo.tenant_id !== membership.tenant_id) {
+      return res.status(403).json({ error: "El hotel no pertenece al tenant seleccionado" });
+    }
+
     let mensaje = "";
-    if (rol === "admin") {
-      mensaje = "🎉 Felicidades, has ingresado como ADMIN.";
-    } else if (rol === "recepcionista") {
-      mensaje = "🎉 Felicidades, has ingresado como RECEPCIONISTA.";
-    } else if (rol === "huesped") {
-      mensaje = "🎉 Felicidades, has ingresado como HUESPED.";
+    if (membership.rol === "admin") {
+      mensaje = "🎉 Has ingresado como ADMIN";
+    } else if (membership.rol === "recepcionista") {
+      mensaje = "🎉 Has ingresado como RECEPCIONISTA";
+    } else if (membership.rol === "huesped") {
+      mensaje = "🎉 Has ingresado como HUESPED";
+    }
+
+    if (hotelInfo?.nombre) {
+      mensaje = `${mensaje} en ${hotelInfo.nombre}`.trim();
     }
 
     res.json({
       message: mensaje,
-      user_id: user.usuario_id,
-      rol,
+      user: {
+        usuario_id: user.usuario_id,
+        user_id: user.usuario_id,
+        nombre: user.nombre,
+        email: user.email,
+        rol: membership.rol,
+        tenant_id: membership.tenant_id,
+        tenant_nombre: membership.tenant_nombre,
+        hotel_id: hotelInfo?.hotel_id || null,
+        hotel_nombre: hotelInfo?.nombre || null,
+      },
     });
   } catch (err) {
-    console.error(err);
+    console.error("Error en login:", err);
     res.status(500).json({ error: "Error en el servidor" });
   }
 });

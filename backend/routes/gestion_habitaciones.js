@@ -7,52 +7,53 @@ const ESTADOS = ["disponible", "ocupada", "limpieza"];
 
 // 🔹 Endpoint: obtener habitaciones del hotel del usuario logueado o por defecto
 router.get("/del-usuario", async (req, res) => {
+  const { tenantId, tenant_id: tenantIdSnake, usuarioId, usuario_id: usuarioIdSnake, hotelId, hotel_id: hotelIdSnake } =
+    req.query;
+
+  const tenant = tenantId || tenantIdSnake;
+  const usuario = usuarioId || usuarioIdSnake;
+  const hotel = hotelId || hotelIdSnake;
+
+  if (!tenant || !usuario || !hotel) {
+    return res.status(400).json({ error: "Se requieren tenantId, usuarioId y hotelId" });
+  }
+
   try {
-    let hotelId;
+    const membershipRes = await pool.query(
+      `SELECT rol
+       FROM tenant_usuario
+       WHERE tenant_id = $1 AND usuario_id = $2
+       LIMIT 1`,
+      [tenant, usuario]
+    );
 
-    const usuarioId = req.usuario?.usuario_id;
-
-    if (usuarioId) {
-      // Obtener hotel_id del recepcionista
-      const hotelRes = await pool.query(
-        `SELECT h.hotel_id
-         FROM hotel h
-         JOIN tenant_usuario tu ON tu.tenant_id = h.tenant_id
-         WHERE tu.usuario_id = $1 AND tu.rol = 'recepcionista'
-         LIMIT 1`,
-        [usuarioId]
-      );
-
-      if (hotelRes.rows.length > 0) {
-        hotelId = hotelRes.rows[0].hotel_id;
-      } else {
-        // Si no se encuentra hotel del recepcionista, usar un hotel por defecto
-        const defaultHotelRes = await pool.query(
-          `SELECT hotel_id FROM hotel WHERE nombre = $1 LIMIT 1`,
-          ["Hotel Stella"]
-        );
-        hotelId = defaultHotelRes.rows[0]?.hotel_id;
-      }
-    } else {
-      // Usuario no autenticado: usar hotel por defecto
-      const defaultHotelRes = await pool.query(
-        `SELECT hotel_id FROM hotel WHERE nombre = $1 LIMIT 1`,
-        ["Hotel Stella"]
-      );
-      hotelId = defaultHotelRes.rows[0]?.hotel_id;
+    if (membershipRes.rows.length === 0) {
+      return res.status(403).json({ error: "El usuario no pertenece al tenant indicado" });
     }
 
-    if (!hotelId) {
-      return res.status(404).json({ error: "No se encontró hotel por defecto" });
+    const { rol } = membershipRes.rows[0];
+    if (!["recepcionista", "admin"].includes(rol)) {
+      return res.status(403).json({ error: "Rol sin permisos para gestionar habitaciones" });
     }
 
-    // Obtener habitaciones del hotel seleccionado
+    const hotelRes = await pool.query(
+      `SELECT hotel_id
+       FROM hotel
+       WHERE hotel_id = $1 AND tenant_id = $2
+       LIMIT 1`,
+      [hotel, tenant]
+    );
+
+    if (hotelRes.rows.length === 0) {
+      return res.status(404).json({ error: "Hotel no encontrado para el tenant" });
+    }
+
     const habitacionesRes = await pool.query(
-      `SELECT habitacion_id, numero, tipo, estado, hotel_id
+      `SELECT habitacion_id, numero, tipo, estado, hotel_id, tenant_id
        FROM habitacion
-       WHERE hotel_id = $1
+       WHERE hotel_id = $1 AND tenant_id = $2
        ORDER BY numero ASC`,
-      [hotelId]
+      [hotel, tenant]
     );
 
     res.json(habitacionesRes.rows);
@@ -65,22 +66,61 @@ router.get("/del-usuario", async (req, res) => {
 // 🔹 Actualizar estado (igual que antes)
 router.put("/:habitacionId", async (req, res) => {
   const { habitacionId } = req.params;
-  const { estado } = req.body;
+  const {
+    estado,
+    tenantId,
+    tenant_id: tenantIdSnake,
+    usuarioId,
+    usuario_id: usuarioIdSnake,
+    hotelId,
+    hotel_id: hotelIdSnake,
+  } = req.body;
 
-  if (!ESTADOS.includes(estado)) return res.status(400).json({ error: "Estado inválido" });
+  if (!ESTADOS.includes(estado)) {
+    return res.status(400).json({ error: "Estado inválido" });
+  }
+
+  const tenant = tenantId || tenantIdSnake;
+  const usuario = usuarioId || usuarioIdSnake;
+  const hotel = hotelId || hotelIdSnake;
+
+  if (!tenant || !usuario || !hotel) {
+    return res.status(400).json({ error: "Se requieren tenantId, usuarioId y hotelId" });
+  }
 
   try {
-    const result = await pool.query(
-      `UPDATE habitacion
-       SET estado = $1
-       WHERE habitacion_id = $2
-       RETURNING habitacion_id, numero, tipo, estado, hotel_id`,
-      [estado, habitacionId]
+    const membershipRes = await pool.query(
+      `SELECT rol
+       FROM tenant_usuario
+       WHERE tenant_id = $1 AND usuario_id = $2
+       LIMIT 1`,
+      [tenant, usuario]
     );
 
-    if (result.rows.length === 0) return res.status(404).json({ error: "Habitación no encontrada" });
+    if (membershipRes.rows.length === 0) {
+      return res.status(403).json({ error: "El usuario no pertenece al tenant indicado" });
+    }
 
-    res.json(result.rows[0]);
+    const { rol } = membershipRes.rows[0];
+    if (!["recepcionista", "admin"].includes(rol)) {
+      return res.status(403).json({ error: "Rol sin permisos para modificar habitaciones" });
+    }
+
+    const updateResult = await pool.query(
+      `UPDATE habitacion
+       SET estado = $1
+       WHERE habitacion_id = $2 AND tenant_id = $3 AND hotel_id = $4
+       RETURNING habitacion_id, numero, tipo, estado, hotel_id, tenant_id`,
+      [estado, habitacionId, tenant, hotel]
+    );
+
+    if (updateResult.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "Habitación no encontrada para el hotel indicado" });
+    }
+
+    res.json(updateResult.rows[0]);
   } catch (err) {
     console.error("Error al actualizar habitación:", err);
     res.status(500).json({ error: "Error al actualizar habitación" });

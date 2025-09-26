@@ -5,9 +5,26 @@ import AdminDashboard from "./components/AdminDashboard";
 import ReceptionistDashboard from "./components/ReceptionistDashboard";
 import GuestDashboard from "./components/GuestDashboard";
 
+const normalizeUser = (user) => {
+  if (!user) return null;
+  const usuarioId = user.usuario_id || user.user_id || user.id || null;
+  const rol = user.rol || user.role || "";
+  return {
+    ...user,
+    usuario_id: usuarioId,
+    user_id: user.user_id || usuarioId,
+    rol,
+  };
+};
+
 function App() {
   const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("dh_user")); } catch { return null; }
+    try {
+      const stored = JSON.parse(localStorage.getItem("dh_user"));
+      return normalizeUser(stored);
+    } catch {
+      return null;
+    }
   });
 
   useEffect(() => {
@@ -23,10 +40,10 @@ function App() {
         <h1 className="mb-4">DockHotel Manager</h1>
         <div className="row">
           <div className="col-md-6">
-            <Login onLogin={setUser} />
+            <Login onLogin={(data) => setUser(normalizeUser(data))} />
           </div>
           <div className="col-md-6">
-            <Register onRegister={(u) => setUser(u)} />
+            <Register onRegister={(u) => setUser(normalizeUser(u))} />
           </div>
         </div>
       </div>
@@ -34,10 +51,19 @@ function App() {
   }
 
   // Render role-specific dashboard
+  const nameLabel = user.nombre || user.email || "Usuario";
+  const hotelLabel = user.hotel_nombre || user.tenant_nombre || "Hotel no asignado";
+  const roleLabel = user.rol ? user.rol.toUpperCase() : "SIN ROL";
+
   return (
     <div className="container">
       <div className="d-flex justify-content-between align-items-center">
-        <h2>Bienvenido: {user.rol.toUpperCase()}</h2>
+        <div>
+          <h2>Bienvenido: {nameLabel}</h2>
+          <small className="text-muted">
+            {roleLabel} • {hotelLabel}
+          </small>
+        </div>
         <div>
           <button className="btn btn-secondary me-2" onClick={logout}>Cerrar sesión</button>
         </div>

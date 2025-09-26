@@ -2,15 +2,25 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api";
 
-export default function ReceptionistDashboard() {
+export default function ReceptionistDashboard({ user }) {
   const [habitaciones, setHabitaciones] = useState([]);
   const [msg, setMsg] = useState("");
 
   // 🔹 Ya no necesitamos un hotelId fijo; el backend nos devolverá las habitaciones del hotel del usuario
   useEffect(() => {
+    if (!user?.tenant_id || !user?.usuario_id || !user?.hotel_id) {
+      setMsg("El usuario no tiene hotel asignado");
+      return;
+    }
+
     const load = async () => {
       try {
-        const h = await api.getHabitacionesDelUsuario(); // <-- nuevo endpoint
+        setMsg("");
+        const h = await api.getHabitacionesDelUsuario({
+          tenantId: user.tenant_id,
+          usuarioId: user.usuario_id,
+          hotelId: user.hotel_id,
+        });
         console.log("👉 Respuesta habitaciones:", h);
 
         if (Array.isArray(h)) {
@@ -25,11 +35,16 @@ export default function ReceptionistDashboard() {
       }
     };
     load();
-  }, []);
+  }, [user]);
 
   const updateEstado = async (habit, newEstado) => {
     try {
-      const updated = await api.updateHabitacion(habit.habitacion_id, { estado: newEstado });
+      const updated = await api.updateHabitacion(habit.habitacion_id, {
+        estado: newEstado,
+        tenantId: user.tenant_id,
+        usuarioId: user.usuario_id,
+        hotelId: user.hotel_id,
+      });
       setHabitaciones(prev =>
         prev.map(x => x.habitacion_id === updated.habitacion_id ? updated : x)
       );
