@@ -10,6 +10,7 @@ export default function AdminDashboard() {
   const [editMsg, setEditMsg] = useState("");
   const [reservas, setReservas] = useState([]);
   const [reservasMsg, setReservasMsg] = useState("");
+  const [selectedReserva, setSelectedReserva] = useState(null);
 
   const currencyFormatter = useMemo(
     () => new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }),
@@ -17,6 +18,19 @@ export default function AdminDashboard() {
   );
 
   const formatMoney = (value) => currencyFormatter.format(value || 0);
+  const formatDate = (value) => {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString();
+  };
+  const formatNights = (reserva) => {
+    if (!reserva?.fecha_inicio || !reserva?.fecha_fin) return "—";
+    const inicio = new Date(reserva.fecha_inicio);
+    const fin = new Date(reserva.fecha_fin);
+    const diff = Math.max(1, Math.ceil((fin - inicio) / (1000 * 60 * 60 * 24)));
+    return `${diff} ${diff === 1 ? "noche" : "noches"}`;
+  };
 
   const load = async () => {
     try {
@@ -241,6 +255,14 @@ export default function AdminDashboard() {
                           <div className={`${reservaClass} text-capitalize`}>Reserva: {r.estado}</div>
                         </div>
                       </div>
+                      <div className="d-flex justify-content-end mt-2">
+                        <button
+                          className="btn btn-sm btn-outline-primary"
+                          onClick={() => setSelectedReserva(r)}
+                        >
+                          Ver detalles
+                        </button>
+                      </div>
                     </li>
                   );
                 })}
@@ -249,6 +271,35 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {selectedReserva && (
+        <div className="modal fade show" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.35)" }}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Detalle de reserva</h5>
+                <button type="button" className="btn-close" onClick={() => setSelectedReserva(null)}></button>
+              </div>
+              <div className="modal-body">
+                <p><strong>Hotel:</strong> {selectedReserva.hotel_nombre}</p>
+                <p><strong>Habitación:</strong> {selectedReserva.habitacion_numero}</p>
+                <p><strong>Huésped:</strong> {selectedReserva.huesped_nombre || "Sin nombre registrado"}</p>
+                <p><strong>Email huésped:</strong> {selectedReserva.huesped_email || "—"}</p>
+                <p><strong>Ingreso:</strong> {formatDate(selectedReserva.fecha_inicio)}</p>
+                <p><strong>Salida:</strong> {formatDate(selectedReserva.fecha_fin)}</p>
+                <p><strong>Estadía:</strong> {formatNights(selectedReserva)}</p>
+                <p><strong>Total:</strong> {formatMoney(selectedReserva.total)}</p>
+                <p><strong>Método de pago:</strong> {selectedReserva.pago_metodo || "—"}</p>
+                <p><strong>Estado de pago:</strong> {selectedReserva.pago_estado || "—"}</p>
+                <p><strong>Estado de la reserva:</strong> {selectedReserva.estado}</p>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setSelectedReserva(null)}>Cerrar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -11,6 +11,7 @@ export default function ReceptionistDashboard({ user }) {
   const [reservas, setReservas] = useState([]);
   const [reservasLoading, setReservasLoading] = useState(false);
   const [confirmingId, setConfirmingId] = useState(null);
+  const [selectedReserva, setSelectedReserva] = useState(null);
 
   const currencyFormatter = useMemo(
     () => new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }),
@@ -18,6 +19,19 @@ export default function ReceptionistDashboard({ user }) {
   );
 
   const formatMoney = (value) => currencyFormatter.format(value || 0);
+  const formatDate = (value) => {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString();
+  };
+  const formatNights = (reserva) => {
+    if (!reserva?.fecha_inicio || !reserva?.fecha_fin) return "—";
+    const inicio = new Date(reserva.fecha_inicio);
+    const fin = new Date(reserva.fecha_fin);
+    const diff = Math.max(1, Math.ceil((fin - inicio) / (1000 * 60 * 60 * 24)));
+    return `${diff} ${diff === 1 ? "noche" : "noches"}`;
+  };
 
   // 🔹 Ya no necesitamos un hotelId fijo; el backend nos devolverá las habitaciones del hotel del usuario
   const loadHabitaciones = useCallback(async () => {
@@ -337,6 +351,12 @@ export default function ReceptionistDashboard({ user }) {
                         <div className="small text-muted">{r.fecha_inicio} → {r.fecha_fin}</div>
                         <div className={`small ${pagoLabel}`}>Pago: {r.pago_metodo} • {r.pago_estado || "sin estado"}</div>
                         <div className={`small ${esPendiente ? "text-warning" : "text-muted"}`}>Estado reserva: {r.estado}</div>
+                        <button
+                          className="btn btn-link btn-sm px-0"
+                          onClick={() => setSelectedReserva(r)}
+                        >
+                          Ver detalles
+                        </button>
                       </div>
                       <div className="text-end">
                         <div className="fw-semibold">{formatMoney(r.total)}</div>
@@ -417,6 +437,35 @@ export default function ReceptionistDashboard({ user }) {
               <button className="btn btn-primary" type="submit">Guardar cambios</button>
             </div>
           </form>
+        </div>
+      )}
+
+      {selectedReserva && (
+        <div className="modal fade show" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.35)" }}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Detalle de reserva</h5>
+                <button type="button" className="btn-close" onClick={() => setSelectedReserva(null)}></button>
+              </div>
+              <div className="modal-body">
+                <p><strong>Hotel:</strong> {selectedReserva.hotel_nombre || user?.hotel_nombre || "—"}</p>
+                <p><strong>Habitación:</strong> {selectedReserva.habitacion_numero}</p>
+                <p><strong>Huésped:</strong> {selectedReserva.huesped_nombre || "Sin nombre registrado"}</p>
+                <p><strong>Email huésped:</strong> {selectedReserva.huesped_email || "—"}</p>
+                <p><strong>Ingreso:</strong> {formatDate(selectedReserva.fecha_inicio)}</p>
+                <p><strong>Salida:</strong> {formatDate(selectedReserva.fecha_fin)}</p>
+                <p><strong>Estadía:</strong> {formatNights(selectedReserva)}</p>
+                <p><strong>Total:</strong> {formatMoney(selectedReserva.total)}</p>
+                <p><strong>Método de pago:</strong> {selectedReserva.pago_metodo || "—"}</p>
+                <p><strong>Estado de pago:</strong> {selectedReserva.pago_estado || "—"}</p>
+                <p><strong>Estado de la reserva:</strong> {selectedReserva.estado}</p>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setSelectedReserva(null)}>Cerrar</button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

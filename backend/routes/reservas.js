@@ -21,6 +21,9 @@ const RESERVA_BASE_QUERY = `
     hab.hotel_id,
     hab.tenant_id AS habitacion_tenant_id,
     h.nombre AS hotel_nombre,
+    hu.nombre_completo AS huesped_nombre,
+    hu.email AS huesped_email,
+    GREATEST(1, (r.fecha_fin - r.fecha_inicio)) AS noches,
     p.pago_id,
     p.monto AS pago_monto,
     p.metodo AS pago_metodo,
@@ -30,6 +33,7 @@ const RESERVA_BASE_QUERY = `
   JOIN habitacion hab ON hab.habitacion_id = r.habitacion_id
   JOIN hotel h ON h.hotel_id = hab.hotel_id
   LEFT JOIN pago p ON p.reserva_id = r.reserva_id
+  LEFT JOIN huesped hu ON hu.huesped_id = r.huesped_id
 `;
 
 async function fetchReservaById(reservaId) {
