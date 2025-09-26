@@ -122,6 +122,6 @@ echo TABLE habitacion;>> %SQL_FILE%
 
 REM Ejecutar en el contenedor
 echo Ejecutando SQL en %CONTAINER_NAME%...
-docker exec -i %CONTAINER_NAME% psql -U %DB_USER% -d %DB_NAME% -v ON_ERROR_STOP=1 -f /%SQL_FILE%
+docker exec -i %CONTAINER_NAME% psql -U %DB_USER% -d %DB_NAME% -v ON_ERROR_STOP=1 < %SQL_FILE%
 
 pause
