@@ -13,11 +13,12 @@ const GATEWAY_INITIAL_STATE = {
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 export default function GuestDashboard({ user }) {
-  const [hoteles, setHoteles] = useState([]);
+  const [hotel, setHotel] = useState(null);
+  const [loadingHotel, setLoadingHotel] = useState(false);
   const [habitaciones, setHabitaciones] = useState([]);
-  const [selectedHotel, setSelectedHotel] = useState(null);
+  const [loadingRooms, setLoadingRooms] = useState(false);
   const [form, setForm] = useState({
-    tenant_id: "",
+    tenant_id: user?.tenant_id || "",
     habitacion_id: "",
     fecha_inicio: "",
     fecha_fin: "",
@@ -25,7 +26,6 @@ export default function GuestDashboard({ user }) {
   });
   const [msg, setMsg] = useState("");
   const [total, setTotal] = useState(0);
-  const [loadingRooms, setLoadingRooms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showGateway, setShowGateway] = useState(false);
   const [gatewayData, setGatewayData] = useState(GATEWAY_INITIAL_STATE);
@@ -35,6 +35,8 @@ export default function GuestDashboard({ user }) {
     () => new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }),
     []
   );
+
+  const formatMoney = (value) => currencyFormatter.format(value || 0);
 
   const fetchHabitaciones = useCallback(
     async ({ hotelId, fechaInicio, fechaFin }) => {
@@ -54,20 +56,42 @@ export default function GuestDashboard({ user }) {
     []
   );
 
-  const loadHoteles = useCallback(async () => {
-    try {
-      const h = await api.getHoteles();
-      setHoteles(h);
-    } catch (err) {
-      setMsg(err.error || JSON.stringify(err));
+  const loadHotel = useCallback(async () => {
+    if (!user?.hotel_id) {
+      setHotel(null);
+      setHabitaciones([]);
+      setMsg("No tienes un hotel asignado. Contacta al administrador.");
+      return;
     }
-  }, []);
+
+    try {
+      setLoadingHotel(true);
+      setMsg("");
+      const data = await api.getHotel(user.hotel_id);
+      setHotel(data);
+      setForm((prev) => ({
+        ...prev,
+        tenant_id: data.tenant_id,
+        habitacion_id: "",
+      }));
+    } catch (err) {
+      setHotel(null);
+      setHabitaciones([]);
+      setMsg(err.error || JSON.stringify(err));
+    } finally {
+      setLoadingHotel(false);
+    }
+  }, [user?.hotel_id]);
 
   useEffect(() => {
-    loadHoteles();
-  }, [loadHoteles]);
+    loadHotel();
+  }, [loadHotel]);
 
   useEffect(() => {
+    if (!hotel) {
+      setTotal(0);
+      return;
+    }
     if (!form.habitacion_id || !form.fecha_inicio || !form.fecha_fin) {
       setTotal(0);
       return;
@@ -85,37 +109,22 @@ export default function GuestDashboard({ user }) {
       return;
     }
     setTotal(diff * Number(room.precio_noche || 0));
-  }, [form.habitacion_id, form.fecha_inicio, form.fecha_fin, habitaciones]);
+  }, [hotel, form.habitacion_id, form.fecha_inicio, form.fecha_fin, habitaciones]);
 
   useEffect(() => {
-    if (!selectedHotel) return;
-    fetchHabitaciones({
-      hotelId: selectedHotel.hotel_id,
-      fechaInicio: form.fecha_inicio,
-      fechaFin: form.fecha_fin,
-    });
-  }, [selectedHotel, form.fecha_inicio, form.fecha_fin, fetchHabitaciones]);
-
-  const selectHotel = (hotel) => {
-    setSelectedHotel(hotel);
-    setForm((prev) => ({
-      ...prev,
-      tenant_id: hotel.tenant_id,
-      habitacion_id: "",
-    }));
-    setShowGateway(false);
-    setGatewayData(GATEWAY_INITIAL_STATE);
-    setGatewayMsg("");
-    setMsg("");
+    if (!hotel) return;
     fetchHabitaciones({
       hotelId: hotel.hotel_id,
       fechaInicio: form.fecha_inicio,
       fechaFin: form.fecha_fin,
     });
-  };
+  }, [hotel, form.fecha_inicio, form.fecha_fin, fetchHabitaciones]);
 
   const handleFormChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    if (field === "habitacion_id") {
+      setMsg("");
+    }
   };
 
   const handleGatewayChange = (field, value) => {
@@ -129,13 +138,13 @@ export default function GuestDashboard({ user }) {
   };
 
   const performReserva = async (detalles_pago = {}) => {
-    if (!selectedHotel) {
-      setMsg("Selecciona un hotel antes de reservar");
-      throw new Error("Hotel no seleccionado");
+    if (!hotel) {
+      setMsg("No se encontró hotel asignado para tu usuario");
+      throw new Error("Hotel no asignado");
     }
 
     const payload = {
-      tenant_id: selectedHotel.tenant_id,
+      tenant_id: hotel.tenant_id,
       habitacion_id: form.habitacion_id,
       huesped_id: user?.user_id || user?.usuario_id,
       fecha_inicio: form.fecha_inicio,
@@ -159,14 +168,14 @@ export default function GuestDashboard({ user }) {
       setGatewayData(GATEWAY_INITIAL_STATE);
       setGatewayMsg("");
       setForm({
-        tenant_id: selectedHotel.tenant_id,
+        tenant_id: hotel.tenant_id,
         habitacion_id: "",
         fecha_inicio: "",
         fecha_fin: "",
         metodo_pago: "tarjeta",
       });
       setTotal(0);
-      await fetchHabitaciones({ hotelId: selectedHotel.hotel_id });
+      await fetchHabitaciones({ hotelId: hotel.hotel_id });
     } catch (err) {
       const message = err?.error || err?.message || JSON.stringify(err);
       if (form.metodo_pago !== "efectivo" && showGateway) {
@@ -184,8 +193,8 @@ export default function GuestDashboard({ user }) {
     setMsg("");
     setGatewayMsg("");
 
-    if (!selectedHotel) {
-      setMsg("Selecciona un hotel antes de reservar");
+    if (!hotel) {
+      setMsg("No tienes un hotel asignado");
       return;
     }
     if (!form.habitacion_id) {
@@ -241,44 +250,33 @@ export default function GuestDashboard({ user }) {
     }
   };
 
-  const formattedTotal = currencyFormatter.format(total || 0);
-
   return (
     <div>
       <h3>Reservar habitación</h3>
       <div className="row g-3">
         <div className="col-md-5">
           <div className="card p-3 h-100">
-            <h5>Hoteles</h5>
-            <ul className="list-group">
-              {hoteles.map((h) => {
-                const isActive = selectedHotel?.hotel_id === h.hotel_id;
-                return (
-                  <li
-                    key={h.hotel_id}
-                    className={`list-group-item d-flex justify-content-between align-items-center ${isActive ? "active" : ""}`}
-                  >
-                    <div>
-                      <strong>{h.nombre}</strong><br />
-                      <small className={isActive ? "text-light" : "text-muted"}>{h.direccion}</small>
-                    </div>
-                    <button
-                      className={`btn btn-sm ${isActive ? "btn-light" : "btn-primary"}`}
-                      onClick={() => selectHotel(h)}
-                    >
-                      {isActive ? "Seleccionado" : "Ver habitaciones"}
-                    </button>
-                  </li>
-                );
-              })}
-              {hoteles.length === 0 && <li className="list-group-item text-muted">No hay hoteles disponibles</li>}
-            </ul>
+            <h5>Hotel asignado</h5>
+            {loadingHotel ? (
+              <p className="text-muted">Cargando información del hotel...</p>
+            ) : hotel ? (
+              <div>
+                <strong>{hotel.nombre}</strong>
+                <div className="text-muted small">{hotel.direccion}</div>
+                <div className="text-muted small">Tel: {hotel.telefono || "—"}</div>
+                <div className="text-muted small">Email: {hotel.email || "—"}</div>
+                <hr />
+                <div className="small">Podrás reservar solo habitaciones de este hotel.</div>
+              </div>
+            ) : (
+              <p className="text-muted">No se pudo cargar el hotel. Intenta más tarde.</p>
+            )}
           </div>
         </div>
 
         <div className="col-md-7">
           <div className="card p-3 mb-3">
-            <h5>{selectedHotel ? `Habitaciones en ${selectedHotel.nombre}` : "Seleccione un hotel"}</h5>
+            <h5>{hotel ? `Habitaciones en ${hotel.nombre}` : "Sin hotel asignado"}</h5>
             <form onSubmit={submitReserva}>
               <div className="mb-2">
                 <label className="form-label">Habitación</label>
@@ -286,18 +284,18 @@ export default function GuestDashboard({ user }) {
                   className="form-select"
                   value={form.habitacion_id}
                   onChange={(e) => handleFormChange("habitacion_id", e.target.value)}
-                  disabled={!selectedHotel || loadingRooms}
+                  disabled={!hotel || loadingRooms}
                   required
                 >
                   <option value="">-- elegir --</option>
                   {habitaciones.map((h) => (
                     <option key={h.habitacion_id} value={h.habitacion_id}>
-                      {h.numero} — {h.tipo} — S/ {h.precio_noche}
+                      {h.numero} — {h.tipo} — {formatMoney(h.precio_noche)} por noche
                     </option>
                   ))}
                 </select>
                 {loadingRooms && <div className="small text-muted mt-1">Cargando habitaciones...</div>}
-                {!loadingRooms && selectedHotel && habitaciones.length === 0 && (
+                {!loadingRooms && hotel && habitaciones.length === 0 && (
                   <div className="small text-muted mt-1">Sin disponibilidad para las fechas seleccionadas.</div>
                 )}
               </div>
@@ -335,9 +333,9 @@ export default function GuestDashboard({ user }) {
               </div>
               <div className="mb-3">
                 <label className="form-label">Total estimado</label>
-                <div className="form-control-plaintext fw-semibold">{formattedTotal}</div>
+                <div className="form-control-plaintext fw-semibold">{formatMoney(total)}</div>
               </div>
-              <button className="btn btn-success" type="submit" disabled={submitting}>
+              <button className="btn btn-success" type="submit" disabled={submitting || !hotel}>
                 {submitting
                   ? "Procesando..."
                   : form.metodo_pago === "efectivo"
