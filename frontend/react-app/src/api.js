@@ -25,12 +25,27 @@ export const api = {
   createHotel: (body) => request("/api/hoteles", { method: "POST", body: JSON.stringify(body) }),
   deleteHotel: (id) => request(`/api/hoteles/${id}`, { method: "DELETE" }),
   updateHotel: (id, body) => request(`/api/hoteles/${id}`, { method: "PUT", body: JSON.stringify(body) }),
-  getReservas: () => request("/api/reservas", { method: "GET" }),
+  getReservas: (params = {}) => {
+    const search = new URLSearchParams();
+    if (params.hotelId) search.set("hotelId", params.hotelId);
+    if (params.tenantId) search.set("tenantId", params.tenantId);
+    if (params.estado) search.set("estado", params.estado);
+    if (params.metodoPago) search.set("metodo_pago", params.metodoPago);
+    if (params.estadoPago) search.set("estado_pago", params.estadoPago);
+    const suffix = search.toString();
+    return request(`/api/reservas${suffix ? `?${suffix}` : ""}`, { method: "GET" });
+  },
   createReserva: (body) => request("/api/reservas", { method: "POST", body: JSON.stringify(body) }),
+  updateReserva: (id, body) => request(`/api/reservas/${id}`, { method: "PUT", body: JSON.stringify(body) }),
 
   // 🔹 Habitaciones por hotelId
-  getHabitaciones: async (hotelId) => {
-    const res = await fetch(`${BASE}/api/habitaciones/${hotelId}`);
+  getHabitaciones: async (hotelId, params = {}) => {
+    if (!hotelId) throw new Error("hotelId requerido");
+    const search = new URLSearchParams();
+    if (params.fechaInicio) search.set("fecha_inicio", params.fechaInicio);
+    if (params.fechaFin) search.set("fecha_fin", params.fechaFin);
+    const qs = search.toString();
+    const res = await fetch(`${BASE}/api/habitaciones/${hotelId}${qs ? `?${qs}` : ""}`);
     if (!res.ok) throw await res.json();
     return res.json();
   },

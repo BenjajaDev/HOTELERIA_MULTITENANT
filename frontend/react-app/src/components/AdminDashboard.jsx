@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 
 export default function AdminDashboard() {
@@ -8,6 +8,15 @@ export default function AdminDashboard() {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({ nombre: "", direccion: "", telefono: "", email: "" });
   const [editMsg, setEditMsg] = useState("");
+  const [reservas, setReservas] = useState([]);
+  const [reservasMsg, setReservasMsg] = useState("");
+
+  const currencyFormatter = useMemo(
+    () => new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }),
+    []
+  );
+
+  const formatMoney = (value) => currencyFormatter.format(value || 0);
 
   const load = async () => {
     try {
@@ -18,7 +27,20 @@ export default function AdminDashboard() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  const loadReservas = async () => {
+    try {
+      const data = await api.getReservas();
+      setReservas(data);
+      setReservasMsg("");
+    } catch (err) {
+      setReservasMsg(err.error || JSON.stringify(err));
+    }
+  };
+
+  useEffect(() => {
+    load();
+    loadReservas();
+  }, []);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -168,6 +190,10 @@ export default function AdminDashboard() {
                           Tenant: {h.tenant_nombre || h.tenant_id}
                         </small>
                       </div>
+                      <div className="small mt-1">
+                        <div className="text-success">Ganancias confirmadas: {formatMoney(h.total_ganancias)}</div>
+                        <div className="text-warning">Ingresos pendientes: {formatMoney(h.total_pendiente)}</div>
+                      </div>
                     </div>
                     <div>
                       <button 
@@ -180,6 +206,44 @@ export default function AdminDashboard() {
                     </div>
                   </li>
                 ))}
+              </ul>
+            )}
+          </div>
+          <div className="card p-3 mt-3">
+            <div className="d-flex justify-content-between align-items-center">
+              <h5 className="mb-0">Reservas recientes</h5>
+              <button className="btn btn-sm btn-outline-secondary" onClick={loadReservas}>
+                Refrescar
+              </button>
+            </div>
+            {reservasMsg && <div className="text-danger small mt-2">{reservasMsg}</div>}
+            {!reservasMsg && reservas.length === 0 && (
+              <p className="text-muted mt-2">Sin reservas registradas todavía</p>
+            )}
+            {!reservasMsg && reservas.length > 0 && (
+              <ul className="list-group mt-2">
+                {reservas.slice(0, 8).map(r => {
+                  const pagoClass = r.pago_estado === "pagado" ? "text-success" : r.pago_estado === "pendiente" ? "text-warning" : "text-muted";
+                  const reservaClass = r.estado === "confirmada" ? "text-success" : r.estado === "pendiente" ? "text-warning" : "text-muted";
+                  return (
+                    <li key={r.reserva_id} className="list-group-item">
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div>
+                          <strong>{r.hotel_nombre}</strong>
+                          <div className="small text-muted">Habitación {r.habitacion_numero}</div>
+                          <div className="small text-muted">{r.fecha_inicio} → {r.fecha_fin}</div>
+                        </div>
+                        <div className="text-end small">
+                          <div>{formatMoney(r.total)}</div>
+                          <div className={`${pagoClass} text-capitalize`}>
+                            {r.pago_metodo || "sin método"} • {r.pago_estado || "sin estado"}
+                          </div>
+                          <div className={`${reservaClass} text-capitalize`}>Reserva: {r.estado}</div>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

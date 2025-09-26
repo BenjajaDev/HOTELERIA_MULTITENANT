@@ -76,6 +76,48 @@ router.get("/del-usuario", async (req, res) => {
   }
 });
 
+router.get("/:hotelId", async (req, res) => {
+  const { hotelId } = req.params;
+  const { fecha_inicio, fecha_fin } = req.query;
+
+  if (!hotelId) {
+    return res.status(400).json({ error: "Se requiere hotelId" });
+  }
+
+  const values = [hotelId];
+  let idx = 2;
+  let availabilityClause = "";
+
+  if (fecha_inicio && fecha_fin) {
+    availabilityClause = `
+      AND NOT EXISTS (
+        SELECT 1
+        FROM reserva r
+        WHERE r.habitacion_id = h.habitacion_id
+          AND r.estado != 'cancelada'
+          AND NOT ($${idx + 1} <= r.fecha_inicio OR $${idx} >= r.fecha_fin)
+      )`;
+    values.push(fecha_inicio, fecha_fin);
+    idx += 2;
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT habitacion_id, numero, tipo, estado, precio_noche, hotel_id, tenant_id
+       FROM habitacion h
+       WHERE h.hotel_id = $1
+         AND h.estado = 'disponible'
+         ${availabilityClause}
+       ORDER BY numero ASC`,
+      values
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error al listar habitaciones disponibles:", err);
+    res.status(500).json({ error: "Error al obtener habitaciones disponibles" });
+  }
+});
+
 router.post("/", async (req, res) => {
   const {
     tenantId,

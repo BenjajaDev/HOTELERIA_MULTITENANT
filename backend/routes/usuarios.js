@@ -233,6 +233,14 @@ router.post("/register-huesped", async (req, res) => {
       [tenantIdToUse, usuario_id, "huesped"]
     );
 
+    // 5. Registrar ficha básica en tabla huesped (usa mismo UUID del usuario)
+    await pool.query(
+      `INSERT INTO huesped (huesped_id, tenant_id, nombre_completo, email, telefono, created_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())
+       ON CONFLICT (huesped_id) DO NOTHING`,
+      [usuario_id, tenantIdToUse, nombre || email, email, null]
+    );
+
     res.status(201).json({
       message: "Registro exitoso. Bienvenido como HUESPED 🎉",
       usuario_id,

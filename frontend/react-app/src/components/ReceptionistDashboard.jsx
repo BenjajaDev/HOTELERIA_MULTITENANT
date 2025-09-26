@@ -1,5 +1,5 @@
 // frontend/components/ReceptionistDashboard.jsx
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 
 export default function ReceptionistDashboard({ user }) {
@@ -8,6 +8,16 @@ export default function ReceptionistDashboard({ user }) {
   const [newRoom, setNewRoom] = useState({ numero: "", tipo: "simple", precio_noche: "", estado: "disponible" });
   const [editing, setEditing] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [reservas, setReservas] = useState([]);
+  const [reservasLoading, setReservasLoading] = useState(false);
+  const [confirmingId, setConfirmingId] = useState(null);
+
+  const currencyFormatter = useMemo(
+    () => new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }),
+    []
+  );
+
+  const formatMoney = (value) => currencyFormatter.format(value || 0);
 
   // 🔹 Ya no necesitamos un hotelId fijo; el backend nos devolverá las habitaciones del hotel del usuario
   const loadHabitaciones = useCallback(async () => {
@@ -39,9 +49,23 @@ export default function ReceptionistDashboard({ user }) {
     }
   }, [user]);
 
+  const loadReservas = useCallback(async () => {
+    if (!user?.hotel_id) return;
+    try {
+      setReservasLoading(true);
+      const data = await api.getReservas({ hotelId: user.hotel_id });
+      setReservas(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setMsg(err.error || JSON.stringify(err));
+    } finally {
+      setReservasLoading(false);
+    }
+  }, [user]);
+
   useEffect(() => {
     loadHabitaciones();
-  }, [loadHabitaciones]);
+    loadReservas();
+  }, [loadHabitaciones, loadReservas]);
 
   const updateEstado = async (habit, newEstado) => {
     try {
@@ -135,6 +159,34 @@ export default function ReceptionistDashboard({ user }) {
     }
   };
 
+  const confirmReserva = async (reserva) => {
+    if (!window.confirm("¿Confirmar el pago de esta reserva?")) return;
+    try {
+      setConfirmingId(reserva.reserva_id);
+      setMsg("Confirmando reserva...");
+      const updated = await api.updateReserva(reserva.reserva_id, {
+        estado: "confirmada",
+        estado_pago: "pagado",
+      });
+      setReservas(prev => prev.map(r => (r.reserva_id === updated.reserva_id ? updated : r)));
+      setMsg("Reserva confirmada ✅");
+      await loadReservas();
+      await loadHabitaciones();
+    } catch (err) {
+      setMsg(err.error || JSON.stringify(err));
+    } finally {
+      setConfirmingId(null);
+    }
+  };
+
+  const reservasOrdenadas = useMemo(
+    () => [...reservas].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)),
+    [reservas]
+  );
+
+  const pendientes = reservasOrdenadas.filter(r => r.estado === "pendiente");
+  const otrasReservas = reservasOrdenadas.filter(r => r.estado !== "pendiente");
+
   return (
     <div>
       <h3>Gestión de Habitaciones</h3>
@@ -217,7 +269,7 @@ export default function ReceptionistDashboard({ user }) {
                       <div>
                         <strong>Hab. {h.numero}</strong> — {h.tipo}
                         <div className="text-muted small">
-                          Precio: ${h.precio_noche} • Hotel: {h.hotel_id}
+                          Precio: {formatMoney(h.precio_noche)} • Hotel: {h.hotel_id}
                         </div>
                       </div>
                       <div className="d-flex align-items-center">
@@ -252,6 +304,59 @@ export default function ReceptionistDashboard({ user }) {
                 </li>
               )}
             </ul>
+          </div>
+
+          <div className="card p-3 mt-3">
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <h5 className="mb-0">Reservas del hotel</h5>
+              <button
+                className="btn btn-sm btn-outline-secondary"
+                type="button"
+                onClick={loadReservas}
+                disabled={reservasLoading}
+              >
+                {reservasLoading ? "Actualizando..." : "Actualizar"}
+              </button>
+            </div>
+
+            {reservasLoading && <div className="text-muted small">Cargando reservas...</div>}
+
+            {!reservasLoading && reservasOrdenadas.length === 0 && (
+              <div className="text-muted">Aún no hay reservas registradas.</div>
+            )}
+
+            {!reservasLoading && reservasOrdenadas.length > 0 && (
+              <ul className="list-group">
+                {reservasOrdenadas.map((r) => {
+                  const esPendiente = r.estado === "pendiente";
+                  const pagoLabel = r.pago_estado === "pagado" ? "text-success" : r.pago_estado === "pendiente" ? "text-warning" : "text-muted";
+                  return (
+                    <li key={r.reserva_id} className="list-group-item d-flex justify-content-between align-items-start">
+                      <div>
+                        <strong>Hab. {r.habitacion_numero}</strong>
+                        <div className="small text-muted">{r.fecha_inicio} → {r.fecha_fin}</div>
+                        <div className={`small ${pagoLabel}`}>Pago: {r.pago_metodo} • {r.pago_estado || "sin estado"}</div>
+                        <div className={`small ${esPendiente ? "text-warning" : "text-muted"}`}>Estado reserva: {r.estado}</div>
+                      </div>
+                      <div className="text-end">
+                        <div className="fw-semibold">{formatMoney(r.total)}</div>
+                        {esPendiente ? (
+                          <button
+                            className="btn btn-sm btn-success mt-1"
+                            onClick={() => confirmReserva(r)}
+                            disabled={confirmingId === r.reserva_id}
+                          >
+                            {confirmingId === r.reserva_id ? "Confirmando..." : "Marcar como pagada"}
+                          </button>
+                        ) : (
+                          <span className="badge bg-success mt-2">Confirmada</span>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
         </div>
       </div>
