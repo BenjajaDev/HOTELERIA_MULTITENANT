@@ -19,6 +19,27 @@ router.get("/", async (req, res) => {
   }
 });
 
+// GET /api/hoteles/:id
+router.get("/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(
+      `SELECT h.*, t.nombre AS tenant_nombre
+       FROM hotel h
+       JOIN tenant t ON h.tenant_id = t.tenant_id
+       WHERE h.hotel_id = $1`,
+      [id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Hotel no encontrado" });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Error al obtener hotel:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/hoteles
 router.post("/", async (req, res) => {
   const { nombre, direccion, telefono, email } = req.body;
@@ -34,11 +55,19 @@ router.post("/", async (req, res) => {
     // 2. Crear hotel asociado al tenant
     const hotelResult = await pool.query(
       `INSERT INTO hotel (tenant_id, nombre, direccion, telefono, email) 
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5) RETURNING hotel_id`,
       [tenant_id, nombre, direccion, telefono, email]
     );
 
-    res.status(201).json(hotelResult.rows[0]);
+    const created = await pool.query(
+      `SELECT h.*, t.nombre AS tenant_nombre
+       FROM hotel h
+       JOIN tenant t ON h.tenant_id = t.tenant_id
+       WHERE h.hotel_id = $1`,
+      [hotelResult.rows[0].hotel_id]
+    );
+
+    res.status(201).json(created.rows[0]);
   } catch (err) {
     console.error("Error al crear hotel:", err);
     res.status(500).json({ error: err.message });
@@ -57,7 +86,17 @@ router.put("/:id", async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Hotel no encontrado" });
     }
-    res.json(result.rows[0]);
+    if (nombre) {
+      await pool.query("UPDATE tenant SET nombre=$1 WHERE tenant_id=$2", [nombre, result.rows[0].tenant_id]);
+    }
+    const updated = await pool.query(
+      `SELECT h.*, t.nombre AS tenant_nombre
+       FROM hotel h
+       JOIN tenant t ON h.tenant_id = t.tenant_id
+       WHERE h.hotel_id = $1`,
+      [id]
+    );
+    res.json(updated.rows[0]);
   } catch (err) {
     console.error("Error al actualizar hotel:", err);
     res.status(500).json({ error: err.message });

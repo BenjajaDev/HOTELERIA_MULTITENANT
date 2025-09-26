@@ -21,6 +21,7 @@ export const api = {
   registerHuesped: (body) => request("/api/usuarios/register-huesped", { method: "POST", body: JSON.stringify(body) }),
   getCurrentUser: () => request("/api/usuarios/me", { method: "GET" }),
   getHoteles: () => request("/api/hoteles", { method: "GET" }),
+  getHotel: (id) => request(`/api/hoteles/${id}`, { method: "GET" }),
   createHotel: (body) => request("/api/hoteles", { method: "POST", body: JSON.stringify(body) }),
   deleteHotel: (id) => request(`/api/hoteles/${id}`, { method: "DELETE" }),
   updateHotel: (id, body) => request(`/api/hoteles/${id}`, { method: "PUT", body: JSON.stringify(body) }),
