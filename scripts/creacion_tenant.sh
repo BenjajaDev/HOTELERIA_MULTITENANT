@@ -37,7 +37,7 @@ admin_stella AS (
   VALUES (
     'admin@hotel.com',
     '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2',
-    'Administrador Hotel Stella'
+    'Administrador de Hoteles'
   )
   RETURNING usuario_id
 ),
@@ -46,7 +46,7 @@ admin_madero AS (
   VALUES (
     'admin2@hotel.com',
     '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2',
-    'Administrador Hotel Madero'
+    'Administrador de Hoteles'
   )
   RETURNING usuario_id
 ),
@@ -55,7 +55,7 @@ recep_stella AS (
   VALUES (
     'recep_stella@hotel.com',
     '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2',
-    'Recepcionista Hotel Stella'
+    'Alejandro Gonzalez'
   )
   RETURNING usuario_id
 ),
@@ -64,7 +64,7 @@ recep_madero AS (
   VALUES (
     'recep_madero@hotel.com',
     '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2',
-    'Recepcionista Hotel Madero'
+    'Benjamin Soto'
   )
   RETURNING usuario_id
 ),
@@ -73,7 +73,7 @@ huesped_stella AS (
   VALUES (
     'huesped_stella@hotel.com',
     '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2',
-    'Huésped Hotel Stella'
+    'David Goggins'
   )
   RETURNING usuario_id
 ),
@@ -82,7 +82,7 @@ huesped_madero AS (
   VALUES (
     'huesped_madero@hotel.com',
     '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2',
-    'Huésped Hotel Madero'
+    'Lucario Martinez'
   )
   RETURNING usuario_id
 ),

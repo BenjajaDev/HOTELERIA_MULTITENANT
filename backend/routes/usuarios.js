@@ -22,15 +22,9 @@ router.post("/login", async (req, res) => {
     return res.status(400).json({ error: "Email y contraseña son requeridos" });
   }
 
-  // Permitir tenantId en camelCase o snake_case; idem para hotelId
+  // Permitir tenantId/hotelId en camelCase o snake_case para compatibilidad
   const requestedTenantId = tenantIdFromBody || tenantIdSnake;
   const requestedHotelId = hotelId || hotelIdSnake;
-
-  if (!requestedTenantId && !requestedHotelId) {
-    return res
-      .status(400)
-      .json({ error: "Debe indicar el tenant (hotel) al que desea ingresar" });
-  }
 
   try {
     const userResult = await pool.query(
@@ -49,12 +43,42 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Contraseña incorrecta" });
     }
 
-    let tenantId = requestedTenantId;
+    const memberships = await pool.query(
+      `SELECT tu.rol, tu.tenant_id, t.nombre AS tenant_nombre
+       FROM tenant_usuario tu
+       JOIN tenant t ON t.tenant_id = tu.tenant_id
+       WHERE tu.usuario_id = $1`,
+      [user.usuario_id]
+    );
+
+    if (memberships.rows.length === 0) {
+      return res
+        .status(403)
+        .json({ error: "El usuario no tiene un hotel asignado" });
+    }
+
+    const membershipList = memberships.rows;
+
+    const tenantFromRequest = requestedTenantId
+      ? membershipList.find((m) => m.tenant_id === requestedTenantId)
+      : null;
+
+    if (requestedTenantId && !tenantFromRequest) {
+      return res
+        .status(403)
+        .json({ error: "No tiene acceso al tenant indicado" });
+    }
+
+    const membership = tenantFromRequest || membershipList[0];
+    const tenantId = membership.tenant_id;
+
     let hotelInfo = null;
 
     if (requestedHotelId) {
       const hotelResult = await pool.query(
-        "SELECT hotel_id, tenant_id, nombre FROM hotel WHERE hotel_id = $1",
+        `SELECT hotel_id, tenant_id, nombre
+         FROM hotel
+         WHERE hotel_id = $1`,
         [requestedHotelId]
       );
 
@@ -63,42 +87,25 @@ router.post("/login", async (req, res) => {
       }
 
       hotelInfo = hotelResult.rows[0];
-      tenantId = tenantId || hotelInfo.tenant_id;
+
+      if (hotelInfo.tenant_id !== tenantId) {
+        return res
+          .status(403)
+          .json({ error: "El hotel no pertenece al tenant del usuario" });
+      }
     }
-
-    if (!tenantId) {
-      return res
-        .status(400)
-        .json({ error: "No se pudo determinar el tenant para el usuario" });
-    }
-
-    const membershipResult = await pool.query(
-      `SELECT tu.rol, tu.tenant_id, t.nombre AS tenant_nombre
-       FROM tenant_usuario tu
-       JOIN tenant t ON t.tenant_id = tu.tenant_id
-       WHERE tu.usuario_id = $1 AND tu.tenant_id = $2
-       LIMIT 1`,
-      [user.usuario_id, tenantId]
-    );
-
-    if (membershipResult.rows.length === 0) {
-      return res.status(403).json({ error: "No tiene acceso al tenant seleccionado" });
-    }
-
-    const membership = membershipResult.rows[0];
 
     if (!hotelInfo) {
       const hotelResult = await pool.query(
-        `SELECT hotel_id, nombre
+        `SELECT hotel_id, tenant_id, nombre
          FROM hotel
          WHERE tenant_id = $1
-         ORDER BY created_at ASC
+         ORDER BY created_at ASC NULLS LAST, nombre ASC
          LIMIT 1`,
         [tenantId]
       );
+
       hotelInfo = hotelResult.rows[0] || null;
-    } else if (hotelInfo.tenant_id !== membership.tenant_id) {
-      return res.status(403).json({ error: "El hotel no pertenece al tenant seleccionado" });
     }
 
     let mensaje = "";
@@ -157,7 +164,24 @@ router.get("/me", async (req, res) => {
 // REGISTRO de huésped
 // -------------------------
 router.post("/register-huesped", async (req, res) => {
-  const { tenant_id, email, password, nombre } = req.body;
+  const {
+    tenant_id: tenantIdSnake,
+    tenantId: tenantIdCamel,
+    hotel_id: hotelIdSnake,
+    hotelId: hotelIdCamel,
+    email,
+    password,
+    nombre,
+  } = req.body;
+
+  const providedTenantId = tenantIdCamel || tenantIdSnake || null;
+  const providedHotelId = hotelIdCamel || hotelIdSnake || null;
+
+  if (!providedTenantId && !providedHotelId) {
+    return res.status(400).json({
+      error: "Debe indicar el hotel en el que desea registrarse",
+    });
+  }
 
   try {
     // 1. Verificar si ya existe
@@ -174,6 +198,30 @@ router.post("/register-huesped", async (req, res) => {
 
     // 3. Crear usuario
     const usuario_id = uuidv4();
+
+    let tenantIdToUse = providedTenantId;
+
+    if (!tenantIdToUse && providedHotelId) {
+      const hotelLookup = await pool.query(
+        `SELECT hotel_id, tenant_id
+         FROM hotel
+         WHERE hotel_id = $1`,
+        [providedHotelId]
+      );
+
+      if (hotelLookup.rows.length === 0) {
+        return res.status(404).json({ error: "Hotel no encontrado" });
+      }
+
+      tenantIdToUse = hotelLookup.rows[0].tenant_id;
+    }
+
+    if (!tenantIdToUse) {
+      return res
+        .status(400)
+        .json({ error: "No se pudo determinar el tenant para el registro" });
+    }
+
     await pool.query(
       "INSERT INTO usuario (usuario_id, email, password_hash, nombre, created_at) VALUES ($1, $2, $3, $4, NOW())",
       [usuario_id, email, hashedPassword, nombre]
@@ -182,7 +230,7 @@ router.post("/register-huesped", async (req, res) => {
     // 4. Asociar como huésped al tenant (hotel)
     await pool.query(
       "INSERT INTO tenant_usuario (tenant_id, usuario_id, rol) VALUES ($1, $2, $3)",
-      [tenant_id, usuario_id, "huesped"]
+      [tenantIdToUse, usuario_id, "huesped"]
     );
 
     res.status(201).json({
