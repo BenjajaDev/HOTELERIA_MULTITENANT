@@ -25,7 +25,7 @@ export default function GuestDashboard({ user }) {
       const all = await api.getHabitaciones();
       const filtered = all.filter(x => x.hotel_id === hotel.hotel_id && x.estado === "disponible");
       setHabitaciones(filtered);
-    } catch (err) {
+    } catch {
       setHabitaciones([]);
     }
   };
@@ -43,7 +43,7 @@ export default function GuestDashboard({ user }) {
         estado: "pendiente",
         total: form.total || 0,
       };
-      const r = await api.createReserva(payload);
+      await api.createReserva(payload);
       setMsg("Reserva creada ✅");
     } catch (err) {
       setMsg(err.error || JSON.stringify(err));

@@ -45,16 +45,31 @@ export const api = {
     return res.json();
   },
 
-  updateHabitacion: async (habitacionId, { estado, tenantId, usuarioId, hotelId }) => {
+  createHabitacion: async (payload) => {
+    const res = await fetch(`${BASE}/api/habitaciones`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw await res.json();
+    return res.json();
+  },
+
+  updateHabitacion: async (habitacionId, payload) => {
     const res = await fetch(`${BASE}/api/habitaciones/${habitacionId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        estado,
-        tenantId,
-        usuarioId,
-        hotelId,
-      }),
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw await res.json();
+    return res.json();
+  },
+
+  deleteHabitacion: async (habitacionId, payload) => {
+    const res = await fetch(`${BASE}/api/habitaciones/${habitacionId}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
     if (!res.ok) throw await res.json();
     return res.json();

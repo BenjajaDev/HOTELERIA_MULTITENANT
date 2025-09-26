@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api";
 
-export default function AdminDashboard({ user }) {
+export default function AdminDashboard() {
   const [hoteles, setHoteles] = useState([]);
   const [form, setForm] = useState({ nombre: "", direccion: "", telefono: "", email: "" });
   const [msg, setMsg] = useState("");
