@@ -90,4 +90,23 @@ export const api = {
     if (!res.ok) throw await res.json();
     return res.json();
   },
+
+  // 🔹 API de Pagos
+  getPagos: (params = {}) => {
+    const search = new URLSearchParams();
+    if (params.hotelId) search.set("hotelId", params.hotelId);
+    if (params.estado_pago) search.set("estado_pago", params.estado_pago);
+    if (params.metodo) search.set("metodo", params.metodo);
+    const suffix = search.toString();
+    return request(`/api/pagos${suffix ? `?${suffix}` : ""}`, { method: "GET" });
+  },
+
+  getDetallePago: (pagoId) => request(`/api/pagos/${pagoId}/detalle`, { method: "GET" }),
+
+  createDetallePago: (pagoId, body) => request(`/api/pagos/${pagoId}/detalle`, { 
+    method: "POST", 
+    body: JSON.stringify(body) 
+  }),
+
+  getBoleta: (pagoId) => request(`/api/pagos/${pagoId}/boleta`, { method: "GET" }),
 };
