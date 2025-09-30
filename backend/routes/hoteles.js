@@ -107,18 +107,70 @@ router.put("/:id", async (req, res) => {
 // DELETE /api/hoteles/:id
 router.delete("/:id", async (req, res) => {
   const { id } = req.params;
+  const client = await pool.connect();
+
   try {
-    const result = await pool.query(
-      "DELETE FROM hotel WHERE hotel_id=$1 RETURNING *",
+    await client.query("BEGIN");
+
+    const hotelResult = await client.query(
+      "SELECT hotel_id, tenant_id FROM hotel WHERE hotel_id = $1",
       [id]
     );
-    if (result.rows.length === 0) {
+
+    if (hotelResult.rows.length === 0) {
+      await client.query("ROLLBACK");
       return res.status(404).json({ error: "Hotel no encontrado" });
     }
-    res.json({ message: "Hotel eliminado", hotel: result.rows[0] });
+
+    const { tenant_id: tenantId } = hotelResult.rows[0];
+
+    const membershipsResult = await client.query(
+      `DELETE FROM tenant_usuario
+       WHERE tenant_id = $1
+         AND rol IN ('recepcionista', 'huesped')
+       RETURNING usuario_id, rol`,
+      [tenantId]
+    );
+
+    // Borramos fichas de huéspedes asociadas al hotel (tenant)
+    await client.query(
+      "DELETE FROM huesped WHERE tenant_id = $1",
+      [tenantId]
+    );
+
+    const removedUserIds = membershipsResult.rows.map(row => row.usuario_id);
+
+    if (removedUserIds.length > 0) {
+      await client.query(
+        `DELETE FROM usuario
+         WHERE usuario_id = ANY($1::uuid[])
+           AND NOT EXISTS (
+             SELECT 1
+             FROM tenant_usuario tu
+             WHERE tu.usuario_id = usuario.usuario_id
+           )`,
+        [removedUserIds]
+      );
+    }
+
+    const deleteResult = await client.query(
+      "DELETE FROM hotel WHERE hotel_id = $1 RETURNING *",
+      [id]
+    );
+
+    await client.query("COMMIT");
+
+    res.json({
+      message: "Hotel eliminado",
+      hotel: deleteResult.rows[0],
+      usuariosEliminados: membershipsResult.rows.length,
+    });
   } catch (err) {
+    await client.query("ROLLBACK");
     console.error("Error al eliminar hotel:", err);
     res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 
