@@ -172,15 +172,40 @@ router.post("/register-huesped", async (req, res) => {
     email,
     password,
     nombre,
+    telefono: telefonoCampo,
+    phone: phoneCampo,
+    documento: documentoCampo,
+    rut: rutCampo,
   } = req.body;
 
   const providedTenantId = tenantIdCamel || tenantIdSnake || null;
   const providedHotelId = hotelIdCamel || hotelIdSnake || null;
+  const telefonoRaw = telefonoCampo ?? phoneCampo ?? "";
+  const telefonoSanitizado = typeof telefonoRaw === "string"
+    ? telefonoRaw.replace(/[\s-]/g, "").trim()
+    : "";
+  const telefonoNormalizado = telefonoSanitizado.replace(/[^+\d]/g, "");
+  const documentoRaw = documentoCampo ?? rutCampo ?? "";
+  const documentoNormalizado = typeof documentoRaw === "string"
+    ? documentoRaw.trim().toUpperCase()
+    : "";
 
   if (!providedTenantId && !providedHotelId) {
     return res.status(400).json({
       error: "Debe indicar el hotel en el que desea registrarse",
     });
+  }
+
+  if (!telefonoNormalizado) {
+    return res.status(400).json({ error: "El teléfono del huésped es requerido" });
+  }
+
+  if (telefonoNormalizado.length > 12) {
+    return res.status(400).json({ error: "El teléfono debe tener como máximo 12 caracteres" });
+  }
+
+  if (!/^\d{7,8}-[\dK]$/.test(documentoNormalizado)) {
+    return res.status(400).json({ error: "El RUT debe tener el formato ########-# (usar K en mayúscula si aplica)" });
   }
 
   try {
@@ -235,10 +260,17 @@ router.post("/register-huesped", async (req, res) => {
 
     // 5. Registrar ficha básica en tabla huesped (usa mismo UUID del usuario)
     await pool.query(
-      `INSERT INTO huesped (huesped_id, tenant_id, nombre_completo, email, telefono, created_at)
-       VALUES ($1, $2, $3, $4, $5, NOW())
+      `INSERT INTO huesped (huesped_id, tenant_id, nombre_completo, email, telefono, documento, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())
        ON CONFLICT (huesped_id) DO NOTHING`,
-      [usuario_id, tenantIdToUse, nombre || email, email, null]
+      [
+        usuario_id,
+        tenantIdToUse,
+        nombre || email,
+        email,
+        telefonoNormalizado,
+        documentoNormalizado,
+      ]
     );
 
     res.status(201).json({

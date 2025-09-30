@@ -43,7 +43,7 @@ function App() {
             <Login onLogin={(data) => setUser(normalizeUser(data))} />
           </div>
           <div className="col-md-6">
-            <Register onRegister={(u) => setUser(normalizeUser(u))} />
+            <Register />
           </div>
         </div>
       </div>

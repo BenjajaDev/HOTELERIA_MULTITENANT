@@ -107,6 +107,17 @@ habitaciones_madero AS (
   UNION ALL
   SELECT tenant_id, hotel_id, 201, 'suite'::tipo_habitacion_enum, 75000, 'limpieza'::estado_habitacion_enum FROM hotel_madero
   RETURNING habitacion_id
+),
+
+-- Crear fichas de huéspedes con teléfono
+fichas_huesped AS (
+  INSERT INTO huesped (huesped_id, tenant_id, nombre_completo, email, telefono, documento)
+  SELECT hs.usuario_id, stella.tenant_id, 'David Goggins', 'huesped_stella@hotel.com', '+56933334444', '20759513-6'
+  FROM huesped_stella hs, stella
+  UNION ALL
+  SELECT hm.usuario_id, madero.tenant_id, 'Lucario Martinez', 'huesped_madero@hotel.com', '+56944445555', '15333111-2'
+  FROM huesped_madero hm, madero
+  RETURNING huesped_id
 )
 
 -- Asignar usuarios a tenants
@@ -129,6 +140,7 @@ TABLE hotel;
 TABLE usuario;
 TABLE tenant_usuario;
 TABLE habitacion;
+TABLE huesped;
 EOF
 )
 

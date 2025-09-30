@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api";
 
-export default function Register({ onRegister }) {
+export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nombre, setNombre] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [rut, setRut] = useState("");
   const [hotelId, setHotelId] = useState("");
   const [hoteles, setHoteles] = useState([]);
   const [msg, setMsg] = useState("");
@@ -31,11 +33,33 @@ export default function Register({ onRegister }) {
       return;
     }
 
+    if (!telefono.trim()) {
+      setMsg("Ingrese un teléfono de contacto");
+      return;
+    }
+
+    const rutLimpio = rut.trim().toUpperCase();
+    if (!/^\d{7,8}-[\dK]$/.test(rutLimpio)) {
+      setMsg("Ingrese un RUT válido (ej: 20759513-6)");
+      return;
+    }
+
     try {
-      const res = await api.registerHuesped({ hotel_id: hotelId, email, password, nombre });
-      // res contains usuario_id
-      onRegister({ user_id: res.usuario_id, rol: "huesped" });
-      setMsg(res.message || "Registro exitoso");
+      const res = await api.registerHuesped({
+        hotel_id: hotelId,
+        email,
+        password,
+        nombre,
+        telefono,
+        documento: rutLimpio,
+      });
+      setMsg(res.message || "Huésped registrado con éxito");
+      setEmail("");
+      setPassword("");
+      setNombre("");
+      setTelefono("");
+      setRut("");
+      setHotelId("");
     } catch (err) {
       setMsg(err.error || err.message || JSON.stringify(err));
     }
@@ -56,6 +80,14 @@ export default function Register({ onRegister }) {
         <div className="mb-2">
           <label className="form-label">Contraseña</label>
           <input type="password" className="form-control" value={password} onChange={e=>setPassword(e.target.value)} />
+        </div>
+        <div className="mb-2">
+          <label className="form-label">Teléfono</label>
+          <input className="form-control" value={telefono} onChange={e=>setTelefono(e.target.value)} />
+        </div>
+        <div className="mb-2">
+          <label className="form-label">RUT</label>
+          <input className="form-control" value={rut} onChange={e=>setRut(e.target.value)} placeholder="20759513-6" />
         </div>
         <div className="mb-2">
           <label className="form-label">Hotel</label>
