@@ -61,7 +61,8 @@ function App() {
         <div>
           <h2>Bienvenido: {nameLabel}</h2>
           <small className="text-muted">
-            {roleLabel} • {hotelLabel}
+            {roleLabel}
+            {user.rol !== "admin" ? ` • ${hotelLabel}` : "  •  Hoteles disponibles"}
           </small>
         </div>
         <div>
