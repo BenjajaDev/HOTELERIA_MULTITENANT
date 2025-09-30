@@ -97,6 +97,17 @@ echo   SELECT tenant_id, hotel_id, 102, 'doble'::tipo_habitacion_enum, 42000, 'o
 echo   UNION ALL>> %SQL_FILE%
 echo   SELECT tenant_id, hotel_id, 201, 'suite'::tipo_habitacion_enum, 75000, 'limpieza'::estado_habitacion_enum FROM hotel_madero>> %SQL_FILE%
 echo   RETURNING habitacion_id>> %SQL_FILE%
+echo ),>> %SQL_FILE%
+
+echo -- Crear fichas de huéspedes con teléfono>> %SQL_FILE%
+echo fichas_huesped AS (>> %SQL_FILE%
+echo   INSERT INTO huesped (huesped_id, tenant_id, nombre_completo, email, telefono, documento)>> %SQL_FILE%
+echo   SELECT hs.usuario_id, stella.tenant_id, 'David Goggins', 'huesped_stella@hotel.com', '+56933334444', '20759513-6'>> %SQL_FILE%
+echo   FROM huesped_stella hs, stella>> %SQL_FILE%
+echo   UNION ALL>> %SQL_FILE%
+echo   SELECT hm.usuario_id, madero.tenant_id, 'Lucario Martinez', 'huesped_madero@hotel.com', '+56944445555', '15333111-2'>> %SQL_FILE%
+echo   FROM huesped_madero hm, madero>> %SQL_FILE%
+echo   RETURNING huesped_id>> %SQL_FILE%
 echo )>> %SQL_FILE%
 
 echo -- Asignar usuarios a tenants>> %SQL_FILE%
@@ -119,6 +130,7 @@ echo TABLE hotel;>> %SQL_FILE%
 echo TABLE usuario;>> %SQL_FILE%
 echo TABLE tenant_usuario;>> %SQL_FILE%
 echo TABLE habitacion;>> %SQL_FILE%
+echo TABLE huesped;>> %SQL_FILE%
 
 REM Ejecutar en el contenedor
 echo Ejecutando SQL en %CONTAINER_NAME%...
