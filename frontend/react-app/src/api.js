@@ -109,4 +109,37 @@ export const api = {
   }),
 
   getBoleta: (pagoId) => request(`/api/pagos/${pagoId}/boleta`, { method: "GET" }),
+
+  // 🔹 API de Huéspedes
+  getHuespedes: (params = {}) => {
+    const search = new URLSearchParams();
+    if (params.tenant_id) search.set("tenant_id", params.tenant_id);
+    const suffix = search.toString();
+    return request(`/api/huespedes${suffix ? `?${suffix}` : ""}`, { method: "GET" });
+  },
+
+  getHuesped: (huespedId, params = {}) => {
+    const search = new URLSearchParams();
+    if (params.tenant_id) search.set("tenant_id", params.tenant_id);
+    const suffix = search.toString();
+    return request(`/api/huespedes/${huespedId}${suffix ? `?${suffix}` : ""}`, { method: "GET" });
+  },
+
+  createHuesped: (body) => request("/api/huespedes", { method: "POST", body: JSON.stringify(body) }),
+
+  updateHuesped: (huespedId, body) => request(`/api/huespedes/${huespedId}`, { method: "PUT", body: JSON.stringify(body) }),
+
+  deleteHuesped: (huespedId, params = {}) => {
+    const search = new URLSearchParams();
+    if (params.tenant_id) search.set("tenant_id", params.tenant_id);
+    const suffix = search.toString();
+    return request(`/api/huespedes/${huespedId}${suffix ? `?${suffix}` : ""}`, { method: "DELETE" });
+  },
+
+  searchHuespedes: (term, params = {}) => {
+    const search = new URLSearchParams();
+    if (params.tenant_id) search.set("tenant_id", params.tenant_id);
+    const suffix = search.toString();
+    return request(`/api/huespedes/search/${encodeURIComponent(term)}${suffix ? `?${suffix}` : ""}`, { method: "GET" });
+  },
 };

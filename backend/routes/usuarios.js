@@ -251,4 +251,100 @@ router.post("/register-huesped", async (req, res) => {
   }
 });
 
+// -------------------------
+// OBTENER USUARIOS CON ROL DE HUÉSPED (solo admin)
+// -------------------------
+router.get("/huespedes", async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        u.usuario_id,
+        u.email,
+        u.nombre,
+        u.created_at,
+        tu.tenant_id,
+        t.nombre as tenant_nombre
+      FROM usuario u
+      JOIN tenant_usuario tu ON u.usuario_id = tu.usuario_id
+      JOIN tenant t ON tu.tenant_id = t.tenant_id
+      WHERE tu.rol = 'huesped'
+      ORDER BY u.created_at DESC
+    `;
+    
+    const result = await pool.query(query);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener usuarios huéspedes:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// -------------------------
+// ELIMINAR USUARIO CON ROL DE HUÉSPED (solo admin)
+// -------------------------
+router.delete("/huespedes/:id", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    
+    await client.query('BEGIN');
+    
+    // Verificar si el usuario existe con rol de huésped
+    const checkQuery = `
+      SELECT u.usuario_id 
+      FROM usuario u
+      JOIN tenant_usuario tu ON u.usuario_id = tu.usuario_id
+      WHERE u.usuario_id = $1 AND tu.rol = 'huesped'
+    `;
+    const checkResult = await client.query(checkQuery, [id]);
+    
+    if (checkResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Usuario huésped no encontrado' });
+    }
+    
+    // Verificar si tiene reservas activas o confirmadas
+    const reservasActivasQuery = `
+      SELECT COUNT(*) as count 
+      FROM reserva 
+      WHERE huesped_id = $1 
+      AND estado IN ('confirmada', 'pendiente')
+      AND fecha_fin >= CURRENT_DATE
+    `;
+    
+    const reservasActivasResult = await client.query(reservasActivasQuery, [id]);
+    
+    if (parseInt(reservasActivasResult.rows[0].count) > 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ 
+        error: 'No se puede eliminar el usuario porque tiene reservas activas o futuras' 
+      });
+    }
+    
+    // Eliminar relación tenant-usuario
+    const deleteTenantUsuarioQuery = 'DELETE FROM tenant_usuario WHERE usuario_id = $1 AND rol = $2';
+    await client.query(deleteTenantUsuarioQuery, [id, 'huesped']);
+    
+    // Verificar si el usuario tiene otros roles
+    const otherRolesQuery = 'SELECT COUNT(*) as count FROM tenant_usuario WHERE usuario_id = $1';
+    const otherRolesResult = await client.query(otherRolesQuery, [id]);
+    
+    // Si no tiene otros roles, eliminar el usuario
+    if (parseInt(otherRolesResult.rows[0].count) === 0) {
+      const deleteUsuarioQuery = 'DELETE FROM usuario WHERE usuario_id = $1';
+      await client.query(deleteUsuarioQuery, [id]);
+    }
+    
+    await client.query('COMMIT');
+    res.status(204).send();
+    
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error al eliminar usuario huésped:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  } finally {
+    client.release();
+  }
+});
+
 export default router;

@@ -1,8 +1,10 @@
 // frontend/components/ReceptionistDashboard.jsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api";
+import PagosManager from "./PagosManager";
 
 export default function ReceptionistDashboard({ user }) {
+  const [activeTab, setActiveTab] = useState("habitaciones");
   const [habitaciones, setHabitaciones] = useState([]);
   const [msg, setMsg] = useState("");
   const [newRoom, setNewRoom] = useState({ numero: "", tipo: "simple", precio_noche: "", estado: "disponible" });
@@ -203,8 +205,43 @@ export default function ReceptionistDashboard({ user }) {
 
   return (
     <div>
-      <h3>Gestión de Habitaciones</h3>
-      {msg && <div className="alert alert-info">{msg}</div>}
+      <h3>Panel de Recepcionista</h3>
+      
+      {/* Navegación por pestañas */}
+      <ul className="nav nav-tabs mb-4">
+        <li className="nav-item">
+          <button 
+            className={`nav-link ${activeTab === "habitaciones" ? "active" : ""}`}
+            onClick={() => setActiveTab("habitaciones")}
+          >
+            <i className="bi bi-door-open"></i> Habitaciones
+          </button>
+        </li>
+        <li className="nav-item">
+          <button 
+            className={`nav-link ${activeTab === "reservas" ? "active" : ""}`}
+            onClick={() => setActiveTab("reservas")}
+          >
+            <i className="bi bi-calendar-check"></i> Reservas
+          </button>
+        </li>
+        <li className="nav-item">
+          <button 
+            className={`nav-link ${activeTab === "pagos" ? "active" : ""}`}
+            onClick={() => setActiveTab("pagos")}
+          >
+            <i className="bi bi-credit-card"></i> Pagos
+          </button>
+        </li>
+      </ul>
+
+      {/* Contenido de las pestañas */}
+      {activeTab === "pagos" && <PagosManager user={user} />}
+      
+      {activeTab === "habitaciones" && (
+        <div>
+          <h4>Gestión de Habitaciones</h4>
+          {msg && <div className="alert alert-info">{msg}</div>}
 
       <div className="row g-3">
         <div className="col-lg-4">
@@ -466,6 +503,8 @@ export default function ReceptionistDashboard({ user }) {
               </div>
             </div>
           </div>
+        </div>
+      )}
         </div>
       )}
     </div>

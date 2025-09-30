@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
+import GestionHuespedes from "./GestionHuespedes";
 
 export default function AdminDashboard() {
+  const [activeTab, setActiveTab] = useState("hoteles");
   const [hoteles, setHoteles] = useState([]);
   const [form, setForm] = useState({ nombre: "", direccion: "", telefono: "", email: "" });
   const [msg, setMsg] = useState("");
@@ -112,7 +114,42 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <h3>Administración de Hoteles</h3>
+      <h3>Panel de Administración</h3>
+      
+      {/* Navegación por pestañas */}
+      <ul className="nav nav-tabs mb-4">
+        <li className="nav-item">
+          <button 
+            className={`nav-link ${activeTab === "hoteles" ? "active" : ""}`}
+            onClick={() => setActiveTab("hoteles")}
+          >
+            <i className="bi bi-building"></i> Hoteles
+          </button>
+        </li>
+        <li className="nav-item">
+          <button 
+            className={`nav-link ${activeTab === "huespedes" ? "active" : ""}`}
+            onClick={() => setActiveTab("huespedes")}
+          >
+            <i className="bi bi-people"></i> Huéspedes
+          </button>
+        </li>
+        <li className="nav-item">
+          <button 
+            className={`nav-link ${activeTab === "reservas" ? "active" : ""}`}
+            onClick={() => setActiveTab("reservas")}
+          >
+            <i className="bi bi-calendar-check"></i> Reservas
+          </button>
+        </li>
+      </ul>
+
+      {/* Contenido de las pestañas */}
+      {activeTab === "huespedes" && <GestionHuespedes />}
+      
+      {activeTab === "hoteles" && (
+        <div>
+          <h4>Administración de Hoteles</h4>
       <div className="row">
         <div className="col-md-5">
           <div className="card p-3">
@@ -298,6 +335,15 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+        </div>
+      )}
+      
+      {activeTab === "reservas" && (
+        <div>
+          <h4>Vista de Reservas</h4>
+          <p className="text-muted">Esta funcionalidad se puede expandir para mostrar todas las reservas del sistema.</p>
         </div>
       )}
     </div>
