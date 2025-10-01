@@ -2,6 +2,7 @@ import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
 import { pool } from "./models/db.js";
+import { ensureRedisConnection, quitRedis } from "./models/redisClient.js";
 import hotelesRouter from "./routes/hoteles.js";
 import usuariosRouter from "./routes/usuarios.js";
 import reservasRouter from "./routes/reservas.js";
@@ -36,6 +37,30 @@ app.get("/", (req, res) => {
   res.send("API Hotel Manager funcionando 🚀");
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor escuchando en puerto ${PORT}`);
+async function start() {
+  try {
+    await ensureRedisConnection();
+    app.listen(PORT, () => {
+      console.log(`Servidor escuchando en puerto ${PORT}`);
+    });
+  } catch (err) {
+    console.error("No se pudo iniciar el servidor:", err);
+    process.exit(1);
+  }
+}
+
+start();
+
+const shutdownSignals = ["SIGINT", "SIGTERM"];
+
+shutdownSignals.forEach((signal) => {
+  process.on(signal, async () => {
+    try {
+      await quitRedis();
+    } catch (err) {
+      console.error("Error al cerrar conexión Redis:", err);
+    } finally {
+      process.exit(0);
+    }
+  });
 });

@@ -13,6 +13,13 @@ services:
     ports:
       - "5432:5432"
 
+  redis:
+    image: redis:7-alpine
+    container_name: hotel_redis
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+
   backend:
     build:
       context: ./backend
@@ -23,8 +30,11 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: hotel_manager
       POSTGRES_HOST: db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     depends_on:
       - db
+      - redis
     ports:
       - "4000:4000"
 

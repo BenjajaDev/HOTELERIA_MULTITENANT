@@ -1,7 +1,12 @@
 import express from "express";
 import { pool } from "../models/db.js";
+import { ensureRedisConnection } from "../models/redisClient.js";
 
 const router = express.Router();
+
+const HOTEL_LIST_CACHE_KEY = "cache:hoteles:list";
+const HOTEL_CACHE_PREFIX = "cache:hoteles:id:";
+const HOTEL_CACHE_TTL_SECONDS = 60;
 
 const HOTEL_BASE_QUERY = `
   SELECT
@@ -30,8 +35,23 @@ async function fetchHotelById(hotelId) {
 // GET /api/hoteles
 router.get("/", async (req, res) => {
   try {
+    const redis = await ensureRedisConnection();
+    const cachedHotels = await redis.get(HOTEL_LIST_CACHE_KEY);
+
+    if (cachedHotels) {
+      return res.json(JSON.parse(cachedHotels));
+    }
+
     const result = await pool.query(`${HOTEL_BASE_QUERY} ORDER BY h.created_at DESC NULLS LAST`);
-    res.json(result.rows);
+    const hotels = result.rows;
+
+    await redis.setEx(
+      HOTEL_LIST_CACHE_KEY,
+      HOTEL_CACHE_TTL_SECONDS,
+      JSON.stringify(hotels)
+    );
+
+    res.json(hotels);
   } catch (err) {
     console.error("Error al obtener hoteles:", err);
     res.status(500).json({ error: err.message });
@@ -42,10 +62,19 @@ router.get("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   const { id } = req.params;
   try {
+    const redis = await ensureRedisConnection();
+    const cacheKey = `${HOTEL_CACHE_PREFIX}${id}`;
+    const cachedHotel = await redis.get(cacheKey);
+
+    if (cachedHotel) {
+      return res.json(JSON.parse(cachedHotel));
+    }
+
     const hotel = await fetchHotelById(id);
     if (!hotel) {
       return res.status(404).json({ error: "Hotel no encontrado" });
     }
+    await redis.setEx(cacheKey, HOTEL_CACHE_TTL_SECONDS, JSON.stringify(hotel));
     res.json(hotel);
   } catch (err) {
     console.error("Error al obtener hotel:", err);
@@ -74,6 +103,16 @@ router.post("/", async (req, res) => {
 
     const created = await fetchHotelById(hotelResult.rows[0].hotel_id);
 
+    const redis = await ensureRedisConnection();
+    await Promise.all([
+      redis.del(HOTEL_LIST_CACHE_KEY),
+      redis.setEx(
+        `${HOTEL_CACHE_PREFIX}${created.hotel_id}`,
+        HOTEL_CACHE_TTL_SECONDS,
+        JSON.stringify(created)
+      ),
+    ]);
+
     res.status(201).json(created);
   } catch (err) {
     console.error("Error al crear hotel:", err);
@@ -97,6 +136,17 @@ router.put("/:id", async (req, res) => {
       await pool.query("UPDATE tenant SET nombre=$1 WHERE tenant_id=$2", [nombre, result.rows[0].tenant_id]);
     }
     const updated = await fetchHotelById(id);
+
+    const redis = await ensureRedisConnection();
+    await Promise.all([
+      redis.del(HOTEL_LIST_CACHE_KEY),
+      redis.setEx(
+        `${HOTEL_CACHE_PREFIX}${id}`,
+        HOTEL_CACHE_TTL_SECONDS,
+        JSON.stringify(updated)
+      ),
+    ]);
+
     res.json(updated);
   } catch (err) {
     console.error("Error al actualizar hotel:", err);
@@ -159,6 +209,12 @@ router.delete("/:id", async (req, res) => {
     );
 
     await client.query("COMMIT");
+
+    const redis = await ensureRedisConnection();
+    await Promise.all([
+      redis.del(HOTEL_LIST_CACHE_KEY),
+      redis.del(`${HOTEL_CACHE_PREFIX}${id}`),
+    ]);
 
     res.json({
       message: "Hotel eliminado",
