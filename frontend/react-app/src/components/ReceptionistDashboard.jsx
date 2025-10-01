@@ -243,123 +243,190 @@ export default function ReceptionistDashboard({ user }) {
           <h4>Gestión de Habitaciones</h4>
           {msg && <div className="alert alert-info">{msg}</div>}
 
-      <div className="row g-3">
-        <div className="col-lg-4">
-          <div className="card p-3">
-            <h5>Nueva habitación</h5>
-            <form onSubmit={handleCreate}>
-              <div className="mb-2">
-                <label className="form-label">Número</label>
-                <input
-                  className="form-control"
-                  value={newRoom.numero}
-                  onChange={(e) => setNewRoom({ ...newRoom, numero: e.target.value })}
-                  required
-                  min="1"
-                  type="number"
-                />
+          <div className="row g-3">
+            <div className="col-lg-4">
+              <div className="card p-3">
+                <h5>Nueva habitación</h5>
+                <form onSubmit={handleCreate}>
+                  <div className="mb-2">
+                    <label className="form-label">Número</label>
+                    <input
+                      className="form-control"
+                      value={newRoom.numero}
+                      onChange={(e) => setNewRoom({ ...newRoom, numero: e.target.value })}
+                      required
+                      min="1"
+                      type="number"
+                    />
+                  </div>
+                  <div className="mb-2">
+                    <label className="form-label">Tipo</label>
+                    <select
+                      className="form-select"
+                      value={newRoom.tipo}
+                      onChange={(e) => setNewRoom({ ...newRoom, tipo: e.target.value })}
+                      required
+                    >
+                      <option value="simple">Simple</option>
+                      <option value="doble">Doble</option>
+                      <option value="suite">Suite</option>
+                    </select>
+                  </div>
+                  <div className="mb-2">
+                    <label className="form-label">Precio por noche</label>
+                    <input
+                      className="form-control"
+                      type="number"
+                      min="0"
+                      value={newRoom.precio_noche}
+                      onChange={(e) => setNewRoom({ ...newRoom, precio_noche: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Estado</label>
+                    <select
+                      className="form-select"
+                      value={newRoom.estado}
+                      onChange={(e) => setNewRoom({ ...newRoom, estado: e.target.value })}
+                    >
+                      <option value="disponible">Disponible</option>
+                      <option value="ocupada">Ocupada</option>
+                      <option value="limpieza">Limpieza</option>
+                    </select>
+                  </div>
+                  <button className="btn btn-success" type="submit">Crear habitación</button>
+                </form>
               </div>
-              <div className="mb-2">
-                <label className="form-label">Tipo</label>
-                <select
-                  className="form-select"
-                  value={newRoom.tipo}
-                  onChange={(e) => setNewRoom({ ...newRoom, tipo: e.target.value })}
-                  required
-                >
-                  <option value="simple">Simple</option>
-                  <option value="doble">Doble</option>
-                  <option value="suite">Suite</option>
-                </select>
-              </div>
-              <div className="mb-2">
-                <label className="form-label">Precio por noche</label>
-                <input
-                  className="form-control"
-                  type="number"
-                  min="0"
-                  value={newRoom.precio_noche}
-                  onChange={(e) => setNewRoom({ ...newRoom, precio_noche: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="mb-3">
-                <label className="form-label">Estado</label>
-                <select
-                  className="form-select"
-                  value={newRoom.estado}
-                  onChange={(e) => setNewRoom({ ...newRoom, estado: e.target.value })}
-                >
-                  <option value="disponible">Disponible</option>
-                  <option value="ocupada">Ocupada</option>
-                  <option value="limpieza">Limpieza</option>
-                </select>
-              </div>
-              <button className="btn btn-success" type="submit">Crear habitación</button>
-            </form>
-          </div>
-        </div>
-
-        <div className="col-lg-8">
-          <div className="card p-3">
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <h5 className="mb-0">Habitaciones registradas</h5>
-              <button className="btn btn-sm btn-outline-secondary" type="button" onClick={loadHabitaciones} disabled={loading}>
-                {loading ? "Actualizando..." : "Actualizar"}
-              </button>
             </div>
 
-            <ul className="list-group">
-              {habitaciones.length > 0 ? (
-                habitaciones.map(h => (
-                  <li
-                    key={h.habitacion_id}
-                    className="list-group-item"
-                  >
-                    <div className="d-flex justify-content-between align-items-center mb-2">
-                      <div>
-                        <strong>Hab. {h.numero}</strong> — {h.tipo}
-                        <div className="text-muted small">
-                          Precio: {formatMoney(h.precio_noche)} • Hotel: {h.hotel_id}
+            <div className="col-lg-8">
+              <div className="card p-3">
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <h5 className="mb-0">Habitaciones registradas</h5>
+                  <button className="btn btn-sm btn-outline-secondary" type="button" onClick={loadHabitaciones} disabled={loading}>
+                    {loading ? "Actualizando..." : "Actualizar"}
+                  </button>
+                </div>
+
+                <ul className="list-group">
+                  {habitaciones.length > 0 ? (
+                    habitaciones.map(h => (
+                      <li
+                        key={h.habitacion_id}
+                        className="list-group-item"
+                      >
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <div>
+                            <strong>Hab. {h.numero}</strong> — {h.tipo}
+                            <div className="text-muted small">
+                              Precio: {formatMoney(h.precio_noche)} • Hotel: {h.hotel_id}
+                            </div>
+                          </div>
+                          <div className="d-flex align-items-center">
+                            <span
+                              className={`badge me-2 ${
+                                h.estado === "disponible" ? "bg-success"
+                                : h.estado === "ocupada" ? "bg-danger"
+                                : h.estado === "limpieza" ? "bg-warning"
+                                : "bg-secondary"
+                              }`}
+                            >
+                              {h.estado}
+                            </span>
+                            <select
+                              className="form-select form-select-sm me-2"
+                              value={h.estado}
+                              onChange={(e) => updateEstado(h, e.target.value)}
+                            >
+                              <option value="disponible">Disponible</option>
+                              <option value="ocupada">Ocupada</option>
+                              <option value="limpieza">Limpieza</option>
+                            </select>
+                            <button className="btn btn-sm btn-outline-primary me-2" onClick={() => startEdit(h)}>Editar</button>
+                            <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(h)}>Eliminar</button>
+                          </div>
                         </div>
-                      </div>
-                      <div className="d-flex align-items-center">
-                        <span
-                          className={`badge me-2 ${
-                            h.estado === "disponible" ? "bg-success"
-                            : h.estado === "ocupada" ? "bg-danger"
-                            : h.estado === "limpieza" ? "bg-warning"
-                            : "bg-secondary"
-                          }`}
-                        >
-                          {h.estado}
-                        </span>
-                        <select
-                          className="form-select form-select-sm me-2"
-                          value={h.estado}
-                          onChange={(e) => updateEstado(h, e.target.value)}
-                        >
-                          <option value="disponible">Disponible</option>
-                          <option value="ocupada">Ocupada</option>
-                          <option value="limpieza">Limpieza</option>
-                        </select>
-                        <button className="btn btn-sm btn-outline-primary me-2" onClick={() => startEdit(h)}>Editar</button>
-                        <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(h)}>Eliminar</button>
-                      </div>
-                    </div>
-                  </li>
-                ))
-              ) : (
-                <li className="list-group-item text-muted">
-                  No hay habitaciones registradas para este hotel.
-                </li>
-              )}
-            </ul>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="list-group-item text-muted">
+                      No hay habitaciones registradas para este hotel.
+                    </li>
+                  )}
+                </ul>
+              </div>
+            </div>
           </div>
 
-          <div className="card p-3 mt-3">
+          {editing && (
+            <div className="card p-3 mt-3">
+              <h5>Editar habitación #{editing.numero}</h5>
+              <form onSubmit={handleEditSubmit} className="row g-2">
+                <div className="col-sm-3">
+                  <label className="form-label">Número</label>
+                  <input
+                    className="form-control"
+                    type="number"
+                    min="1"
+                    value={editing.numero}
+                    onChange={(e) => handleEditChange("numero", e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="col-sm-3">
+                  <label className="form-label">Tipo</label>
+                  <select
+                    className="form-select"
+                    value={editing.tipo}
+                    onChange={(e) => handleEditChange("tipo", e.target.value)}
+                    required
+                  >
+                    <option value="simple">Simple</option>
+                    <option value="doble">Doble</option>
+                    <option value="suite">Suite</option>
+                  </select>
+                </div>
+                <div className="col-sm-3">
+                  <label className="form-label">Precio/noche</label>
+                  <input
+                    className="form-control"
+                    type="number"
+                    min="0"
+                    value={editing.precio_noche}
+                    onChange={(e) => handleEditChange("precio_noche", e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="col-sm-3">
+                  <label className="form-label">Estado</label>
+                  <select
+                    className="form-select"
+                    value={editing.estado}
+                    onChange={(e) => handleEditChange("estado", e.target.value)}
+                  >
+                    <option value="disponible">Disponible</option>
+                    <option value="ocupada">Ocupada</option>
+                    <option value="limpieza">Limpieza</option>
+                  </select>
+                </div>
+                <div className="col-12 d-flex justify-content-end gap-2 mt-2">
+                  <button type="button" className="btn btn-light" onClick={() => setEditing(null)}>Cancelar</button>
+                  <button className="btn btn-primary" type="submit">Guardar cambios</button>
+                </div>
+              </form>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "reservas" && (
+        <div>
+          <h4>Reservas del hotel</h4>
+          {msg && <div className="alert alert-info">{msg}</div>}
+          <div className="card p-3">
             <div className="d-flex justify-content-between align-items-center mb-2">
-              <h5 className="mb-0">Reservas del hotel</h5>
+              <h5 className="mb-0">Reservas recientes</h5>
               <button
                 className="btn btn-sm btn-outline-secondary"
                 type="button"
@@ -380,14 +447,23 @@ export default function ReceptionistDashboard({ user }) {
               <ul className="list-group">
                 {reservasOrdenadas.map((r) => {
                   const esPendiente = r.estado === "pendiente";
-                  const pagoLabel = r.pago_estado === "pagado" ? "text-success" : r.pago_estado === "pendiente" ? "text-warning" : "text-muted";
+                  const pagoLabel = r.pago_estado === "pagado"
+                    ? "text-success"
+                    : r.pago_estado === "pendiente"
+                    ? "text-warning"
+                    : "text-muted";
                   return (
                     <li key={r.reserva_id} className="list-group-item d-flex justify-content-between align-items-start">
                       <div>
-                        <strong>Hab. {r.habitacion_numero}</strong>
+                        <strong>{r.hotel_nombre || user?.hotel_nombre || "Hotel sin nombre"}</strong>
+                        <div className="small text-muted">Habitación {r.habitacion_numero}</div>
                         <div className="small text-muted">{r.fecha_inicio} → {r.fecha_fin}</div>
-                        <div className={`small ${pagoLabel}`}>Pago: {r.pago_metodo} • {r.pago_estado || "sin estado"}</div>
-                        <div className={`small ${esPendiente ? "text-warning" : "text-muted"}`}>Estado reserva: {r.estado}</div>
+                        <div className={`small ${pagoLabel}`}>
+                          {r.pago_metodo || "sin método"} • {r.pago_estado || "sin estado"}
+                        </div>
+                        <div className={`small ${esPendiente ? "text-warning" : "text-muted"} text-capitalize`}>
+                          Reserva: {r.estado || "sin estado"}
+                        </div>
                         <button
                           className="btn btn-link btn-sm px-0"
                           onClick={() => setSelectedReserva(r)}
@@ -415,65 +491,6 @@ export default function ReceptionistDashboard({ user }) {
               </ul>
             )}
           </div>
-        </div>
-      </div>
-
-      {editing && (
-        <div className="card p-3 mt-3">
-          <h5>Editar habitación #{editing.numero}</h5>
-          <form onSubmit={handleEditSubmit} className="row g-2">
-            <div className="col-sm-3">
-              <label className="form-label">Número</label>
-              <input
-                className="form-control"
-                type="number"
-                min="1"
-                value={editing.numero}
-                onChange={(e) => handleEditChange("numero", e.target.value)}
-                required
-              />
-            </div>
-            <div className="col-sm-3">
-              <label className="form-label">Tipo</label>
-              <select
-                className="form-select"
-                value={editing.tipo}
-                onChange={(e) => handleEditChange("tipo", e.target.value)}
-                required
-              >
-                <option value="simple">Simple</option>
-                <option value="doble">Doble</option>
-                <option value="suite">Suite</option>
-              </select>
-            </div>
-            <div className="col-sm-3">
-              <label className="form-label">Precio/noche</label>
-              <input
-                className="form-control"
-                type="number"
-                min="0"
-                value={editing.precio_noche}
-                onChange={(e) => handleEditChange("precio_noche", e.target.value)}
-                required
-              />
-            </div>
-            <div className="col-sm-3">
-              <label className="form-label">Estado</label>
-              <select
-                className="form-select"
-                value={editing.estado}
-                onChange={(e) => handleEditChange("estado", e.target.value)}
-              >
-                <option value="disponible">Disponible</option>
-                <option value="ocupada">Ocupada</option>
-                <option value="limpieza">Limpieza</option>
-              </select>
-            </div>
-            <div className="col-12 d-flex justify-content-end gap-2 mt-2">
-              <button type="button" className="btn btn-light" onClick={() => setEditing(null)}>Cancelar</button>
-              <button className="btn btn-primary" type="submit">Guardar cambios</button>
-            </div>
-          </form>
         </div>
       )}
 
@@ -503,8 +520,6 @@ export default function ReceptionistDashboard({ user }) {
               </div>
             </div>
           </div>
-        </div>
-      )}
         </div>
       )}
     </div>

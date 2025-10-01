@@ -115,11 +115,11 @@ export default function AdminDashboard() {
   return (
     <div>
       <h3>Panel de Administración</h3>
-      
+
       {/* Navegación por pestañas */}
       <ul className="nav nav-tabs mb-4">
         <li className="nav-item">
-          <button 
+          <button
             className={`nav-link ${activeTab === "hoteles" ? "active" : ""}`}
             onClick={() => setActiveTab("hoteles")}
           >
@@ -127,7 +127,7 @@ export default function AdminDashboard() {
           </button>
         </li>
         <li className="nav-item">
-          <button 
+          <button
             className={`nav-link ${activeTab === "huespedes" ? "active" : ""}`}
             onClick={() => setActiveTab("huespedes")}
           >
@@ -135,7 +135,7 @@ export default function AdminDashboard() {
           </button>
         </li>
         <li className="nav-item">
-          <button 
+          <button
             className={`nav-link ${activeTab === "reservas" ? "active" : ""}`}
             onClick={() => setActiveTab("reservas")}
           >
@@ -146,121 +146,129 @@ export default function AdminDashboard() {
 
       {/* Contenido de las pestañas */}
       {activeTab === "huespedes" && <GestionHuespedes />}
-      
+
       {activeTab === "hoteles" && (
         <div>
           <h4>Administración de Hoteles</h4>
-      <div className="row">
-        <div className="col-md-5">
-          <div className="card p-3">
-            <h5>Crear Hotel</h5>
-            <form onSubmit={submit}>
-              <input 
-                className="form-control mb-2" 
-                placeholder="Nombre" 
-                value={form.nombre} 
-                onChange={e => setForm({ ...form, nombre: e.target.value })} 
-              />
-              <input 
-                className="form-control mb-2" 
-                placeholder="Dirección" 
-                value={form.direccion} 
-                onChange={e => setForm({ ...form, direccion: e.target.value })} 
-              />
-              <input 
-                className="form-control mb-2" 
-                placeholder="Teléfono" 
-                value={form.telefono} 
-                onChange={e => setForm({ ...form, telefono: e.target.value })} 
-              />
-              <input 
-                className="form-control mb-2" 
-                placeholder="Email" 
-                value={form.email} 
-                onChange={e => setForm({ ...form, email: e.target.value })} 
-              />
-              <button className="btn btn-primary" type="submit">Crear</button>
-            </form>
-            <div className="mt-2 text-muted">{msg}</div>
-          </div>
-        </div>
+          <div className="row">
+            <div className="col-md-5">
+              <div className="card p-3">
+                <h5>Crear Hotel</h5>
+                <form onSubmit={submit}>
+                  <input
+                    className="form-control mb-2"
+                    placeholder="Nombre"
+                    value={form.nombre}
+                    onChange={e => setForm({ ...form, nombre: e.target.value })}
+                  />
+                  <input
+                    className="form-control mb-2"
+                    placeholder="Dirección"
+                    value={form.direccion}
+                    onChange={e => setForm({ ...form, direccion: e.target.value })}
+                  />
+                  <input
+                    className="form-control mb-2"
+                    placeholder="Teléfono"
+                    value={form.telefono}
+                    onChange={e => setForm({ ...form, telefono: e.target.value })}
+                  />
+                  <input
+                    className="form-control mb-2"
+                    placeholder="Email"
+                    value={form.email}
+                    onChange={e => setForm({ ...form, email: e.target.value })}
+                  />
+                  <button className="btn btn-primary" type="submit">Crear</button>
+                </form>
+                <div className="mt-2 text-muted">{msg}</div>
+              </div>
+            </div>
 
-        {editingId && (
-          <div className="col-md-5">
-            <div className="card p-3">
-              <h5>Editar Hotel</h5>
-              <form onSubmit={submitEdit}>
-                <input
-                  className="form-control mb-2"
-                  placeholder="Nombre"
-                  value={editForm.nombre}
-                  onChange={e => setEditForm({ ...editForm, nombre: e.target.value })}
-                />
-                <input
-                  className="form-control mb-2"
-                  placeholder="Dirección"
-                  value={editForm.direccion}
-                  onChange={e => setEditForm({ ...editForm, direccion: e.target.value })}
-                />
-                <input
-                  className="form-control mb-2"
-                  placeholder="Teléfono"
-                  value={editForm.telefono}
-                  onChange={e => setEditForm({ ...editForm, telefono: e.target.value })}
-                />
-                <input
-                  className="form-control mb-2"
-                  placeholder="Email"
-                  value={editForm.email}
-                  onChange={e => setEditForm({ ...editForm, email: e.target.value })}
-                />
-                <div className="d-flex gap-2">
-                  <button className="btn btn-primary" type="submit">Guardar</button>
-                  <button className="btn btn-outline-secondary" type="button" onClick={cancelEdit}>Cancelar</button>
+            {editingId && (
+              <div className="col-md-5">
+                <div className="card p-3">
+                  <h5>Editar Hotel</h5>
+                  <form onSubmit={submitEdit}>
+                    <input
+                      className="form-control mb-2"
+                      placeholder="Nombre"
+                      value={editForm.nombre}
+                      onChange={e => setEditForm({ ...editForm, nombre: e.target.value })}
+                    />
+                    <input
+                      className="form-control mb-2"
+                      placeholder="Dirección"
+                      value={editForm.direccion}
+                      onChange={e => setEditForm({ ...editForm, direccion: e.target.value })}
+                    />
+                    <input
+                      className="form-control mb-2"
+                      placeholder="Teléfono"
+                      value={editForm.telefono}
+                      onChange={e => setEditForm({ ...editForm, telefono: e.target.value })}
+                    />
+                    <input
+                      className="form-control mb-2"
+                      placeholder="Email"
+                      value={editForm.email}
+                      onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                    />
+                    <div className="d-flex gap-2">
+                      <button className="btn btn-primary" type="submit">Guardar</button>
+                      <button className="btn btn-outline-secondary" type="button" onClick={cancelEdit}>Cancelar</button>
+                    </div>
+                  </form>
+                  <div className="mt-2 text-muted">{editMsg}</div>
                 </div>
-              </form>
-              <div className="mt-2 text-muted">{editMsg}</div>
+              </div>
+            )}
+
+            <div className="col-md-7">
+              <div className="card p-3">
+                <h5>Hoteles</h5>
+                {hoteles.length === 0 ? (
+                  <p className="text-muted">No hay hoteles</p>
+                ) : (
+                  <ul className="list-group">
+                    {hoteles.map(h => (
+                      <li key={h.hotel_id} className="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                          <strong>{h.nombre}</strong><br />
+                          <small className="text-muted">{h.direccion} • {h.email}</small>
+                          <div>
+                            <small className="text-muted">
+                              Tenant: {h.tenant_nombre || h.tenant_id}
+                            </small>
+                          </div>
+                          <div className="small mt-1">
+                            <div className="text-success">Ganancias confirmadas: {formatMoney(h.total_ganancias)}</div>
+                            <div className="text-warning">Ingresos pendientes: {formatMoney(h.total_pendiente)}</div>
+                          </div>
+                        </div>
+                        <div>
+                          <button
+                            className="btn btn-secondary btn-sm me-2"
+                            onClick={() => startEdit(h)}
+                          >
+                            Editar
+                          </button>
+                          <button className="btn btn-danger btn-sm" onClick={() => del(h.hotel_id)}>Eliminar</button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        <div className="col-md-7">
+      {activeTab === "reservas" && (
+        <div>
+          <h4>Reservas del sistema</h4>
           <div className="card p-3">
-            <h5>Hoteles</h5>
-            {hoteles.length === 0 ? (
-              <p className="text-muted">No hay hoteles</p>
-            ) : (
-              <ul className="list-group">
-                {hoteles.map(h => (
-                  <li key={h.hotel_id} className="list-group-item d-flex justify-content-between align-items-center">
-                    <div>
-                      <strong>{h.nombre}</strong><br/>
-                      <small className="text-muted">{h.direccion} • {h.email}</small>
-                      <div>
-                        <small className="text-muted">
-                          Tenant: {h.tenant_nombre || h.tenant_id}
-                        </small>
-                      </div>
-                      <div className="small mt-1">
-                        <div className="text-success">Ganancias confirmadas: {formatMoney(h.total_ganancias)}</div>
-                        <div className="text-warning">Ingresos pendientes: {formatMoney(h.total_pendiente)}</div>
-                      </div>
-                    </div>
-                    <div>
-                      <button 
-                        className="btn btn-secondary btn-sm me-2"
-                        onClick={() => startEdit(h)}
-                      >
-                        Editar
-                      </button>
-                      <button className="btn btn-danger btn-sm" onClick={() => del(h.hotel_id)}>Eliminar</button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          <div className="card p-3 mt-3">
             <div className="d-flex justify-content-between align-items-center">
               <h5 className="mb-0">Reservas recientes</h5>
               <button className="btn btn-sm btn-outline-secondary" onClick={loadReservas}>
@@ -269,7 +277,7 @@ export default function AdminDashboard() {
             </div>
             {reservasMsg && <div className="text-danger small mt-2">{reservasMsg}</div>}
             {!reservasMsg && reservas.length === 0 && (
-              <p className="text-muted mt-2">Sin reservas registradas todavía</p>
+              <p className="text-muted mt-2">Aún no hay reservas registradas.</p>
             )}
             {!reservasMsg && reservas.length > 0 && (
               <ul className="list-group mt-2">
@@ -307,7 +315,7 @@ export default function AdminDashboard() {
             )}
           </div>
         </div>
-      </div>
+      )}
 
       {selectedReserva && (
         <div className="modal fade show" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.35)" }}>
@@ -335,15 +343,6 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
-        </div>
-      )}
-        </div>
-      )}
-      
-      {activeTab === "reservas" && (
-        <div>
-          <h4>Vista de Reservas</h4>
-          <p className="text-muted">Esta funcionalidad se puede expandir para mostrar todas las reservas del sistema.</p>
         </div>
       )}
     </div>
