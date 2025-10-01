@@ -233,49 +233,107 @@ router.delete('/:id', async (req, res) => {
 
 // PUT /api/huespedes/:id - Actualizar datos de un huésped
 router.put('/:id', async (req, res) => {
+  const client = await pool.connect();
+  let transactionStarted = false;
   try {
     const { id } = req.params;
     const { nombre_completo, email, telefono, documento } = req.body;
-    
-    // Validaciones básicas
+
     if (!nombre_completo || !email) {
       return res.status(400).json({ error: 'Nombre completo y email son requeridos' });
     }
-    
-    // Verificar si el email ya existe en otro huésped
-    const emailCheckQuery = `
-      SELECT huesped_id FROM huesped 
-      WHERE email = $1 AND huesped_id != $2
-    `;
-    const emailCheckResult = await pool.query(emailCheckQuery, [email, id]);
-    
-    if (emailCheckResult.rows.length > 0) {
-      return res.status(400).json({ error: 'Ya existe otro huésped con ese email' });
-    }
-    
-    const updateQuery = `
-      UPDATE huesped 
-      SET nombre_completo = $1, email = $2, telefono = $3, documento = $4
-      WHERE huesped_id = $5
-      RETURNING *
-    `;
-    
-    const result = await pool.query(updateQuery, [
-      nombre_completo, 
-      email, 
-      telefono, 
-      documento, 
-      id
+
+    await client.query('BEGIN');
+    transactionStarted = true;
+
+    const [huespedExistResult, usuarioExistResult] = await Promise.all([
+      client.query('SELECT huesped_id, tenant_id FROM huesped WHERE huesped_id = $1', [id]),
+      client.query('SELECT usuario_id FROM usuario WHERE usuario_id = $1', [id])
     ]);
-    
-    if (result.rows.length === 0) {
+
+    if (huespedExistResult.rows.length === 0 && usuarioExistResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      transactionStarted = false;
       return res.status(404).json({ error: 'Huésped no encontrado' });
     }
-    
-    res.json(result.rows[0]);
+
+    const emailHuespedResult = await client.query(
+      `SELECT huesped_id FROM huesped WHERE email = $1 AND huesped_id != $2`,
+      [email, id]
+    );
+
+    if (emailHuespedResult.rows.length > 0) {
+      await client.query('ROLLBACK');
+      transactionStarted = false;
+      return res.status(400).json({ error: 'Ya existe otro huésped con ese email' });
+    }
+
+    const emailUsuarioResult = await client.query(
+      `SELECT usuario_id FROM usuario WHERE email = $1 AND usuario_id != $2`,
+      [email, id]
+    );
+
+    if (emailUsuarioResult.rows.length > 0) {
+      await client.query('ROLLBACK');
+      transactionStarted = false;
+      return res.status(400).json({ error: 'Ya existe otro usuario con ese email' });
+    }
+
+    let updatedHuesped = null;
+
+    if (huespedExistResult.rows.length > 0) {
+      const huespedUpdate = await client.query(
+        `UPDATE huesped
+         SET nombre_completo = $1, email = $2, telefono = $3, documento = $4
+         WHERE huesped_id = $5
+         RETURNING *`,
+        [
+          nombre_completo,
+          email,
+          telefono ?? null,
+          documento ?? null,
+          id
+        ]
+      );
+      updatedHuesped = huespedUpdate.rows[0] || null;
+    }
+
+    if (usuarioExistResult.rows.length > 0) {
+      await client.query(
+        `UPDATE usuario
+         SET nombre = $1, email = $2
+         WHERE usuario_id = $3`,
+        [nombre_completo, email, id]
+      );
+    }
+
+    await client.query('COMMIT');
+    transactionStarted = false;
+
+    if (updatedHuesped) {
+      return res.json(updatedHuesped);
+    }
+
+    return res.json({
+      huesped_id: id,
+      tenant_id: huespedExistResult.rows[0]?.tenant_id || null,
+      nombre_completo,
+      email,
+      telefono: telefono ?? null,
+      documento: documento ?? null
+    });
   } catch (error) {
+    if (transactionStarted) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        console.error('Error al revertir la transacción:', rollbackError);
+      }
+    }
     console.error('Error al actualizar huésped:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
+  } finally {
+    client.release();
   }
 });
 
