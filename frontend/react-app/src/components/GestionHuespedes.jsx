@@ -232,7 +232,7 @@ export default function GestionHuespedes() {
                     </small>
                   </td>
                   <td>
-                    {editingHuesped === huesped.huesped_id ? (
+                    {editingHuesped === huesped.id ? (
                       <div className="btn-group btn-group-sm">
                         <button 
                           className="btn btn-success"
