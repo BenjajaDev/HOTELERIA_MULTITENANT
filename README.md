@@ -129,7 +129,6 @@ La capa de datos se maneja desde `src/api.js`, que centraliza llamadas fetch y m
 - `scripts/resultados_consultas_postgreSQL.sh` – exporta a CSV la metadata del esquema (columnas, llaves, índices, políticas, enums, funciones).
 
 ## Próximos pasos a implementar
-- 
 - Añadir pruebas automatizadas para rutas críticas y componentes React.
 - Externalizar a variables de entorno los secretos y credenciales usadas en scripts de semilla.
 - Gestión de Recepcionistas (operaciones CRUD).
