@@ -108,6 +108,46 @@ router.post("/login", async (req, res) => {
       hotelInfo = hotelResult.rows[0] || null;
     }
 
+    let sucursalInfo = null;
+
+    if (membership.rol === "recepcionista") {
+      const sucursalConditions = [user.usuario_id, tenantId];
+      let sucursalQuery = `
+        SELECT
+          rs.recepcionista_sucursal_id,
+          rs.sucursal_id,
+          rs.hotel_id,
+          rs.tenant_id,
+          rs.activo,
+          s.nombre AS sucursal_nombre,
+          h.nombre AS hotel_nombre
+        FROM recepcionista_sucursal rs
+        JOIN sucursal s ON s.sucursal_id = rs.sucursal_id
+        JOIN hotel h ON h.hotel_id = rs.hotel_id
+        WHERE rs.usuario_id = $1
+          AND rs.tenant_id = $2
+      `;
+
+      if (requestedHotelId) {
+        sucursalConditions.push(requestedHotelId);
+        sucursalQuery += ` AND rs.hotel_id = $${sucursalConditions.length}`;
+      }
+
+      sucursalQuery += " ORDER BY rs.created_at ASC NULLS LAST LIMIT 1";
+
+      const sucursalResult = await pool.query(sucursalQuery, sucursalConditions);
+      sucursalInfo = sucursalResult.rows[0] || null;
+
+      if (sucursalInfo) {
+        // Alinear hotel devuelto con la sucursal asignada
+        hotelInfo = {
+          hotel_id: sucursalInfo.hotel_id,
+          tenant_id: sucursalInfo.tenant_id,
+          nombre: sucursalInfo.hotel_nombre,
+        };
+      }
+    }
+
     let mensaje = "";
     if (membership.rol === "admin") {
       mensaje = "🎉 Has ingresado como ADMIN";
@@ -133,6 +173,9 @@ router.post("/login", async (req, res) => {
         tenant_nombre: membership.tenant_nombre,
         hotel_id: hotelInfo?.hotel_id || null,
         hotel_nombre: hotelInfo?.nombre || null,
+        sucursal_id: sucursalInfo?.sucursal_id || null,
+        sucursal_nombre: sucursalInfo?.sucursal_nombre || null,
+        sucursal_activa: sucursalInfo?.activo ?? null,
       },
     });
   } catch (err) {

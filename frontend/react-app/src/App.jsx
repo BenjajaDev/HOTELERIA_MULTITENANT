@@ -54,16 +54,24 @@ function App() {
   const nameLabel = user.nombre || user.email || "Usuario";
   const hotelLabel = user.hotel_nombre || user.tenant_nombre || "Hotel no asignado";
   const roleLabel = user.rol ? user.rol.toUpperCase() : "SIN ROL";
+  const sucursalLabel = user.sucursal_nombre || null;
+
+  const metaParts = [roleLabel];
+  if (user.rol === "admin") {
+    metaParts.push("Hoteles disponibles");
+  } else {
+    metaParts.push(hotelLabel);
+    if (user.rol === "recepcionista" && sucursalLabel) {
+      metaParts.push(`Sucursal ${sucursalLabel}`);
+    }
+  }
 
   return (
     <div className="container">
       <div className="d-flex justify-content-between align-items-center">
         <div>
           <h2>Bienvenido: {nameLabel}</h2>
-          <small className="text-muted">
-            {roleLabel}
-            {user.rol !== "admin" ? ` • ${hotelLabel}` : "  •  Hoteles disponibles"}
-          </small>
+          <small className="text-muted">{metaParts.join(" • ")}</small>
         </div>
         <div>
           <button className="btn btn-secondary me-2" onClick={logout}>Cerrar sesión</button>
