@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 
-export default function GestionHuespedes() {
+export default function GestionHuespedes({ restrictTenantId = "", allowCreate = false, userContext = {} }) {
   const [huespedes, setHuespedes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -14,13 +14,34 @@ export default function GestionHuespedes() {
     telefono: "",
     documento: ""
   });
+  const [createForm, setCreateForm] = useState({
+    nombre_completo: "",
+    email: "",
+    telefono: "",
+    documento: "",
+  });
+  const [createMsg, setCreateMsg] = useState("");
+
+  const contextPayload = useMemo(() => {
+    const payload = {};
+    if (userContext?.usuarioId) payload.usuarioId = userContext.usuarioId;
+    if (userContext?.usuario_id) payload.usuario_id = userContext.usuario_id;
+    if (userContext?.tenantId) payload.tenantId = userContext.tenantId;
+    if (userContext?.tenant_id) payload.tenant_id = userContext.tenant_id;
+    if (userContext?.hotelId) payload.hotelId = userContext.hotelId;
+    if (userContext?.hotel_id) payload.hotel_id = userContext.hotel_id;
+    return payload;
+  }, [userContext]);
+
+  const tenantFilter = restrictTenantId || userContext?.tenantId || userContext?.tenant_id || "";
 
   // Cargar huéspedes
   const loadHuespedes = async () => {
     try {
       setLoading(true);
       setError("");
-      const data = await api.getHuespedes();
+      const params = tenantFilter ? { tenant_id: tenantFilter } : {};
+      const data = await api.getHuespedes(params);
       setHuespedes(data);
     } catch (err) {
       setError(err.error || "Error al cargar huéspedes");
@@ -30,6 +51,11 @@ export default function GestionHuespedes() {
     }
   };
 
+  const filteredHuespedes = useMemo(() => {
+    if (!tenantFilter) return huespedes;
+    return huespedes.filter(h => (h.tenant_id || h.tenantId) === tenantFilter);
+  }, [huespedes, tenantFilter]);
+
   useEffect(() => {
     loadHuespedes();
   }, []);
@@ -37,7 +63,8 @@ export default function GestionHuespedes() {
   // Ver detalles de un huésped
   const verDetalles = async (huesped) => {
     try {
-      const detalles = await api.getHuesped(huesped.id);
+      const params = tenantFilter ? { tenant_id: tenantFilter } : {};
+      const detalles = await api.getHuesped(huesped.id, params);
       setSelectedHuesped(detalles);
       setShowModal(true);
     } catch (err) {
@@ -71,7 +98,11 @@ export default function GestionHuespedes() {
   const saveEdit = async (e) => {
     e.preventDefault();
     try {
-      const updated = await api.updateHuesped(editingHuesped, editForm);
+      const payload = { ...editForm, ...contextPayload };
+      if (tenantFilter && !payload.tenant_id && !payload.tenantId) {
+        payload.tenant_id = tenantFilter;
+      }
+      const updated = await api.updateHuesped(editingHuesped, payload);
       setHuespedes(prev => 
         prev.map(h => 
           h.id === editingHuesped 
@@ -86,6 +117,42 @@ export default function GestionHuespedes() {
     }
   };
 
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    if (!createForm.nombre_completo.trim()) {
+      setCreateMsg("El nombre es obligatorio");
+      return;
+    }
+    if (!createForm.email.trim()) {
+      setCreateMsg("El email es obligatorio");
+      return;
+    }
+
+    setCreateMsg("Creando...");
+    try {
+      const payload = {
+        nombre_completo: createForm.nombre_completo.trim(),
+        email: createForm.email.trim(),
+        telefono: createForm.telefono || undefined,
+        documento: createForm.documento || undefined,
+        ...contextPayload,
+      };
+      if (tenantFilter && !payload.tenant_id && !payload.tenantId) {
+        payload.tenant_id = tenantFilter;
+      }
+      if (!payload.hotelId && userContext?.hotelId) payload.hotelId = userContext.hotelId;
+      if (!payload.hotel_id && userContext?.hotel_id) payload.hotel_id = userContext.hotel_id;
+
+      const created = await api.createHuesped(payload);
+      setHuespedes(prev => [created, ...prev]);
+      setCreateMsg("Huésped creado ✅");
+      setCreateForm({ nombre_completo: "", email: "", telefono: "", documento: "" });
+    } catch (err) {
+      console.error("Error al crear huésped:", err);
+      setCreateMsg(err.error || "No se pudo crear el huésped");
+    }
+  };
+
   // Eliminar huésped
   const deleteHuesped = async (huesped) => {
     const confirmDelete = window.confirm(
@@ -96,7 +163,11 @@ export default function GestionHuespedes() {
     if (!confirmDelete) return;
 
     try {
-      await api.deleteHuesped(huesped.id);
+      const payload = { ...contextPayload };
+      if (tenantFilter && !payload.tenant_id && !payload.tenantId) {
+        payload.tenant_id = tenantFilter;
+      }
+      await api.deleteHuesped(huesped.id, payload);
       setHuespedes(prev => prev.filter(h => h.id !== huesped.id));
       alert("Huésped eliminado correctamente");
     } catch (err) {
@@ -145,7 +216,54 @@ export default function GestionHuespedes() {
         </div>
       )}
 
-      {huespedes.length === 0 ? (
+      {allowCreate && (
+        <div className="card p-3 mb-4">
+          <h5 className="mb-3">Registrar huésped</h5>
+          <form className="row g-3" onSubmit={handleCreate}>
+            <div className="col-md-4">
+              <label className="form-label">Nombre completo</label>
+              <input
+                className="form-control"
+                value={createForm.nombre_completo}
+                onChange={e => setCreateForm(prev => ({ ...prev, nombre_completo: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="col-md-3">
+              <label className="form-label">Email</label>
+              <input
+                type="email"
+                className="form-control"
+                value={createForm.email}
+                onChange={e => setCreateForm(prev => ({ ...prev, email: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="col-md-2">
+              <label className="form-label">Teléfono</label>
+              <input
+                className="form-control"
+                value={createForm.telefono}
+                onChange={e => setCreateForm(prev => ({ ...prev, telefono: e.target.value }))}
+              />
+            </div>
+            <div className="col-md-3">
+              <label className="form-label">Documento</label>
+              <input
+                className="form-control"
+                value={createForm.documento}
+                onChange={e => setCreateForm(prev => ({ ...prev, documento: e.target.value }))}
+              />
+            </div>
+            <div className="col-12">
+              <button className="btn btn-primary" type="submit">Crear huésped</button>
+              {createMsg && <span className="small text-muted ms-3">{createMsg}</span>}
+            </div>
+          </form>
+        </div>
+      )}
+
+      {filteredHuespedes.length === 0 ? (
         <div className="text-center py-4">
           <p className="text-muted">No hay huéspedes registrados</p>
         </div>
@@ -166,7 +284,7 @@ export default function GestionHuespedes() {
               </tr>
             </thead>
             <tbody>
-              {huespedes.map(huesped => (
+              {filteredHuespedes.map(huesped => (
                 <tr key={huesped.id}>
                   <td>
                     {editingHuesped === huesped.id ? (

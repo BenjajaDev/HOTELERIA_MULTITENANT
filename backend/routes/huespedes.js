@@ -3,6 +3,32 @@ import { pool } from '../models/db.js';
 
 const router = express.Router();
 
+async function ensureTenantPermission({ usuarioId }, tenantId, allowedRoles = ["admin", "gerente"]) {
+  if (!usuarioId) {
+    return null;
+  }
+
+  const membership = await pool.query(
+    `SELECT rol FROM tenant_usuario WHERE usuario_id = $1 AND tenant_id = $2 LIMIT 1`,
+    [usuarioId, tenantId]
+  );
+
+  if (membership.rowCount === 0) {
+    const err = new Error("No autorizado para gestionar huéspedes en este hotel");
+    err.status = 403;
+    throw err;
+  }
+
+  const rol = membership.rows[0].rol;
+  if (!allowedRoles.includes(rol)) {
+    const err = new Error("El rol no tiene permisos suficientes");
+    err.status = 403;
+    throw err;
+  }
+
+  return rol;
+}
+
 // GET /api/huespedes - Obtener todos los huéspedes (solo admin)
 router.get('/', async (req, res) => {
   try {
@@ -66,6 +92,98 @@ router.get('/', async (req, res) => {
   } catch (error) {
     console.error('Error al obtener huéspedes:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// POST /api/huespedes - Crear huésped (admin o gerente del hotel)
+router.post('/', async (req, res) => {
+  const {
+    nombre_completo,
+    email,
+    telefono,
+    documento,
+    hotel_id: hotelIdSnake,
+    hotelId: hotelIdCamel,
+    tenant_id: tenantIdSnake,
+    tenantId: tenantIdCamel,
+    usuario_id: usuarioIdSnake,
+    usuarioId: usuarioIdCamel,
+  } = req.body;
+
+  if (!nombre_completo || !nombre_completo.trim()) {
+    return res.status(400).json({ error: 'El nombre completo es obligatorio' });
+  }
+
+  if (!email || !email.trim()) {
+    return res.status(400).json({ error: 'El email es obligatorio' });
+  }
+
+  const emailLower = email.trim().toLowerCase();
+  const telefonoNormalizado = telefono ? String(telefono).trim() : null;
+  const documentoNormalizado = documento ? String(documento).trim() : null;
+
+  const usuarioId = usuarioIdCamel || usuarioIdSnake || null;
+  const providedTenantId = tenantIdCamel || tenantIdSnake || null;
+  const hotelId = hotelIdCamel || hotelIdSnake || null;
+
+  let targetTenantId = providedTenantId;
+
+  try {
+    if (!targetTenantId && hotelId) {
+      const hotelResult = await pool.query(
+        'SELECT tenant_id FROM hotel WHERE hotel_id = $1',
+        [hotelId]
+      );
+
+      if (hotelResult.rowCount === 0) {
+        return res.status(404).json({ error: 'Hotel no encontrado' });
+      }
+
+      targetTenantId = hotelResult.rows[0].tenant_id;
+    }
+
+    if (!targetTenantId) {
+      return res.status(400).json({ error: 'Debe indicar el tenant o el hotel asociado' });
+    }
+
+    await ensureTenantPermission({ usuarioId }, targetTenantId);
+
+    const emailHuesped = await pool.query(
+      `SELECT huesped_id FROM huesped WHERE tenant_id = $1 AND LOWER(email) = $2 LIMIT 1`,
+      [targetTenantId, emailLower]
+    );
+
+    if (emailHuesped.rowCount > 0) {
+      return res.status(409).json({ error: 'Ya existe un huésped con ese email en el hotel' });
+    }
+
+    const emailUsuario = await pool.query(
+      `SELECT usuario_id FROM usuario WHERE LOWER(email) = $1 LIMIT 1`,
+      [emailLower]
+    );
+
+    if (emailUsuario.rowCount > 0) {
+      return res.status(409).json({ error: 'El email ya está en uso por otro usuario' });
+    }
+
+    const insertResult = await pool.query(
+      `INSERT INTO huesped (tenant_id, nombre_completo, email, telefono, documento)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [
+        targetTenantId,
+        nombre_completo.trim(),
+        emailLower,
+        telefonoNormalizado || null,
+        documentoNormalizado || null,
+      ]
+    );
+
+    res.status(201).json(insertResult.rows[0]);
+  } catch (error) {
+    console.error('Error al crear huésped:', error);
+    const status = error.status || 500;
+    res.status(status).json({ error: error.message || 'Error interno del servidor' });
   }
 });
 
@@ -157,11 +275,12 @@ router.delete('/:id', async (req, res) => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
+    const usuarioId = req.body?.usuarioId || req.body?.usuario_id || null;
     
     await client.query('BEGIN');
     
     // Verificar si el huésped existe en la tabla huesped
-    const checkHuespedQuery = 'SELECT huesped_id FROM huesped WHERE huesped_id = $1';
+    const checkHuespedQuery = 'SELECT huesped_id, tenant_id FROM huesped WHERE huesped_id = $1';
     const checkHuespedResult = await client.query(checkHuespedQuery, [id]);
     
     // Verificar si el usuario existe con rol de huésped
@@ -176,6 +295,25 @@ router.delete('/:id', async (req, res) => {
     if (checkHuespedResult.rows.length === 0 && checkUsuarioResult.rows.length === 0) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Huésped no encontrado' });
+    }
+
+    let targetTenantId = checkHuespedResult.rows[0]?.tenant_id || null;
+
+    if (!targetTenantId && checkUsuarioResult.rows.length > 0) {
+      const tenantLookup = await client.query(
+        `SELECT tenant_id FROM tenant_usuario WHERE usuario_id = $1 LIMIT 1`,
+        [id]
+      );
+      targetTenantId = tenantLookup.rows[0]?.tenant_id || null;
+    }
+
+    if (targetTenantId) {
+      try {
+        await ensureTenantPermission({ usuarioId }, targetTenantId);
+      } catch (err) {
+        await client.query('ROLLBACK');
+        return res.status(err.status || 500).json({ error: err.message });
+      }
     }
     
     // Verificar si tiene reservas activas o confirmadas
@@ -238,6 +376,7 @@ router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { nombre_completo, email, telefono, documento } = req.body;
+    const usuarioId = req.body?.usuarioId || req.body?.usuario_id || null;
 
     if (!nombre_completo || !email) {
       return res.status(400).json({ error: 'Nombre completo y email son requeridos' });
@@ -255,6 +394,18 @@ router.put('/:id', async (req, res) => {
       await client.query('ROLLBACK');
       transactionStarted = false;
       return res.status(404).json({ error: 'Huésped no encontrado' });
+    }
+
+    const targetTenantId = huespedExistResult.rows[0]?.tenant_id || null;
+
+    if (targetTenantId) {
+      try {
+        await ensureTenantPermission({ usuarioId }, targetTenantId);
+      } catch (err) {
+        await client.query('ROLLBACK');
+        transactionStarted = false;
+        return res.status(err.status || 500).json({ error: err.message });
+      }
     }
 
     const emailHuespedResult = await client.query(

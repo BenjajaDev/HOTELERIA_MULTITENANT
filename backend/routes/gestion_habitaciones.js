@@ -51,7 +51,7 @@ router.get("/del-usuario", async (req, res) => {
     }
 
     const { rol } = membership;
-    if (!["recepcionista", "admin"].includes(rol)) {
+    if (!["recepcionista", "admin", "gerente"].includes(rol)) {
       return res.status(403).json({ error: "Rol sin permisos para gestionar habitaciones" });
     }
 
@@ -172,7 +172,7 @@ router.post("/", async (req, res) => {
       return res.status(403).json({ error: "El usuario no pertenece al tenant indicado" });
     }
 
-    if (!["recepcionista", "admin"].includes(membership.rol)) {
+    if (!["recepcionista", "admin", "gerente"].includes(membership.rol)) {
       return res.status(403).json({ error: "Rol sin permisos para crear habitaciones" });
     }
 
@@ -232,7 +232,7 @@ router.put("/:habitacionId", async (req, res) => {
     }
 
     const { rol } = membership;
-    if (!["recepcionista", "admin"].includes(rol)) {
+    if (!["recepcionista", "admin", "gerente"].includes(rol)) {
       return res.status(403).json({ error: "Rol sin permisos para modificar habitaciones" });
     }
 
@@ -329,7 +329,7 @@ router.delete("/:habitacionId", async (req, res) => {
       return res.status(403).json({ error: "El usuario no pertenece al tenant indicado" });
     }
 
-    if (!["recepcionista", "admin"].includes(membership.rol)) {
+    if (!["recepcionista", "admin", "gerente"].includes(membership.rol)) {
       return res.status(403).json({ error: "Rol sin permisos para eliminar habitaciones" });
     }
 

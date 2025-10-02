@@ -11,6 +11,7 @@ import pagosRouter from "./routes/pagos.js";
 import huespedesRouter from "./routes/huespedes.js";
 import sucursalesRouter from "./routes/sucursales.js";
 import recepcionistasRouter from "./routes/recepcionistas.js";
+import gerentesRouter from "./routes/gerentes.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -36,6 +37,7 @@ app.use("/api/pagos", pagosRouter);
 app.use("/api/huespedes", huespedesRouter);
 app.use("/api/sucursales", sucursalesRouter);
 app.use("/api/recepcionistas", recepcionistasRouter);
+app.use("/api/gerentes", gerentesRouter);
 
 app.get("/", (req, res) => {
   res.send("API Hotel Manager funcionando 🚀");

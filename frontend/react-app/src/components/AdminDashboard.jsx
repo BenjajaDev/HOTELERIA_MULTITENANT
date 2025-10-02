@@ -3,6 +3,7 @@ import { api } from "../api";
 import GestionHuespedes from "./GestionHuespedes";
 import GestionSucursales from "./GestionSucursales";
 import GestionRecepcionistas from "./GestionRecepcionistas";
+import GestionGerentes from "./GestionGerentes";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("hoteles");
@@ -138,6 +139,14 @@ export default function AdminDashboard() {
         </li>
         <li className="nav-item">
           <button
+            className={`nav-link ${activeTab === "gerentes" ? "active" : ""}`}
+            onClick={() => setActiveTab("gerentes")}
+          >
+            <i className="bi bi-person-gear"></i> Gerentes
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
             className={`nav-link ${activeTab === "recepcionistas" ? "active" : ""}`}
             onClick={() => setActiveTab("recepcionistas")}
           >
@@ -167,6 +176,10 @@ export default function AdminDashboard() {
 
       {activeTab === "sucursales" && (
         <GestionSucursales hoteles={hoteles} onHotelRefresh={load} />
+      )}
+
+      {activeTab === "gerentes" && (
+        <GestionGerentes hoteles={hoteles} />
       )}
 
       {activeTab === "recepcionistas" && (

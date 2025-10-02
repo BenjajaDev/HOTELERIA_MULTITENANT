@@ -177,7 +177,7 @@ router.delete("/:id", async (req, res) => {
     const membershipsResult = await client.query(
       `DELETE FROM tenant_usuario
        WHERE tenant_id = $1
-         AND rol IN ('recepcionista', 'huesped')
+         AND rol IN ('recepcionista', 'huesped', 'gerente')
        RETURNING usuario_id, rol`,
       [tenantId]
     );

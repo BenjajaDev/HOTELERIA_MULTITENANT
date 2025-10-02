@@ -129,12 +129,10 @@ export const api = {
 
   updateHuesped: (huespedId, body) => request(`/api/huespedes/${huespedId}`, { method: "PUT", body: JSON.stringify(body) }),
 
-  deleteHuesped: (huespedId, params = {}) => {
-    const search = new URLSearchParams();
-    if (params.tenant_id) search.set("tenant_id", params.tenant_id);
-    const suffix = search.toString();
-    return request(`/api/huespedes/${huespedId}${suffix ? `?${suffix}` : ""}`, { method: "DELETE" });
-  },
+  deleteHuesped: (huespedId, body = {}) => request(`/api/huespedes/${huespedId}`, {
+    method: "DELETE",
+    body: Object.keys(body).length ? JSON.stringify(body) : undefined,
+  }),
 
   searchHuespedes: (term, params = {}) => {
     const search = new URLSearchParams();
@@ -160,7 +158,10 @@ export const api = {
     body: JSON.stringify(body),
   }),
 
-  deleteSucursal: (id) => request(`/api/sucursales/${id}`, { method: "DELETE" }),
+  deleteSucursal: (id, body = {}) => request(`/api/sucursales/${id}`, {
+    method: "DELETE",
+    body: Object.keys(body).length ? JSON.stringify(body) : undefined,
+  }),
 
   getRecepcionistas: (params = {}) => {
     const search = new URLSearchParams();
@@ -181,5 +182,31 @@ export const api = {
     body: JSON.stringify(body),
   }),
 
-  deleteRecepcionista: (id) => request(`/api/recepcionistas/${id}`, { method: "DELETE" }),
+  deleteRecepcionista: (id, body = {}) => request(`/api/recepcionistas/${id}`, {
+    method: "DELETE",
+    body: Object.keys(body).length ? JSON.stringify(body) : undefined,
+  }),
+
+  getGerentes: (params = {}) => {
+    const search = new URLSearchParams();
+    if (params.hotelId) search.set("hotelId", params.hotelId);
+    if (params.tenantId) search.set("tenantId", params.tenantId);
+    const suffix = search.toString();
+    return request(`/api/gerentes${suffix ? `?${suffix}` : ""}`, { method: "GET" });
+  },
+
+  createGerente: (body) => request("/api/gerentes", {
+    method: "POST",
+    body: JSON.stringify(body),
+  }),
+
+  updateGerente: (id, body) => request(`/api/gerentes/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  }),
+
+  deleteGerente: (id, body = {}) => request(`/api/gerentes/${id}`, {
+    method: "DELETE",
+    body: Object.keys(body).length ? JSON.stringify(body) : undefined,
+  }),
 };

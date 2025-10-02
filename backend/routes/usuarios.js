@@ -153,6 +153,8 @@ router.post("/login", async (req, res) => {
       mensaje = "🎉 Has ingresado como ADMIN";
     } else if (membership.rol === "recepcionista") {
       mensaje = "🎉 Has ingresado como RECEPCIONISTA";
+    } else if (membership.rol === "gerente") {
+      mensaje = "🎉 Has ingresado como GERENTE";
     } else if (membership.rol === "huesped") {
       mensaje = "🎉 Has ingresado como HUESPED";
     }

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 
-export default function GestionSucursales({ hoteles = [], onHotelRefresh }) {
+export default function GestionSucursales({ hoteles = [], onHotelRefresh, restrictHotelId = "", userContext = {} }) {
   const [sucursales, setSucursales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -24,7 +24,26 @@ export default function GestionSucursales({ hoteles = [], onHotelRefresh }) {
   });
   const [editMsg, setEditMsg] = useState("");
 
-  const hotelOptions = useMemo(() => Array.isArray(hoteles) ? hoteles : [], [hoteles]);
+  const hotelOptions = useMemo(() => {
+    const list = Array.isArray(hoteles) ? hoteles : [];
+    if (restrictHotelId) {
+      return list.filter(h => h.hotel_id === restrictHotelId);
+    }
+    return list;
+  }, [hoteles, restrictHotelId]);
+
+  const contextPayload = useMemo(() => {
+    const payload = {};
+    if (userContext?.usuarioId) payload.usuarioId = userContext.usuarioId;
+    if (userContext?.usuario_id) payload.usuario_id = userContext.usuario_id;
+    if (userContext?.tenantId) payload.tenantId = userContext.tenantId;
+    if (userContext?.tenant_id) payload.tenant_id = userContext.tenant_id;
+    if (userContext?.hotelId) payload.hotelId = userContext.hotelId;
+    if (userContext?.hotel_id) payload.hotel_id = userContext.hotel_id;
+    return payload;
+  }, [userContext]);
+
+  const isRestricted = Boolean(restrictHotelId);
 
   const loadSucursales = async () => {
     try {
@@ -50,10 +69,17 @@ export default function GestionSucursales({ hoteles = [], onHotelRefresh }) {
     }
   }, [hotelOptions, form.hotelId]);
 
+  useEffect(() => {
+    if (restrictHotelId) {
+      setSelectedHotelFilter(restrictHotelId);
+    }
+  }, [restrictHotelId]);
+
   const filteredSucursales = useMemo(() => {
-    if (!selectedHotelFilter) return sucursales;
-    return sucursales.filter(s => s.hotel_id === selectedHotelFilter);
-  }, [sucursales, selectedHotelFilter]);
+    const hotelFilter = restrictHotelId || selectedHotelFilter;
+    if (!hotelFilter) return sucursales;
+    return sucursales.filter(s => s.hotel_id === hotelFilter);
+  }, [restrictHotelId, sucursales, selectedHotelFilter]);
 
   const resetForm = () => {
     setForm({
@@ -80,6 +106,7 @@ export default function GestionSucursales({ hoteles = [], onHotelRefresh }) {
         direccion: form.direccion || null,
         telefono: form.telefono || null,
         email: form.email || null,
+        ...contextPayload,
       };
       const created = await api.createSucursal(payload);
       setSucursales(prev => [created, ...prev]);
@@ -127,6 +154,7 @@ export default function GestionSucursales({ hoteles = [], onHotelRefresh }) {
         direccion: editForm.direccion || null,
         telefono: editForm.telefono || null,
         email: editForm.email || null,
+        ...contextPayload,
       };
       const updated = await api.updateSucursal(editingId, payload);
       setSucursales(prev => prev.map(s => (s.sucursal_id === editingId ? updated : s)));
@@ -142,7 +170,7 @@ export default function GestionSucursales({ hoteles = [], onHotelRefresh }) {
   const handleDelete = async (sucursal) => {
     if (!confirm(`¿Eliminar la sucursal "${sucursal.nombre}"?`)) return;
     try {
-      await api.deleteSucursal(sucursal.sucursal_id);
+      await api.deleteSucursal(sucursal.sucursal_id, contextPayload);
       setSucursales(prev => prev.filter(s => s.sucursal_id !== sucursal.sucursal_id));
       if (onHotelRefresh) onHotelRefresh();
     } catch (err) {
@@ -184,6 +212,7 @@ export default function GestionSucursales({ hoteles = [], onHotelRefresh }) {
                 value={form.hotelId}
                 onChange={e => setForm(prev => ({ ...prev, hotelId: e.target.value }))}
                 required
+                disabled={isRestricted}
               >
                 <option value="">Selecciona hotel</option>
                 {hotelOptions.map(h => (
@@ -225,21 +254,23 @@ export default function GestionSucursales({ hoteles = [], onHotelRefresh }) {
         </div>
 
         <div className="col-lg-8">
-          <div className="mb-3">
-            <label className="form-label">Filtrar por hotel</label>
-            <select
-              className="form-select"
-              value={selectedHotelFilter}
-              onChange={e => setSelectedHotelFilter(e.target.value)}
-            >
-              <option value="">Todos los hoteles</option>
-              {hotelOptions.map(h => (
-                <option key={h.hotel_id} value={h.hotel_id}>
-                  {h.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
+          {!isRestricted && (
+            <div className="mb-3">
+              <label className="form-label">Filtrar por hotel</label>
+              <select
+                className="form-select"
+                value={selectedHotelFilter}
+                onChange={e => setSelectedHotelFilter(e.target.value)}
+              >
+                <option value="">Todos los hoteles</option>
+                {hotelOptions.map(h => (
+                  <option key={h.hotel_id} value={h.hotel_id}>
+                    {h.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {filteredSucursales.length === 0 ? (
             <div className="text-muted">No hay sucursales registradas.</div>

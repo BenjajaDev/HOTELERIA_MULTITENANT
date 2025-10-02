@@ -31,6 +31,32 @@ async function fetchSucursalById(id) {
   return result.rows[0] || null;
 }
 
+async function ensureTenantPermission({ usuarioId }, tenantId, allowedRoles = ["admin", "gerente"]) {
+  if (!usuarioId) {
+    return null;
+  }
+
+  const membershipResult = await pool.query(
+    `SELECT rol FROM tenant_usuario WHERE usuario_id = $1 AND tenant_id = $2 LIMIT 1`,
+    [usuarioId, tenantId]
+  );
+
+  if (membershipResult.rowCount === 0) {
+    const err = new Error("No autorizado para gestionar esta sucursal");
+    err.status = 403;
+    throw err;
+  }
+
+  const rol = membershipResult.rows[0].rol;
+  if (!allowedRoles.includes(rol)) {
+    const err = new Error("El rol no tiene permisos para esta acción");
+    err.status = 403;
+    throw err;
+  }
+
+  return rol;
+}
+
 router.get("/", async (req, res) => {
   const { hotelId, tenantId } = req.query;
   const conditions = [];
@@ -111,6 +137,18 @@ router.post("/", async (req, res) => {
 
     const hotel = hotelResult.rows[0];
 
+    try {
+      await ensureTenantPermission(
+        {
+          usuarioId: req.body.usuarioId || req.body.usuario_id || null,
+        },
+        hotel.tenant_id
+      );
+    } catch (err) {
+      await client.query("ROLLBACK");
+      return res.status(err.status || 500).json({ error: err.message });
+    }
+
     const insertResult = await client.query(
       `INSERT INTO sucursal (tenant_id, hotel_id, nombre, direccion, telefono, email)
        VALUES ($1, $2, $3, $4, $5, $6)
@@ -165,6 +203,19 @@ router.put("/:id", async (req, res) => {
     }
 
     const current = currentResult.rows[0];
+
+    try {
+      await ensureTenantPermission(
+        {
+          usuarioId: req.body.usuarioId || req.body.usuario_id || null,
+        },
+        current.tenant_id
+      );
+    } catch (err) {
+      await client.query("ROLLBACK");
+      return res.status(err.status || 500).json({ error: err.message });
+    }
+
     const updates = [];
     const values = [];
     let idx = 1;
@@ -205,6 +256,19 @@ router.put("/:id", async (req, res) => {
       }
 
       const hotel = hotelResult.rows[0];
+
+      try {
+        await ensureTenantPermission(
+          {
+            usuarioId: req.body.usuarioId || req.body.usuario_id || null,
+          },
+          hotel.tenant_id
+        );
+      } catch (err) {
+        await client.query("ROLLBACK");
+        return res.status(err.status || 500).json({ error: err.message });
+      }
+
       targetHotelId = hotel.hotel_id;
       targetTenantId = hotel.tenant_id;
       updates.push(`hotel_id = $${idx++}`);
@@ -256,6 +320,20 @@ router.delete("/:id", async (req, res) => {
       return res.status(404).json({ error: "Sucursal no encontrada" });
     }
 
+    const sucursalDetalle = await fetchSucursalById(id);
+
+    try {
+      await ensureTenantPermission(
+        {
+          usuarioId: req.body.usuarioId || req.body.usuario_id || null,
+        },
+        sucursalDetalle?.tenant_id || null
+      );
+    } catch (err) {
+      await client.query("ROLLBACK");
+      return res.status(err.status || 500).json({ error: err.message });
+    }
+
     const recepcionistasResult = await client.query(
       "SELECT COUNT(*)::INTEGER AS total FROM recepcionista_sucursal WHERE sucursal_id = $1",
       [id]
@@ -286,4 +364,3 @@ router.delete("/:id", async (req, res) => {
 });
 
 export default router;
-

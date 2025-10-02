@@ -4,6 +4,7 @@ import Register from "./components/Register";
 import AdminDashboard from "./components/AdminDashboard";
 import ReceptionistDashboard from "./components/ReceptionistDashboard";
 import GuestDashboard from "./components/GuestDashboard";
+import GerenteDashboard from "./components/GerenteDashboard";
 
 const normalizeUser = (user) => {
   if (!user) return null;
@@ -80,6 +81,7 @@ function App() {
       <div className="container-card">
         {user.rol === "admin" && <AdminDashboard user={user} />}
         {user.rol === "recepcionista" && <ReceptionistDashboard user={user} />}
+        {user.rol === "gerente" && <GerenteDashboard user={user} />}
         {user.rol === "huesped" && <GuestDashboard user={user} />}
       </div>
     </div>

@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 
-export default function GestionRecepcionistas({ hoteles = [] }) {
+export default function GestionRecepcionistas({ hoteles = [], restrictHotelId = "", userContext = {} }) {
   const [sucursales, setSucursales] = useState([]);
   const [recepcionistas, setRecepcionistas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [filters, setFilters] = useState({ hotelId: "", sucursalId: "" });
-  const [formHotelId, setFormHotelId] = useState("");
+  const [filters, setFilters] = useState({ hotelId: restrictHotelId || "", sucursalId: "" });
+  const [formHotelId, setFormHotelId] = useState(restrictHotelId || "");
   const [form, setForm] = useState({
     sucursalId: "",
     nombre: "",
@@ -27,13 +27,41 @@ export default function GestionRecepcionistas({ hoteles = [] }) {
   });
   const [editMsg, setEditMsg] = useState("");
 
+  const hotelOptions = useMemo(() => {
+    if (!Array.isArray(hoteles)) return [];
+    if (restrictHotelId) {
+      return hoteles.filter(h => h.hotel_id === restrictHotelId);
+    }
+    return hoteles;
+  }, [hoteles, restrictHotelId]);
+
+  const contextPayload = useMemo(() => {
+    const payload = {};
+    if (userContext?.usuarioId) payload.usuarioId = userContext.usuarioId;
+    if (userContext?.usuario_id) payload.usuario_id = userContext.usuario_id;
+    if (userContext?.tenantId) payload.tenantId = userContext.tenantId;
+    if (userContext?.tenant_id) payload.tenant_id = userContext.tenant_id;
+    if (userContext?.hotelId) payload.hotelId = userContext.hotelId;
+    if (userContext?.hotel_id) payload.hotel_id = userContext.hotel_id;
+    return payload;
+  }, [userContext]);
+
+  const isRestricted = Boolean(restrictHotelId);
+
   const loadInitialData = async () => {
     try {
       setLoading(true);
       setError("");
+      const sucursalParams = restrictHotelId ? { hotelId: restrictHotelId } : {};
+      const recepcionistaParams = {};
+      if (restrictHotelId) recepcionistaParams.hotelId = restrictHotelId;
+      if (userContext?.tenantId || userContext?.tenant_id) {
+        recepcionistaParams.tenantId = userContext.tenantId || userContext.tenant_id;
+      }
+
       const [sucursalData, recepcionistaData] = await Promise.all([
-        api.getSucursales(),
-        api.getRecepcionistas(),
+        api.getSucursales(sucursalParams),
+        api.getRecepcionistas(recepcionistaParams),
       ]);
       setSucursales(sucursalData);
       setRecepcionistas(recepcionistaData);
@@ -50,10 +78,16 @@ export default function GestionRecepcionistas({ hoteles = [] }) {
   }, []);
 
   useEffect(() => {
-    if (!formHotelId && hoteles.length > 0) {
-      setFormHotelId(hoteles[0].hotel_id);
+    if (!formHotelId && hotelOptions.length > 0) {
+      setFormHotelId(hotelOptions[0].hotel_id);
     }
-  }, [hoteles, formHotelId]);
+  }, [hotelOptions, formHotelId]);
+
+  useEffect(() => {
+    if (restrictHotelId) {
+      setForm(prev => ({ ...prev, sucursalId: "" }));
+    }
+  }, [restrictHotelId]);
 
   useEffect(() => {
     setFilters(prev => {
@@ -83,6 +117,12 @@ export default function GestionRecepcionistas({ hoteles = [] }) {
       return { ...prev, sucursalId: disponibles[0].sucursal_id };
     });
   }, [formHotelId, sucursales]);
+
+  useEffect(() => {
+    if (restrictHotelId) {
+      setFilters(prev => ({ hotelId: restrictHotelId, sucursalId: prev.sucursalId }));
+    }
+  }, [restrictHotelId]);
 
   const sucursalesParaFormulario = useMemo(() => {
     return sucursales.filter(s => !formHotelId || s.hotel_id === formHotelId);
@@ -139,6 +179,7 @@ export default function GestionRecepcionistas({ hoteles = [] }) {
         email: form.email.trim(),
         telefono: form.telefono || undefined,
         password: form.password,
+        ...contextPayload,
       };
       const created = await api.createRecepcionista(payload);
       setRecepcionistas(prev => [created, ...prev]);
@@ -198,6 +239,7 @@ export default function GestionRecepcionistas({ hoteles = [] }) {
         email: editForm.email.trim(),
         telefono: editForm.telefono || undefined,
         activo: editForm.activo,
+        ...contextPayload,
       };
       if (editForm.password) {
         payload.password = editForm.password;
@@ -237,7 +279,7 @@ export default function GestionRecepcionistas({ hoteles = [] }) {
   const handleDelete = async (recepcionista) => {
     if (!confirm(`¿Eliminar al recepcionista "${recepcionista.nombre}"?`)) return;
     try {
-      await api.deleteRecepcionista(recepcionista.recepcionista_sucursal_id);
+      await api.deleteRecepcionista(recepcionista.recepcionista_sucursal_id, contextPayload);
       setRecepcionistas(prev => prev.filter(r => r.recepcionista_sucursal_id !== recepcionista.recepcionista_sucursal_id));
       setSucursales(prev => prev.map(s => {
         if (s.sucursal_id === recepcionista.sucursal_id) {
@@ -284,8 +326,9 @@ export default function GestionRecepcionistas({ hoteles = [] }) {
                 className="form-select mb-2"
                 value={formHotelId}
                 onChange={e => setFormHotelId(e.target.value)}
+                disabled={isRestricted}
               >
-                {hoteles.map(h => (
+                {hotelOptions.map(h => (
                   <option key={h.hotel_id} value={h.hotel_id}>
                     {h.nombre}
                   </option>
@@ -348,28 +391,30 @@ export default function GestionRecepcionistas({ hoteles = [] }) {
 
         <div className="col-lg-8">
           <div className="row g-3 mb-3">
-            <div className="col-md-6">
-              <label className="form-label">Filtrar por hotel</label>
-              <select
-                className="form-select"
-                value={filters.hotelId}
-                onChange={e => setFilters(prev => ({ hotelId: e.target.value, sucursalId: "" }))}
-              >
-                <option value="">Todos los hoteles</option>
-                {hoteles.map(h => (
-                  <option key={h.hotel_id} value={h.hotel_id}>
-                    {h.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="col-md-6">
+            {!isRestricted && (
+              <div className="col-md-6">
+                <label className="form-label">Filtrar por hotel</label>
+                <select
+                  className="form-select"
+                  value={filters.hotelId}
+                  onChange={e => setFilters(prev => ({ hotelId: e.target.value, sucursalId: "" }))}
+                >
+                  <option value="">Todos los hoteles</option>
+                  {hotelOptions.map(h => (
+                    <option key={h.hotel_id} value={h.hotel_id}>
+                      {h.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className={isRestricted ? "col-12" : "col-md-6"}>
               <label className="form-label">Filtrar por sucursal</label>
               <select
                 className="form-select"
                 value={filters.sucursalId}
                 onChange={e => setFilters(prev => ({ ...prev, sucursalId: e.target.value }))}
-                disabled={filters.hotelId && sucursalesParaFiltro.length === 0}
+                disabled={!isRestricted && filters.hotelId && sucursalesParaFiltro.length === 0}
               >
                 <option value="">Todas</option>
                 {sucursalesParaFiltro.map(s => (

@@ -12,6 +12,15 @@ BEGIN
     CREATE TYPE rol_enum AS ENUM ('admin','recepcionista','huesped');
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_type t
+    JOIN pg_enum e ON t.oid = e.enumtypid
+    WHERE t.typname = 'rol_enum' AND e.enumlabel = 'gerente'
+  ) THEN
+    ALTER TYPE rol_enum ADD VALUE IF NOT EXISTS 'gerente';
+  END IF;
+
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tipo_habitacion_enum') THEN
     CREATE TYPE tipo_habitacion_enum AS ENUM ('simple','doble','suite');
   END IF;
