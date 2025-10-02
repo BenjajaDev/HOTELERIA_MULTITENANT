@@ -39,11 +39,18 @@ export default function GuestDashboard({ user }) {
   const formatMoney = (value) => currencyFormatter.format(value || 0);
 
   const fetchHabitaciones = useCallback(
-    async ({ hotelId, fechaInicio, fechaFin }) => {
+    async ({ hotelId, fechaInicio, fechaFin, sucursalId }) => {
       if (!hotelId) return;
       try {
         setLoadingRooms(true);
-        const params = fechaInicio && fechaFin ? { fechaInicio, fechaFin } : {};
+        const params = {};
+        if (fechaInicio && fechaFin) {
+          params.fechaInicio = fechaInicio;
+          params.fechaFin = fechaFin;
+        }
+        if (sucursalId) {
+          params.sucursalId = sucursalId;
+        }
         const rooms = await api.getHabitaciones(hotelId, params);
         setHabitaciones(Array.isArray(rooms) ? rooms : []);
       } catch (err) {
@@ -117,8 +124,9 @@ export default function GuestDashboard({ user }) {
       hotelId: hotel.hotel_id,
       fechaInicio: form.fecha_inicio,
       fechaFin: form.fecha_fin,
+      sucursalId: user?.sucursal_id || null,
     });
-  }, [hotel, form.fecha_inicio, form.fecha_fin, fetchHabitaciones]);
+  }, [hotel, form.fecha_inicio, form.fecha_fin, fetchHabitaciones, user?.sucursal_id]);
 
   const handleFormChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -175,7 +183,7 @@ export default function GuestDashboard({ user }) {
         metodo_pago: "tarjeta",
       });
       setTotal(0);
-      await fetchHabitaciones({ hotelId: hotel.hotel_id });
+      await fetchHabitaciones({ hotelId: hotel.hotel_id, sucursalId: user?.sucursal_id || null });
     } catch (err) {
       const message = err?.error || err?.message || JSON.stringify(err);
       if (form.metodo_pago !== "efectivo" && showGateway) {

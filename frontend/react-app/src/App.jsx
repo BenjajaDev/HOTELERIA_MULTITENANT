@@ -65,6 +65,12 @@ function App() {
     if (user.rol === "recepcionista" && sucursalLabel) {
       metaParts.push(`Sucursal ${sucursalLabel}`);
     }
+    if (user.rol === "gerente" && sucursalLabel) {
+      metaParts.push(`Sucursal ${sucursalLabel}`);
+    }
+    if (user.rol === "huesped" && sucursalLabel) {
+      metaParts.push(`Sucursal ${sucursalLabel}`);
+    }
   }
 
   return (

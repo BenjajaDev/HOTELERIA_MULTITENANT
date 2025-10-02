@@ -44,6 +44,7 @@ export const api = {
     const search = new URLSearchParams();
     if (params.fechaInicio) search.set("fecha_inicio", params.fechaInicio);
     if (params.fechaFin) search.set("fecha_fin", params.fechaFin);
+    if (params.sucursalId) search.set("sucursalId", params.sucursalId);
     const qs = search.toString();
     const res = await fetch(`${BASE}/api/habitaciones/${hotelId}${qs ? `?${qs}` : ""}`);
     if (!res.ok) throw await res.json();

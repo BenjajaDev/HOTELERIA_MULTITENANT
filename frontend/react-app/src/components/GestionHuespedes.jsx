@@ -143,8 +143,8 @@ export default function GestionHuespedes({ restrictTenantId = "", allowCreate = 
       if (!payload.hotelId && userContext?.hotelId) payload.hotelId = userContext.hotelId;
       if (!payload.hotel_id && userContext?.hotel_id) payload.hotel_id = userContext.hotel_id;
 
-      const created = await api.createHuesped(payload);
-      setHuespedes(prev => [created, ...prev]);
+      await api.createHuesped(payload);
+      await loadHuespedes();
       setCreateMsg("Huésped creado ✅");
       setCreateForm({ nombre_completo: "", email: "", telefono: "", documento: "" });
     } catch (err) {
@@ -275,6 +275,7 @@ export default function GestionHuespedes({ restrictTenantId = "", allowCreate = 
                 <th>Nombre</th>
                 <th>Email</th>
                 <th>Teléfono</th>
+                <th>Sucursal</th>
                 <th>Tipo</th>
                 <th>Tenant</th>
                 <th>Reservas</th>
@@ -321,6 +322,11 @@ export default function GestionHuespedes({ restrictTenantId = "", allowCreate = 
                     ) : (
                       huesped.telefono || "—"
                     )}
+                  </td>
+                  <td>
+                    <small className="text-muted">
+                      {huesped.sucursal_nombre || huesped.sucursal_id || "—"}
+                    </small>
                   </td>
                   <td>
                     <span className={`badge ${huesped.source === 'huesped_table' ? 'bg-primary' : 'bg-info'}`}>

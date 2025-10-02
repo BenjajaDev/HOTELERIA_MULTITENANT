@@ -37,6 +37,9 @@ router.get('/', async (req, res) => {
       SELECT 
         h.huesped_id as id,
         h.tenant_id,
+        h.sucursal_id,
+        s.nombre AS sucursal_nombre,
+        s.hotel_id,
         h.nombre_completo,
         h.email,
         h.telefono,
@@ -50,8 +53,10 @@ router.get('/', async (req, res) => {
         'huesped_table' as source
       FROM huesped h
       LEFT JOIN tenant t ON h.tenant_id = t.tenant_id
+      LEFT JOIN sucursal s ON s.sucursal_id = h.sucursal_id
       LEFT JOIN reserva r ON h.huesped_id = r.huesped_id
-      GROUP BY h.huesped_id, h.tenant_id, h.nombre_completo, h.email, h.telefono, h.documento, h.created_at, t.nombre
+      GROUP BY h.huesped_id, h.tenant_id, h.sucursal_id, s.nombre, s.hotel_id,
+               h.nombre_completo, h.email, h.telefono, h.documento, h.created_at, t.nombre
     `;
 
     // Obtener usuarios con rol de huésped
@@ -65,6 +70,9 @@ router.get('/', async (req, res) => {
         NULL as documento,
         u.created_at,
         t.nombre as tenant_nombre,
+        NULL as sucursal_id,
+        NULL as sucursal_nombre,
+        NULL as hotel_id,
         0 as total_reservas,
         0 as reservas_confirmadas,
         0 as reservas_pendientes,
@@ -197,6 +205,9 @@ router.get('/:id', async (req, res) => {
       SELECT 
         h.huesped_id as id,
         h.tenant_id,
+        h.sucursal_id,
+        s.nombre AS sucursal_nombre,
+        s.hotel_id,
         h.nombre_completo,
         h.email,
         h.telefono,
@@ -206,6 +217,7 @@ router.get('/:id', async (req, res) => {
         'huesped_table' as source
       FROM huesped h
       LEFT JOIN tenant t ON h.tenant_id = t.tenant_id
+      LEFT JOIN sucursal s ON s.sucursal_id = h.sucursal_id
       WHERE h.huesped_id = $1
     `;
     
@@ -215,15 +227,18 @@ router.get('/:id', async (req, res) => {
     if (huespedResult.rows.length === 0) {
       const usuarioQuery = `
         SELECT 
-          u.usuario_id as id,
-          tu.tenant_id,
-          u.nombre as nombre_completo,
-          u.email,
-          NULL as telefono,
-          NULL as documento,
-          u.created_at,
-          t.nombre as tenant_nombre,
-          'usuario_table' as source
+        u.usuario_id as id,
+        tu.tenant_id,
+        u.nombre as nombre_completo,
+        u.email,
+        NULL as telefono,
+        NULL as documento,
+        u.created_at,
+        t.nombre as tenant_nombre,
+        NULL as sucursal_id,
+        NULL as sucursal_nombre,
+        NULL as hotel_id,
+        'usuario_table' as source
         FROM usuario u
         JOIN tenant_usuario tu ON u.usuario_id = tu.usuario_id
         JOIN tenant t ON tu.tenant_id = t.tenant_id

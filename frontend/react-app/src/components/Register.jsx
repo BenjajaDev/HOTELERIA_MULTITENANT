@@ -8,7 +8,9 @@ export default function Register() {
   const [telefono, setTelefono] = useState("");
   const [rut, setRut] = useState("");
   const [hotelId, setHotelId] = useState("");
+  const [sucursalId, setSucursalId] = useState("");
   const [hoteles, setHoteles] = useState([]);
+  const [sucursales, setSucursales] = useState([]);
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
@@ -24,6 +26,27 @@ export default function Register() {
     loadHoteles();
   }, []);
 
+  useEffect(() => {
+    const loadSucursales = async () => {
+      if (!hotelId) {
+        setSucursales([]);
+        setSucursalId("");
+        return;
+      }
+      try {
+        const data = await api.getSucursales({ hotelId });
+        setSucursales(data);
+        setSucursalId(data[0]?.sucursal_id || "");
+      } catch (err) {
+        setMsg(err.error || err.message || "No se pudieron cargar las sucursales");
+        setSucursales([]);
+        setSucursalId("");
+      }
+    };
+
+    loadSucursales();
+  }, [hotelId]);
+
   const submit = async (e) => {
     e.preventDefault();
     setMsg("...");
@@ -38,6 +61,11 @@ export default function Register() {
       return;
     }
 
+    if (!sucursalId) {
+      setMsg("Seleccione la sucursal del hotel");
+      return;
+    }
+
     const rutLimpio = rut.trim().toUpperCase();
     if (!/^\d{7,8}-[\dK]$/.test(rutLimpio)) {
       setMsg("Ingrese un RUT válido (ej: 20759513-6)");
@@ -47,6 +75,7 @@ export default function Register() {
     try {
       const res = await api.registerHuesped({
         hotel_id: hotelId,
+        sucursal_id: sucursalId,
         email,
         password,
         nombre,
@@ -60,6 +89,8 @@ export default function Register() {
       setTelefono("");
       setRut("");
       setHotelId("");
+      setSucursales([]);
+      setSucursalId("");
     } catch (err) {
       setMsg(err.error || err.message || JSON.stringify(err));
     }
@@ -100,6 +131,19 @@ export default function Register() {
             ))}
           </select>
         </div>
+        {hotelId && (
+          <div className="mb-2">
+            <label className="form-label">Sucursal</label>
+            <select className="form-select" value={sucursalId} onChange={e => setSucursalId(e.target.value)} required>
+              {sucursales.length === 0 && <option value="">Sin sucursales disponibles</option>}
+              {sucursales.map(sucursal => (
+                <option key={sucursal.sucursal_id} value={sucursal.sucursal_id}>
+                  {sucursal.nombre} ({sucursal.direccion || "Sin dirección"})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <button className="btn btn-success" type="submit">Registrarme</button>
         <div className="mt-2"><small className="text-muted">{msg}</small></div>
       </form>

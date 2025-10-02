@@ -103,6 +103,7 @@ CREATE TABLE IF NOT EXISTS habitacion (
   habitacion_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   tenant_id UUID REFERENCES tenant(tenant_id) ON DELETE CASCADE,
   hotel_id UUID REFERENCES hotel(hotel_id) ON DELETE CASCADE,
+  sucursal_id UUID REFERENCES sucursal(sucursal_id) ON DELETE SET NULL,
   numero INT,
   tipo tipo_habitacion_enum,
   precio_noche INT,
@@ -112,6 +113,7 @@ CREATE TABLE IF NOT EXISTS habitacion (
 CREATE TABLE IF NOT EXISTS huesped (
   huesped_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   tenant_id UUID REFERENCES tenant(tenant_id) ON DELETE CASCADE,
+  sucursal_id UUID REFERENCES sucursal(sucursal_id) ON DELETE SET NULL,
   nombre_completo VARCHAR(255),
   email VARCHAR(200),
   telefono VARCHAR(12),
@@ -174,10 +176,12 @@ CREATE INDEX IF NOT EXISTS idx_recepcionista_sucursal_tenant
 
 CREATE INDEX IF NOT EXISTS idx_habitacion_tenant ON habitacion(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_habitacion_hotel ON habitacion(hotel_id);
+CREATE INDEX IF NOT EXISTS idx_habitacion_sucursal ON habitacion(sucursal_id);
 CREATE INDEX IF NOT EXISTS idx_habitacion_numero ON habitacion(numero);
 
 CREATE INDEX IF NOT EXISTS idx_huesped_tenant ON huesped(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_huesped_email ON huesped(email);
+CREATE INDEX IF NOT EXISTS idx_huesped_sucursal ON huesped(sucursal_id);
 
 CREATE INDEX IF NOT EXISTS idx_reserva_tenant ON reserva(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_reserva_habitacion ON reserva(habitacion_id);

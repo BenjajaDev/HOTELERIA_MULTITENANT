@@ -62,7 +62,7 @@ router.get("/del-usuario", async (req, res) => {
     }
 
     const habitacionesRes = await pool.query(
-      `SELECT habitacion_id, numero, tipo, estado, precio_noche, hotel_id, tenant_id
+      `SELECT habitacion_id, numero, tipo, estado, precio_noche, hotel_id, tenant_id, sucursal_id
        FROM habitacion
        WHERE hotel_id = $1 AND tenant_id = $2
        ORDER BY numero ASC`,
@@ -78,7 +78,7 @@ router.get("/del-usuario", async (req, res) => {
 
 router.get("/:hotelId", async (req, res) => {
   const { hotelId } = req.params;
-  const { fecha_inicio, fecha_fin } = req.query;
+  const { fecha_inicio, fecha_fin, sucursalId, sucursal_id: sucursalIdSnake } = req.query;
 
   if (!hotelId) {
     return res.status(400).json({ error: "Se requiere hotelId" });
@@ -87,6 +87,7 @@ router.get("/:hotelId", async (req, res) => {
   const values = [hotelId];
   let idx = 2;
   let availabilityClause = "";
+  const sucursalFilter = sucursalId || sucursalIdSnake || null;
 
   if (fecha_inicio && fecha_fin) {
     availabilityClause = `
@@ -101,13 +102,20 @@ router.get("/:hotelId", async (req, res) => {
     idx += 2;
   }
 
+  let sucursalClause = "";
+  if (sucursalFilter) {
+    sucursalClause = ` AND h.sucursal_id = $${idx++}`;
+    values.push(sucursalFilter);
+  }
+
   try {
     const result = await pool.query(
-      `SELECT habitacion_id, numero, tipo, estado, precio_noche, hotel_id, tenant_id
+      `SELECT habitacion_id, numero, tipo, estado, precio_noche, hotel_id, tenant_id, sucursal_id
        FROM habitacion h
        WHERE h.hotel_id = $1
          AND h.estado = 'disponible'
          ${availabilityClause}
+         ${sucursalClause}
        ORDER BY numero ASC`,
       values
     );
@@ -126,6 +134,8 @@ router.post("/", async (req, res) => {
     usuario_id: usuarioIdSnake,
     hotelId,
     hotel_id: hotelIdSnake,
+    sucursalId,
+    sucursal_id: sucursalIdSnake,
     numero,
     tipo,
     precio_noche,
@@ -136,6 +146,7 @@ router.post("/", async (req, res) => {
   const tenant = tenantId || tenantIdSnake;
   const usuario = usuarioId || usuarioIdSnake;
   const hotel = hotelId || hotelIdSnake;
+  const sucursal = sucursalId || sucursalIdSnake || null;
 
   if (!tenant || !usuario || !hotel) {
     return res.status(400).json({ error: "Se requieren tenantId, usuarioId y hotelId" });
@@ -181,11 +192,26 @@ router.post("/", async (req, res) => {
       return res.status(404).json({ error: "Hotel no encontrado para el tenant" });
     }
 
+    let sucursalToUse = null;
+    if (sucursal) {
+      const sucursalRow = await ensureSucursalBelongs({
+        sucursalId: sucursal,
+        hotelId: hotelRow.hotel_id,
+        tenantId: tenant,
+      });
+
+      if (!sucursalRow) {
+        return res.status(400).json({ error: "La sucursal indicada no pertenece al hotel" });
+      }
+
+      sucursalToUse = sucursalRow.sucursal_id;
+    }
+
     const insertResult = await pool.query(
-      `INSERT INTO habitacion (tenant_id, hotel_id, numero, tipo, precio_noche, estado)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING habitacion_id, numero, tipo, estado, precio_noche, hotel_id, tenant_id`,
-      [tenant, hotel, numeroVal, tipoVal, precioVal, estadoVal || "disponible"]
+      `INSERT INTO habitacion (tenant_id, hotel_id, sucursal_id, numero, tipo, precio_noche, estado)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING habitacion_id, numero, tipo, estado, precio_noche, hotel_id, tenant_id, sucursal_id`,
+      [tenant, hotel, sucursalToUse, numeroVal, tipoVal, precioVal, estadoVal || "disponible"]
     );
 
     res.status(201).json(insertResult.rows[0]);
@@ -210,15 +236,14 @@ router.put("/:habitacionId", async (req, res) => {
     usuario_id: usuarioIdSnake,
     hotelId,
     hotel_id: hotelIdSnake,
+    sucursalId,
+    sucursal_id: sucursalIdSnake,
   } = req.body;
-
-  if (!ESTADOS.includes(estado)) {
-    return res.status(400).json({ error: "Estado inválido" });
-  }
 
   const tenant = tenantId || tenantIdSnake;
   const usuario = usuarioId || usuarioIdSnake;
   const hotel = hotelId || hotelIdSnake;
+  const sucursal = sucursalId || sucursalIdSnake || null;
 
   if (!tenant || !usuario || !hotel) {
     return res.status(400).json({ error: "Se requieren tenantId, usuarioId y hotelId" });
@@ -276,6 +301,21 @@ router.put("/:habitacionId", async (req, res) => {
       values.push(estadoVal);
     }
 
+    if (sucursal) {
+      const sucursalRow = await ensureSucursalBelongs({
+        sucursalId: sucursal,
+        hotelId: hotel,
+        tenantId: tenant,
+      });
+
+      if (!sucursalRow) {
+        return res.status(400).json({ error: "La sucursal indicada no pertenece al hotel" });
+      }
+
+      updates.push(`sucursal_id = $${idx++}`);
+      values.push(sucursalRow.sucursal_id);
+    }
+
     if (updates.length === 0) {
       return res.status(400).json({ error: "No se enviaron campos para actualizar" });
     }
@@ -286,7 +326,7 @@ router.put("/:habitacionId", async (req, res) => {
       `UPDATE habitacion
        SET ${updates.join(", ")}
        WHERE habitacion_id = $${idx++} AND tenant_id = $${idx++} AND hotel_id = $${idx}
-       RETURNING habitacion_id, numero, tipo, estado, precio_noche, hotel_id, tenant_id`,
+       RETURNING habitacion_id, numero, tipo, estado, precio_noche, hotel_id, tenant_id, sucursal_id`,
       values
     );
 

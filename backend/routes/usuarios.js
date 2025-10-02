@@ -146,6 +146,43 @@ router.post("/login", async (req, res) => {
           nombre: sucursalInfo.hotel_nombre,
         };
       }
+    } else if (membership.rol === "huesped") {
+      const huespedResult = await pool.query(
+        `SELECT h.sucursal_id, s.nombre AS sucursal_nombre, s.hotel_id
+         FROM huesped h
+         LEFT JOIN sucursal s ON s.sucursal_id = h.sucursal_id
+         WHERE h.huesped_id = $1
+         LIMIT 1`,
+        [user.usuario_id]
+      );
+
+      if (huespedResult.rowCount > 0) {
+        const row = huespedResult.rows[0];
+        if (row.sucursal_id) {
+          sucursalInfo = {
+            sucursal_id: row.sucursal_id,
+            sucursal_nombre: row.sucursal_nombre,
+            hotel_id: row.hotel_id,
+            tenant_id: tenantId,
+            activo: true,
+          };
+
+          if (!hotelInfo || (row.hotel_id && hotelInfo.hotel_id !== row.hotel_id)) {
+            const hotelLookup = await pool.query(
+              `SELECT hotel_id, tenant_id, nombre
+               FROM hotel
+               WHERE hotel_id = $1
+               LIMIT 1`,
+              [row.hotel_id]
+            );
+
+            const hotelRow = hotelLookup.rows[0];
+            if (hotelRow) {
+              hotelInfo = hotelRow;
+            }
+          }
+        }
+      }
     }
 
     let mensaje = "";
@@ -214,6 +251,8 @@ router.post("/register-huesped", async (req, res) => {
     tenantId: tenantIdCamel,
     hotel_id: hotelIdSnake,
     hotelId: hotelIdCamel,
+    sucursal_id: sucursalIdSnake,
+    sucursalId: sucursalIdCamel,
     email,
     password,
     nombre,
@@ -225,6 +264,7 @@ router.post("/register-huesped", async (req, res) => {
 
   const providedTenantId = tenantIdCamel || tenantIdSnake || null;
   const providedHotelId = hotelIdCamel || hotelIdSnake || null;
+  const providedSucursalId = sucursalIdCamel || sucursalIdSnake || null;
   const telefonoRaw = telefonoCampo ?? phoneCampo ?? "";
   const telefonoSanitizado = typeof telefonoRaw === "string"
     ? telefonoRaw.replace(/[\s-]/g, "").trim()
@@ -270,6 +310,8 @@ router.post("/register-huesped", async (req, res) => {
     const usuario_id = uuidv4();
 
     let tenantIdToUse = providedTenantId;
+    let hotelIdToUse = providedHotelId;
+    let sucursalIdToUse = providedSucursalId;
 
     if (!tenantIdToUse && providedHotelId) {
       const hotelLookup = await pool.query(
@@ -284,12 +326,41 @@ router.post("/register-huesped", async (req, res) => {
       }
 
       tenantIdToUse = hotelLookup.rows[0].tenant_id;
+      hotelIdToUse = hotelLookup.rows[0].hotel_id;
     }
 
     if (!tenantIdToUse) {
       return res
         .status(400)
         .json({ error: "No se pudo determinar el tenant para el registro" });
+    }
+
+    if (sucursalIdToUse) {
+      const sucursalLookup = await pool.query(
+        `SELECT sucursal_id, hotel_id, tenant_id
+         FROM sucursal
+         WHERE sucursal_id = $1`
+        , [sucursalIdToUse]
+      );
+
+      if (sucursalLookup.rowCount === 0) {
+        return res.status(404).json({ error: "Sucursal no encontrada" });
+      }
+
+      const sucursalRow = sucursalLookup.rows[0];
+
+      if (sucursalRow.tenant_id !== tenantIdToUse) {
+        return res.status(400).json({ error: "La sucursal no pertenece al tenant indicado" });
+      }
+
+      if (hotelIdToUse && sucursalRow.hotel_id !== hotelIdToUse) {
+        return res.status(400).json({ error: "La sucursal no pertenece al hotel seleccionado" });
+      }
+
+      hotelIdToUse = sucursalRow.hotel_id;
+      sucursalIdToUse = sucursalRow.sucursal_id;
+    } else {
+      return res.status(400).json({ error: "Debe seleccionar la sucursal del hotel" });
     }
 
     await pool.query(
@@ -305,12 +376,13 @@ router.post("/register-huesped", async (req, res) => {
 
     // 5. Registrar ficha básica en tabla huesped (usa mismo UUID del usuario)
     await pool.query(
-      `INSERT INTO huesped (huesped_id, tenant_id, nombre_completo, email, telefono, documento, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      `INSERT INTO huesped (huesped_id, tenant_id, sucursal_id, nombre_completo, email, telefono, documento, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
        ON CONFLICT (huesped_id) DO NOTHING`,
       [
         usuario_id,
         tenantIdToUse,
+        sucursalIdToUse,
         nombre || email,
         email,
         telefonoNormalizado,
@@ -321,6 +393,8 @@ router.post("/register-huesped", async (req, res) => {
     res.status(201).json({
       message: "Registro exitoso. Bienvenido como HUESPED 🎉",
       usuario_id,
+      sucursal_id: sucursalIdToUse,
+      hotel_id: hotelIdToUse,
     });
   } catch (err) {
     console.error(err);
