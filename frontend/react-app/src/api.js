@@ -52,11 +52,12 @@ export const api = {
   },
 
   // 🔹 Obtener habitaciones del hotel del usuario logueado
-  getHabitacionesDelUsuario: async ({ tenantId, usuarioId, hotelId }) => {
+  getHabitacionesDelUsuario: async ({ tenantId, usuarioId, hotelId, sucursalId }) => {
     const params = new URLSearchParams();
     if (tenantId) params.set("tenantId", tenantId);
     if (usuarioId) params.set("usuarioId", usuarioId);
     if (hotelId) params.set("hotelId", hotelId);
+    if (sucursalId) params.set("sucursalId", sucursalId);
     const res = await fetch(`${BASE}/api/habitaciones/del-usuario?${params.toString()}`);
     if (!res.ok) throw await res.json();
     return res.json();

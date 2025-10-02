@@ -30,14 +30,57 @@ async function ensureHotelBelongs({ hotel, tenant }) {
   return hotelRes.rows[0] || null;
 }
 
+async function ensureSucursalBelongs({ sucursalId, hotelId, tenantId }) {
+  if (!sucursalId || !hotelId || !tenantId) return null;
+  const sucursalRes = await pool.query(
+    `SELECT sucursal_id, hotel_id, tenant_id
+     FROM sucursal
+     WHERE sucursal_id = $1 AND hotel_id = $2 AND tenant_id = $3
+     LIMIT 1`,
+    [sucursalId, hotelId, tenantId]
+  );
+  return sucursalRes.rows[0] || null;
+}
+
+async function fetchRecepcionistaSucursal({ usuarioId, tenantId, hotelId }) {
+  if (!usuarioId || !tenantId) return null;
+  const params = [usuarioId, tenantId];
+  let query = `
+    SELECT sucursal_id, hotel_id, tenant_id
+    FROM recepcionista_sucursal
+    WHERE usuario_id = $1
+      AND tenant_id = $2
+      AND (activo IS NULL OR activo = true)
+  `;
+
+  if (hotelId) {
+    params.push(hotelId);
+    query += ` AND hotel_id = $${params.length}`;
+  }
+
+  query += " ORDER BY created_at ASC NULLS LAST LIMIT 1";
+
+  const result = await pool.query(query, params);
+  return result.rows[0] || null;
+}
+
 // 🔹 Endpoint: obtener habitaciones del hotel del usuario logueado o por defecto
 router.get("/del-usuario", async (req, res) => {
-  const { tenantId, tenant_id: tenantIdSnake, usuarioId, usuario_id: usuarioIdSnake, hotelId, hotel_id: hotelIdSnake } =
-    req.query;
+  const {
+    tenantId,
+    tenant_id: tenantIdSnake,
+    usuarioId,
+    usuario_id: usuarioIdSnake,
+    hotelId,
+    hotel_id: hotelIdSnake,
+    sucursalId,
+    sucursal_id: sucursalIdSnake,
+  } = req.query;
 
   const tenant = tenantId || tenantIdSnake;
   const usuario = usuarioId || usuarioIdSnake;
   const hotel = hotelId || hotelIdSnake;
+  const sucursal = sucursalId || sucursalIdSnake || null;
 
   if (!tenant || !usuario || !hotel) {
     return res.status(400).json({ error: "Se requieren tenantId, usuarioId y hotelId" });
@@ -61,12 +104,42 @@ router.get("/del-usuario", async (req, res) => {
       return res.status(404).json({ error: "Hotel no encontrado para el tenant" });
     }
 
+    let sucursalRow = null;
+
+    if (sucursal) {
+      sucursalRow = await ensureSucursalBelongs({
+        sucursalId: sucursal,
+        hotelId: hotelRow.hotel_id,
+        tenantId: tenant,
+      });
+
+      if (!sucursalRow) {
+        return res.status(404).json({ error: "Sucursal no encontrada para el hotel" });
+      }
+    } else if (rol === "recepcionista") {
+      sucursalRow = await fetchRecepcionistaSucursal({
+        usuarioId: usuario,
+        tenantId: tenant,
+        hotelId: hotelRow.hotel_id,
+      });
+
+      if (!sucursalRow) {
+        return res.status(403).json({ error: "El recepcionista no tiene una sucursal asignada" });
+      }
+    }
+
+    const values = [hotelRow.hotel_id, tenant];
+    if (sucursalRow) {
+      values.push(sucursalRow.sucursal_id);
+    }
+
     const habitacionesRes = await pool.query(
       `SELECT habitacion_id, numero, tipo, estado, precio_noche, hotel_id, tenant_id, sucursal_id
        FROM habitacion
        WHERE hotel_id = $1 AND tenant_id = $2
+         ${sucursalRow ? "AND sucursal_id = $3" : ""}
        ORDER BY numero ASC`,
-      [hotel, tenant]
+      values
     );
 
     res.json(habitacionesRes.rows);
@@ -205,6 +278,18 @@ router.post("/", async (req, res) => {
       }
 
       sucursalToUse = sucursalRow.sucursal_id;
+    } else if (membership.rol === "recepcionista") {
+      const sucursalRow = await fetchRecepcionistaSucursal({
+        usuarioId: usuario,
+        tenantId: tenant,
+        hotelId: hotelRow.hotel_id,
+      });
+
+      if (!sucursalRow) {
+        return res.status(403).json({ error: "El recepcionista no tiene una sucursal asignada" });
+      }
+
+      sucursalToUse = sucursalRow.sucursal_id;
     }
 
     const insertResult = await pool.query(
@@ -261,6 +346,32 @@ router.put("/:habitacionId", async (req, res) => {
       return res.status(403).json({ error: "Rol sin permisos para modificar habitaciones" });
     }
 
+    const currentRoomRes = await pool.query(
+      `SELECT habitacion_id, sucursal_id
+       FROM habitacion
+       WHERE habitacion_id = $1 AND tenant_id = $2 AND hotel_id = $3
+       LIMIT 1`,
+      [habitacionId, tenant, hotel]
+    );
+
+    if (currentRoomRes.rowCount === 0) {
+      return res.status(404).json({ error: "Habitación no encontrada para el hotel indicado" });
+    }
+
+    const currentRoom = currentRoomRes.rows[0];
+
+    if (rol === "recepcionista") {
+      const recepSucursal = await fetchRecepcionistaSucursal({
+        usuarioId: usuario,
+        tenantId: tenant,
+        hotelId: hotel,
+      });
+
+      if (!recepSucursal || recepSucursal.sucursal_id !== currentRoom.sucursal_id) {
+        return res.status(403).json({ error: "No puede modificar habitaciones de otra sucursal" });
+      }
+    }
+
     const updates = [];
     const values = [];
     let idx = 1;
@@ -310,6 +421,10 @@ router.put("/:habitacionId", async (req, res) => {
 
       if (!sucursalRow) {
         return res.status(400).json({ error: "La sucursal indicada no pertenece al hotel" });
+      }
+
+      if (rol === "recepcionista" && sucursalRow.sucursal_id !== currentRoom.sucursal_id) {
+        return res.status(403).json({ error: "No puede reasignar habitaciones a otra sucursal" });
       }
 
       updates.push(`sucursal_id = $${idx++}`);
@@ -371,6 +486,30 @@ router.delete("/:habitacionId", async (req, res) => {
 
     if (!["recepcionista", "admin", "gerente"].includes(membership.rol)) {
       return res.status(403).json({ error: "Rol sin permisos para eliminar habitaciones" });
+    }
+
+    const targetRoomRes = await pool.query(
+      `SELECT sucursal_id
+       FROM habitacion
+       WHERE habitacion_id = $1 AND tenant_id = $2 AND hotel_id = $3
+       LIMIT 1`,
+      [habitacionId, tenant, hotel]
+    );
+
+    if (targetRoomRes.rowCount === 0) {
+      return res.status(404).json({ error: "Habitación no encontrada para el hotel indicado" });
+    }
+
+    if (membership.rol === "recepcionista") {
+      const recepSucursal = await fetchRecepcionistaSucursal({
+        usuarioId: usuario,
+        tenantId: tenant,
+        hotelId: hotel,
+      });
+
+      if (!recepSucursal || recepSucursal.sucursal_id !== targetRoomRes.rows[0].sucursal_id) {
+        return res.status(403).json({ error: "No puede eliminar habitaciones de otra sucursal" });
+      }
     }
 
     const deleteResult = await pool.query(

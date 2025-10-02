@@ -20,6 +20,13 @@ export default function ReceptionistDashboard({ user }) {
     []
   );
 
+  const habitacionContext = useMemo(() => ({
+    tenantId: user?.tenant_id,
+    usuarioId: user?.usuario_id,
+    hotelId: user?.hotel_id,
+    sucursalId: user?.sucursal_id,
+  }), [user]);
+
   const formatMoney = (value) => currencyFormatter.format(value || 0);
   const formatDate = (value) => {
     if (!value) return "—";
@@ -37,19 +44,22 @@ export default function ReceptionistDashboard({ user }) {
 
   // 🔹 Ya no necesitamos un hotelId fijo; el backend nos devolverá las habitaciones del hotel del usuario
   const loadHabitaciones = useCallback(async () => {
-    if (!user?.tenant_id || !user?.usuario_id || !user?.hotel_id) {
+    if (!habitacionContext.tenantId || !habitacionContext.usuarioId || !habitacionContext.hotelId) {
+      setHabitaciones([]);
       setMsg("El usuario no tiene hotel asignado");
+      return;
+    }
+
+    if (!habitacionContext.sucursalId) {
+      setHabitaciones([]);
+      setMsg("El usuario no tiene una sucursal asignada");
       return;
     }
 
     try {
       setLoading(true);
       setMsg("");
-      const h = await api.getHabitacionesDelUsuario({
-        tenantId: user.tenant_id,
-        usuarioId: user.usuario_id,
-        hotelId: user.hotel_id,
-      });
+      const h = await api.getHabitacionesDelUsuario(habitacionContext);
 
       if (Array.isArray(h)) {
         setHabitaciones(h);
@@ -63,7 +73,7 @@ export default function ReceptionistDashboard({ user }) {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [habitacionContext]);
 
   const loadReservas = useCallback(async () => {
     if (!user?.hotel_id) return;
@@ -85,11 +95,14 @@ export default function ReceptionistDashboard({ user }) {
 
   const updateEstado = async (habit, newEstado) => {
     try {
+      if (!habitacionContext.sucursalId) {
+        setMsg("El usuario no tiene una sucursal asignada");
+        return;
+      }
+
       const updated = await api.updateHabitacion(habit.habitacion_id, {
+        ...habitacionContext,
         estado: newEstado,
-        tenantId: user.tenant_id,
-        usuarioId: user.usuario_id,
-        hotelId: user.hotel_id,
       });
       setHabitaciones(prev =>
         prev.map(x => x.habitacion_id === updated.habitacion_id ? updated : x)
@@ -103,10 +116,13 @@ export default function ReceptionistDashboard({ user }) {
     e.preventDefault();
     setMsg("Creando habitación...");
     try {
+      if (!habitacionContext.sucursalId) {
+        setMsg("El usuario no tiene una sucursal asignada");
+        return;
+      }
+
       await api.createHabitacion({
-        tenantId: user.tenant_id,
-        usuarioId: user.usuario_id,
-        hotelId: user.hotel_id,
+        ...habitacionContext,
         numero: newRoom.numero,
         tipo: newRoom.tipo,
         precio_noche: newRoom.precio_noche,
@@ -139,10 +155,13 @@ export default function ReceptionistDashboard({ user }) {
     if (!editing) return;
     setMsg("Actualizando habitación...");
     try {
+      if (!habitacionContext.sucursalId) {
+        setMsg("El usuario no tiene una sucursal asignada");
+        return;
+      }
+
       const updated = await api.updateHabitacion(editing.habitacion_id, {
-        tenantId: user.tenant_id,
-        usuarioId: user.usuario_id,
-        hotelId: user.hotel_id,
+        ...habitacionContext,
         numero: editing.numero,
         tipo: editing.tipo,
         precio_noche: editing.precio_noche,
@@ -160,10 +179,13 @@ export default function ReceptionistDashboard({ user }) {
     if (!window.confirm("¿Eliminar habitación?")) return;
     setMsg("Eliminando habitación...");
     try {
+      if (!habitacionContext.sucursalId) {
+        setMsg("El usuario no tiene una sucursal asignada");
+        return;
+      }
+
       await api.deleteHabitacion(habitacion.habitacion_id, {
-        tenantId: user.tenant_id,
-        usuarioId: user.usuario_id,
-        hotelId: user.hotel_id,
+        ...habitacionContext,
       });
       setHabitaciones(prev => prev.filter(h => h.habitacion_id !== habitacion.habitacion_id));
       if (editing?.habitacion_id === habitacion.habitacion_id) {
