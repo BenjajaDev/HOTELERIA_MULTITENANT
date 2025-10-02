@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import GestionHuespedes from "./GestionHuespedes";
+import GestionSucursales from "./GestionSucursales";
+import GestionRecepcionistas from "./GestionRecepcionistas";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("hoteles");
@@ -128,6 +130,22 @@ export default function AdminDashboard() {
         </li>
         <li className="nav-item">
           <button
+            className={`nav-link ${activeTab === "sucursales" ? "active" : ""}`}
+            onClick={() => setActiveTab("sucursales")}
+          >
+            <i className="bi bi-diagram-3"></i> Sucursales
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            className={`nav-link ${activeTab === "recepcionistas" ? "active" : ""}`}
+            onClick={() => setActiveTab("recepcionistas")}
+          >
+            <i className="bi bi-person-badge"></i> Recepcionistas
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
             className={`nav-link ${activeTab === "huespedes" ? "active" : ""}`}
             onClick={() => setActiveTab("huespedes")}
           >
@@ -146,6 +164,14 @@ export default function AdminDashboard() {
 
       {/* Contenido de las pestañas */}
       {activeTab === "huespedes" && <GestionHuespedes />}
+
+      {activeTab === "sucursales" && (
+        <GestionSucursales hoteles={hoteles} onHotelRefresh={load} />
+      )}
+
+      {activeTab === "recepcionistas" && (
+        <GestionRecepcionistas hoteles={hoteles} />
+      )}
 
       {activeTab === "hoteles" && (
         <div>

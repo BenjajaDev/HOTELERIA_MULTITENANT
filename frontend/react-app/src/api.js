@@ -142,4 +142,44 @@ export const api = {
     const suffix = search.toString();
     return request(`/api/huespedes/search/${encodeURIComponent(term)}${suffix ? `?${suffix}` : ""}`, { method: "GET" });
   },
+
+  getSucursales: (params = {}) => {
+    const search = new URLSearchParams();
+    if (params.hotelId) search.set("hotelId", params.hotelId);
+    if (params.tenantId) search.set("tenantId", params.tenantId);
+    const suffix = search.toString();
+    return request(`/api/sucursales${suffix ? `?${suffix}` : ""}`, { method: "GET" });
+  },
+
+  getSucursal: (id) => request(`/api/sucursales/${id}`, { method: "GET" }),
+
+  createSucursal: (body) => request("/api/sucursales", { method: "POST", body: JSON.stringify(body) }),
+
+  updateSucursal: (id, body) => request(`/api/sucursales/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  }),
+
+  deleteSucursal: (id) => request(`/api/sucursales/${id}`, { method: "DELETE" }),
+
+  getRecepcionistas: (params = {}) => {
+    const search = new URLSearchParams();
+    if (params.hotelId) search.set("hotelId", params.hotelId);
+    if (params.tenantId) search.set("tenantId", params.tenantId);
+    if (params.sucursalId) search.set("sucursalId", params.sucursalId);
+    const suffix = search.toString();
+    return request(`/api/recepcionistas${suffix ? `?${suffix}` : ""}`, { method: "GET" });
+  },
+
+  createRecepcionista: (body) => request("/api/recepcionistas", {
+    method: "POST",
+    body: JSON.stringify(body),
+  }),
+
+  updateRecepcionista: (id, body) => request(`/api/recepcionistas/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  }),
+
+  deleteRecepcionista: (id) => request(`/api/recepcionistas/${id}`, { method: "DELETE" }),
 };

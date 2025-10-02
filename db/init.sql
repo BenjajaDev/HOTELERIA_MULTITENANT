@@ -79,6 +79,17 @@ CREATE TABLE IF NOT EXISTS sucursal (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS recepcionista_sucursal (
+  recepcionista_sucursal_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tenant_id UUID REFERENCES tenant(tenant_id) ON DELETE CASCADE,
+  hotel_id UUID REFERENCES hotel(hotel_id) ON DELETE CASCADE,
+  sucursal_id UUID REFERENCES sucursal(sucursal_id) ON DELETE CASCADE,
+  usuario_id UUID REFERENCES usuario(usuario_id) ON DELETE CASCADE,
+  telefono VARCHAR(20),
+  activo BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS habitacion (
   habitacion_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   tenant_id UUID REFERENCES tenant(tenant_id) ON DELETE CASCADE,
@@ -145,6 +156,13 @@ CREATE INDEX IF NOT EXISTS idx_hotel_nombre ON hotel(nombre);
 CREATE INDEX IF NOT EXISTS idx_sucursal_tenant ON sucursal(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_sucursal_hotel ON sucursal(hotel_id);
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_recepcionista_sucursal_unique
+  ON recepcionista_sucursal(sucursal_id, usuario_id);
+CREATE INDEX IF NOT EXISTS idx_recepcionista_sucursal_usuario
+  ON recepcionista_sucursal(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_recepcionista_sucursal_tenant
+  ON recepcionista_sucursal(tenant_id);
+
 CREATE INDEX IF NOT EXISTS idx_habitacion_tenant ON habitacion(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_habitacion_hotel ON habitacion(hotel_id);
 CREATE INDEX IF NOT EXISTS idx_habitacion_numero ON habitacion(numero);
@@ -182,6 +200,19 @@ BEGIN
   ) THEN
     CREATE POLICY tenant_isolation_sucursal
       ON sucursal
+      USING (tenant_id = current_setting('app.current_tenant')::uuid);
+  END IF;
+END$$;
+
+-- Recepcionista por sucursal
+ALTER TABLE recepcionista_sucursal ENABLE ROW LEVEL SECURITY;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='recepcionista_sucursal' AND policyname='tenant_isolation_recepcionista_sucursal'
+  ) THEN
+    CREATE POLICY tenant_isolation_recepcionista_sucursal
+      ON recepcionista_sucursal
       USING (tenant_id = current_setting('app.current_tenant')::uuid);
   END IF;
 END$$;
