@@ -19,6 +19,12 @@ Aplicación multi-tenant para gestión hotelera que centraliza la administració
 - `scripts/` – automatizaciones: levantar/bajar contenedores, poblar datos de ejemplo y exportar metadata de la base.
 - `docs/` – espacio para documentación adicional (actualmente vacío).
 
+### Documentación complementaria (`docs/`)
+- [`docs/backend.md`](docs/backend.md) – Arquitectura del backend, routers, cache, validaciones y multi-tenancy.
+- [`docs/frontend.md`](docs/frontend.md) – Organización del frontend React, componentes por rol y comunicación con la API.
+- [`docs/db.md`](docs/db.md) – Diseño del esquema PostgreSQL, enums, políticas RLS y triggers de auditoría.
+- [`docs/infraestructura.md`](docs/infraestructura.md) – Contenedores Docker, variables de entorno y recomendaciones de despliegue.
+
 ## Stack tecnológico
 - **Backend**: Node.js 18, Express, pg, Redis, bcrypt, uuid.
 - **Frontend**: React 19 + Vite, Bootstrap 5 vía CDN, React Router (pendiente de uso), componentes escritos en JSX moderno.
