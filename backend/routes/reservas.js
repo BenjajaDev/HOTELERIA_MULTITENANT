@@ -6,6 +6,64 @@ const router = express.Router();
 const METODOS_PERMITIDOS = ["tarjeta", "transferencia", "efectivo"];
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
+async function fetchMembership({ tenant, usuario }) {
+  if (!tenant || !usuario) return null;
+  const membershipRes = await pool.query(
+    `SELECT rol
+     FROM tenant_usuario
+     WHERE tenant_id = $1 AND usuario_id = $2
+     LIMIT 1`,
+    [tenant, usuario]
+  );
+  return membershipRes.rows[0] || null;
+}
+
+async function ensureHotelBelongs({ hotel, tenant }) {
+  if (!hotel || !tenant) return null;
+  const hotelRes = await pool.query(
+    `SELECT hotel_id, tenant_id
+     FROM hotel
+     WHERE hotel_id = $1 AND tenant_id = $2
+     LIMIT 1`,
+    [hotel, tenant]
+  );
+  return hotelRes.rows[0] || null;
+}
+
+async function ensureSucursalBelongs({ sucursalId, hotelId, tenantId }) {
+  if (!sucursalId || !hotelId || !tenantId) return null;
+  const sucursalRes = await pool.query(
+    `SELECT sucursal_id, hotel_id, tenant_id
+     FROM sucursal
+     WHERE sucursal_id = $1 AND hotel_id = $2 AND tenant_id = $3
+     LIMIT 1`,
+    [sucursalId, hotelId, tenantId]
+  );
+  return sucursalRes.rows[0] || null;
+}
+
+async function fetchRecepcionistaSucursal({ usuarioId, tenantId, hotelId }) {
+  if (!usuarioId || !tenantId) return null;
+  const params = [usuarioId, tenantId];
+  let query = `
+    SELECT sucursal_id, hotel_id, tenant_id
+    FROM recepcionista_sucursal
+    WHERE usuario_id = $1
+      AND tenant_id = $2
+      AND (activo IS NULL OR activo = true)
+  `;
+
+  if (hotelId) {
+    params.push(hotelId);
+    query += ` AND hotel_id = $${params.length}`;
+  }
+
+  query += " ORDER BY created_at ASC NULLS LAST LIMIT 1";
+
+  const result = await pool.query(query, params);
+  return result.rows[0] || null;
+}
+
 const RESERVA_BASE_QUERY = `
   SELECT
     r.reserva_id,
@@ -18,6 +76,7 @@ const RESERVA_BASE_QUERY = `
     r.total,
     r.created_at,
     hab.numero AS habitacion_numero,
+    hab.sucursal_id,
     hab.hotel_id,
     hab.tenant_id AS habitacion_tenant_id,
     h.nombre AS hotel_nombre,
@@ -59,39 +118,120 @@ router.get("/", async (req, res) => {
   const {
     hotelId,
     tenantId,
+    tenant_id: tenantIdSnake,
+    usuarioId,
+    usuario_id: usuarioIdSnake,
+    sucursalId,
+    sucursal_id: sucursalIdSnake,
     estado,
     metodo_pago: metodoPago,
     estado_pago: estadoPago,
   } = req.query;
 
+  const tenant = tenantId || tenantIdSnake || null;
+  const usuario = usuarioId || usuarioIdSnake || null;
+  const sucursal = sucursalId || sucursalIdSnake || null;
+
   const conditions = [];
   const values = [];
   let idx = 1;
 
-  if (hotelId) {
-    conditions.push(`hab.hotel_id = $${idx++}`);
-    values.push(hotelId);
-  }
-  if (tenantId) {
-    conditions.push(`hab.tenant_id = $${idx++}`);
-    values.push(tenantId);
-  }
-  if (estado) {
-    conditions.push(`r.estado = $${idx++}`);
-    values.push(estado);
-  }
-  if (metodoPago) {
-    conditions.push(`p.metodo = $${idx++}`);
-    values.push(metodoPago);
-  }
-  if (estadoPago) {
-    conditions.push(`p.estado = $${idx++}`);
-    values.push(estadoPago);
-  }
-
-  const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-
   try {
+    let membership = null;
+    if (tenant && usuario) {
+      membership = await fetchMembership({ tenant, usuario });
+
+      if (!membership) {
+        return res.status(403).json({ error: "El usuario no pertenece al tenant indicado" });
+      }
+
+      conditions.push(`hab.tenant_id = $${idx++}`);
+      values.push(tenant);
+    } else if (tenant) {
+      conditions.push(`hab.tenant_id = $${idx++}`);
+      values.push(tenant);
+    }
+
+    let hotelRow = null;
+    if (hotelId) {
+      if (tenant) {
+        hotelRow = await ensureHotelBelongs({ tenant, hotel: hotelId });
+        if (!hotelRow) {
+          return res.status(404).json({ error: "Hotel no encontrado para el tenant" });
+        }
+      }
+
+      conditions.push(`hab.hotel_id = $${idx++}`);
+      values.push(hotelId);
+    }
+
+    let sucursalFilterValue = null;
+
+    if (membership?.rol === "recepcionista") {
+      const recepcionistaSucursal = await fetchRecepcionistaSucursal({
+        usuarioId: usuario,
+        tenantId: tenant,
+        hotelId: hotelRow?.hotel_id || hotelId || null,
+      });
+
+      if (!recepcionistaSucursal) {
+        return res.status(403).json({ error: "El recepcionista no tiene una sucursal asignada" });
+      }
+
+      const validatedSucursal = sucursal
+        ? await ensureSucursalBelongs({
+            sucursalId: sucursal,
+            hotelId: recepcionistaSucursal.hotel_id,
+            tenantId: tenant,
+          })
+        : recepcionistaSucursal;
+
+      if (!validatedSucursal) {
+        return res.status(403).json({ error: "No puede acceder a otra sucursal" });
+      }
+
+      sucursalFilterValue = validatedSucursal.sucursal_id;
+
+      if (!hotelId) {
+        conditions.push(`hab.hotel_id = $${idx++}`);
+        values.push(recepcionistaSucursal.hotel_id);
+      }
+    } else if (sucursal && hotelId && tenant) {
+      const sucursalRow = await ensureSucursalBelongs({
+        sucursalId: sucursal,
+        hotelId,
+        tenantId: tenant,
+      });
+
+      if (!sucursalRow) {
+        return res.status(400).json({ error: "La sucursal indicada no pertenece al hotel" });
+      }
+
+      sucursalFilterValue = sucursalRow.sucursal_id;
+    } else if (sucursal) {
+      sucursalFilterValue = sucursal;
+    }
+
+    if (sucursalFilterValue) {
+      conditions.push(`hab.sucursal_id = $${idx++}`);
+      values.push(sucursalFilterValue);
+    }
+
+    if (estado) {
+      conditions.push(`r.estado = $${idx++}`);
+      values.push(estado);
+    }
+    if (metodoPago) {
+      conditions.push(`p.metodo = $${idx++}`);
+      values.push(metodoPago);
+    }
+    if (estadoPago) {
+      conditions.push(`p.estado = $${idx++}`);
+      values.push(estadoPago);
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
     const result = await pool.query(
       `${RESERVA_BASE_QUERY} ${whereClause} ORDER BY r.created_at DESC NULLS LAST`,
       values

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import DetallePagoModal from "./DetallePagoModal";
 
@@ -13,6 +13,13 @@ const PagosManager = ({ user }) => {
     metodo: ""
   });
 
+  const pagoContext = useMemo(() => ({
+    tenantId: user?.tenant_id,
+    usuarioId: user?.usuario_id,
+    hotelId: user?.hotel_id,
+    sucursalId: user?.sucursal_id,
+  }), [user]);
+
   const currencyFormatter = useMemo(
     () => new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }),
     []
@@ -26,15 +33,27 @@ const PagosManager = ({ user }) => {
     return date.toLocaleDateString("es-CL");
   };
 
-  const loadPagos = async () => {
+  const loadPagos = useCallback(async () => {
+    if (!pagoContext.hotelId || !pagoContext.tenantId || !pagoContext.usuarioId) {
+      setPagos([]);
+      setMsg("El usuario no tiene hotel asignado");
+      return;
+    }
+
+    if (!pagoContext.sucursalId) {
+      setPagos([]);
+      setMsg("El usuario no tiene una sucursal asignada");
+      return;
+    }
+
     try {
       setLoading(true);
       setMsg("");
-      
-      const params = {};
-      if (user?.hotel_id) {
-        params.hotelId = user.hotel_id;
-      }
+
+      const params = {
+        ...pagoContext,
+      };
+
       if (filters.estado_pago) {
         params.estado_pago = filters.estado_pago;
       }
@@ -50,11 +69,11 @@ const PagosManager = ({ user }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, pagoContext]);
 
   useEffect(() => {
     loadPagos();
-  }, [user?.hotel_id, filters]);
+  }, [loadPagos]);
 
   const openDetalle = (pagoId) => {
     setSelectedPagoId(pagoId);
@@ -228,6 +247,7 @@ const PagosManager = ({ user }) => {
         pagoId={selectedPagoId}
         isOpen={showModal}
         onClose={closeModal}
+        context={pagoContext}
       />
     </div>
   );

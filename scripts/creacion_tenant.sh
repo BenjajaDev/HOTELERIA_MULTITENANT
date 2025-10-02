@@ -32,25 +32,25 @@ hotel_madero AS (
 ),
 sucursal_stella_centro AS (
   INSERT INTO sucursal (tenant_id, hotel_id, nombre, direccion, telefono, email)
-  SELECT hs.tenant_id, hs.hotel_id, 'Sucursal Centro', 'Av. Centro 101', '+56911111112', 'centro@stella.com'
+  SELECT hs.tenant_id, hs.hotel_id, 'Centro', 'Av. Centro 101', '+56911111112', 'centro@stella.com'
   FROM hotel_stella hs
   RETURNING sucursal_id, hotel_id, tenant_id
 ),
 sucursal_stella_aeropuerto AS (
   INSERT INTO sucursal (tenant_id, hotel_id, nombre, direccion, telefono, email)
-  SELECT hs.tenant_id, hs.hotel_id, 'Sucursal Aeropuerto', 'Camino Aeropuerto 505', '+56911111113', 'aeropuerto@stella.com'
+  SELECT hs.tenant_id, hs.hotel_id, 'Aeropuerto', 'Camino Aeropuerto 505', '+56911111113', 'aeropuerto@stella.com'
   FROM hotel_stella hs
   RETURNING sucursal_id, hotel_id, tenant_id
 ),
 sucursal_madero_centro AS (
   INSERT INTO sucursal (tenant_id, hotel_id, nombre, direccion, telefono, email)
-  SELECT hm.tenant_id, hm.hotel_id, 'Sucursal Centro', 'Calle Central 789', '+56922222233', 'centro@madero.com'
+  SELECT hm.tenant_id, hm.hotel_id, 'Centro', 'Calle Central 789', '+56922222233', 'centro@madero.com'
   FROM hotel_madero hm
   RETURNING sucursal_id, hotel_id, tenant_id
 ),
 sucursal_madero_bosque AS (
   INSERT INTO sucursal (tenant_id, hotel_id, nombre, direccion, telefono, email)
-  SELECT hm.tenant_id, hm.hotel_id, 'Sucursal Bosque', 'Ruta Bosque 321', '+56922222244', 'bosque@madero.com'
+  SELECT hm.tenant_id, hm.hotel_id, 'Bosque', 'Ruta Bosque 321', '+56922222244', 'bosque@madero.com'
   FROM hotel_madero hm
   RETURNING sucursal_id, hotel_id, tenant_id
 ),

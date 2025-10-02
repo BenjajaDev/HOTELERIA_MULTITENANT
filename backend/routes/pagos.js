@@ -1,13 +1,84 @@
 // backend/routes/pagos.js
 import express from "express";
 import { pool } from "../models/db.js";
+
 const router = express.Router();
+
+async function fetchMembership({ tenant, usuario }) {
+  if (!tenant || !usuario) return null;
+  const membershipRes = await pool.query(
+    `SELECT rol
+     FROM tenant_usuario
+     WHERE tenant_id = $1 AND usuario_id = $2
+     LIMIT 1`,
+    [tenant, usuario]
+  );
+  return membershipRes.rows[0] || null;
+}
+
+async function ensureHotelBelongs({ hotel, tenant }) {
+  if (!hotel || !tenant) return null;
+  const hotelRes = await pool.query(
+    `SELECT hotel_id, tenant_id
+     FROM hotel
+     WHERE hotel_id = $1 AND tenant_id = $2
+     LIMIT 1`,
+    [hotel, tenant]
+  );
+  return hotelRes.rows[0] || null;
+}
+
+async function ensureSucursalBelongs({ sucursalId, hotelId, tenantId }) {
+  if (!sucursalId || !hotelId || !tenantId) return null;
+  const sucursalRes = await pool.query(
+    `SELECT sucursal_id, hotel_id, tenant_id
+     FROM sucursal
+     WHERE sucursal_id = $1 AND hotel_id = $2 AND tenant_id = $3
+     LIMIT 1`,
+    [sucursalId, hotelId, tenantId]
+  );
+  return sucursalRes.rows[0] || null;
+}
+
+async function fetchRecepcionistaSucursal({ usuarioId, tenantId, hotelId }) {
+  if (!usuarioId || !tenantId) return null;
+  const params = [usuarioId, tenantId];
+  let query = `
+    SELECT sucursal_id, hotel_id, tenant_id
+    FROM recepcionista_sucursal
+    WHERE usuario_id = $1
+      AND tenant_id = $2
+      AND (activo IS NULL OR activo = true)
+  `;
+
+  if (hotelId) {
+    params.push(hotelId);
+    query += ` AND hotel_id = $${params.length}`;
+  }
+
+  query += " ORDER BY created_at ASC NULLS LAST LIMIT 1";
+
+  const result = await pool.query(query, params);
+  return result.rows[0] || null;
+}
 
 // Obtener detalles de un pago específico
 router.get("/:pago_id/detalle", async (req, res) => {
   try {
     const { pago_id } = req.params;
-    
+    const {
+      tenantId,
+      tenant_id: tenantIdSnake,
+      usuarioId,
+      usuario_id: usuarioIdSnake,
+      sucursalId,
+      sucursal_id: sucursalIdSnake,
+    } = req.query;
+
+    const tenant = tenantId || tenantIdSnake || null;
+    const usuario = usuarioId || usuarioIdSnake || null;
+    const sucursal = sucursalId || sucursalIdSnake || null;
+
     const query = `
       SELECT 
         p.*,
@@ -16,8 +87,10 @@ router.get("/:pago_id/detalle", async (req, res) => {
         r.fecha_inicio,
         r.fecha_fin,
         r.total as reserva_total,
+        h.hotel_id,
         h.numero as habitacion_numero,
         h.tipo as habitacion_tipo,
+        h.sucursal_id,
         hotel.nombre as hotel_nombre,
         hotel.direccion as hotel_direccion,
         hotel.telefono as hotel_telefono,
@@ -35,14 +108,57 @@ router.get("/:pago_id/detalle", async (req, res) => {
       LEFT JOIN usuario u ON hu.email = u.email
       WHERE p.pago_id = $1
     `;
-    
+
     const result = await pool.query(query, [pago_id]);
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Pago no encontrado" });
     }
-    
-    res.json(result.rows[0]);
+
+    const pago = result.rows[0];
+
+    if (tenant && usuario) {
+      const membership = await fetchMembership({ tenant, usuario });
+      if (!membership) {
+        return res.status(403).json({ error: "El usuario no pertenece al tenant indicado" });
+      }
+
+      if (String(pago.tenant_id) !== String(tenant)) {
+        return res.status(403).json({ error: "No puede acceder a pagos de otro tenant" });
+      }
+
+      if (membership.rol === "recepcionista") {
+        const recepcionistaSucursal = await fetchRecepcionistaSucursal({
+          usuarioId: usuario,
+          tenantId: tenant,
+          hotelId: pago.hotel_id,
+        });
+
+        if (!recepcionistaSucursal) {
+          return res.status(403).json({ error: "El recepcionista no tiene una sucursal asignada" });
+        }
+
+        if (String(recepcionistaSucursal.sucursal_id) !== String(pago.sucursal_id)) {
+          return res.status(403).json({ error: "No puede ver pagos de otra sucursal" });
+        }
+
+        if (sucursal && String(sucursal) !== String(pago.sucursal_id)) {
+          return res.status(403).json({ error: "La sucursal indicada no coincide con la del pago" });
+        }
+      } else if (sucursal) {
+        const sucursalRow = await ensureSucursalBelongs({
+          sucursalId: sucursal,
+          hotelId: pago.hotel_id,
+          tenantId: tenant,
+        });
+
+        if (!sucursalRow || String(sucursalRow.sucursal_id) !== String(pago.sucursal_id)) {
+          return res.status(403).json({ error: "No puede acceder a pagos de otra sucursal" });
+        }
+      }
+    }
+
+    res.json(pago);
   } catch (error) {
     console.error("Error al obtener detalle de pago:", error);
     res.status(500).json({ error: "Error interno del servidor" });
@@ -111,10 +227,23 @@ router.post("/:pago_id/detalle", async (req, res) => {
 router.get("/:pago_id/boleta", async (req, res) => {
   try {
     const { pago_id } = req.params;
+    const {
+      tenantId,
+      tenant_id: tenantIdSnake,
+      usuarioId,
+      usuario_id: usuarioIdSnake,
+      sucursalId,
+      sucursal_id: sucursalIdSnake,
+    } = req.query;
+
+    const tenant = tenantId || tenantIdSnake || null;
+    const usuario = usuarioId || usuarioIdSnake || null;
+    const sucursal = sucursalId || sucursalIdSnake || null;
     
     const query = `
       SELECT 
         p.pago_id,
+        p.tenant_id,
         p.monto,
         p.metodo,
         p.fecha as fecha_pago,
@@ -127,8 +256,10 @@ router.get("/:pago_id/boleta", async (req, res) => {
         r.fecha_fin,
         r.total as reserva_total,
         r.estado as estado_reserva,
+        h.hotel_id,
         h.numero as habitacion_numero,
         h.tipo as habitacion_tipo,
+        h.sucursal_id,
         h.precio_noche,
         hotel.nombre as hotel_nombre,
         hotel.direccion as hotel_direccion,
@@ -156,7 +287,48 @@ router.get("/:pago_id/boleta", async (req, res) => {
     }
 
     const data = result.rows[0];
-    
+
+    if (tenant && usuario) {
+      const membership = await fetchMembership({ tenant, usuario });
+      if (!membership) {
+        return res.status(403).json({ error: "El usuario no pertenece al tenant indicado" });
+      }
+
+      if (String(data.tenant_id) !== String(tenant)) {
+        return res.status(403).json({ error: "No puede acceder a pagos de otro tenant" });
+      }
+
+      if (membership.rol === "recepcionista") {
+        const recepcionistaSucursal = await fetchRecepcionistaSucursal({
+          usuarioId: usuario,
+          tenantId: tenant,
+          hotelId: data.hotel_id,
+        });
+
+        if (!recepcionistaSucursal) {
+          return res.status(403).json({ error: "El recepcionista no tiene una sucursal asignada" });
+        }
+
+        if (String(recepcionistaSucursal.sucursal_id) !== String(data.sucursal_id)) {
+          return res.status(403).json({ error: "No puede ver pagos de otra sucursal" });
+        }
+
+        if (sucursal && String(sucursal) !== String(data.sucursal_id)) {
+          return res.status(403).json({ error: "La sucursal indicada no coincide con la del pago" });
+        }
+      } else if (sucursal) {
+        const sucursalRow = await ensureSucursalBelongs({
+          sucursalId: sucursal,
+          hotelId: data.hotel_id,
+          tenantId: tenant,
+        });
+
+        if (!sucursalRow || String(sucursalRow.sucursal_id) !== String(data.sucursal_id)) {
+          return res.status(403).json({ error: "No puede acceder a pagos de otra sucursal" });
+        }
+      }
+    }
+
     // Generar número de boleta único
     const numero_boleta = `BOL-${Date.now()}-${pago_id.slice(0, 8)}`;
     
@@ -194,13 +366,13 @@ router.get("/:pago_id/boleta", async (req, res) => {
         {
           descripcion: `Alojamiento ${data.cantidad_noches} ${parseInt(data.cantidad_noches) === 1 ? 'noche' : 'noches'} - Habitación ${data.habitacion_numero}`,
           cantidad: parseInt(data.cantidad_noches) || 1,
-          precio_unitario: Math.round(data.precio_noche / 1.19), // Precio unitario sin IVA
-          subtotal: Math.round(data.monto / 1.19) // Subtotal sin IVA
+          precio_unitario: Math.round(data.precio_noche / 1.19),
+          subtotal: Math.round(data.monto / 1.19)
         }
       ],
-      subtotal: Math.round(data.monto / 1.19), // Subtotal sin IVA (precio con IVA / 1.19)
-      iva: Math.round(data.monto - (data.monto / 1.19)), // IVA = Total - Subtotal
-      total: data.monto, // El total ya incluye IVA
+      subtotal: Math.round(data.monto / 1.19),
+      iva: Math.round(data.monto - (data.monto / 1.19)),
+      total: data.monto,
       observaciones: data.descripcion || null
     };
 
@@ -214,8 +386,22 @@ router.get("/:pago_id/boleta", async (req, res) => {
 // Obtener todos los pagos con sus detalles
 router.get("/", async (req, res) => {
   try {
-    const { hotelId, estado_pago, metodo } = req.query;
-    
+    const {
+      hotelId,
+      estado_pago: estadoPago,
+      metodo,
+      tenantId,
+      tenant_id: tenantIdSnake,
+      usuarioId,
+      usuario_id: usuarioIdSnake,
+      sucursalId,
+      sucursal_id: sucursalIdSnake,
+    } = req.query;
+
+    const tenant = tenantId || tenantIdSnake || null;
+    const usuario = usuarioId || usuarioIdSnake || null;
+    const sucursal = sucursalId || sucursalIdSnake || null;
+
     let query = `
       SELECT 
         p.*,
@@ -224,6 +410,8 @@ router.get("/", async (req, res) => {
         r.reserva_id,
         r.fecha_inicio,
         r.fecha_fin,
+        h.hotel_id,
+        h.sucursal_id,
         h.numero as habitacion_numero,
         u.nombre as huesped_nombre,
         hotel.nombre as hotel_nombre
@@ -236,29 +424,107 @@ router.get("/", async (req, res) => {
       LEFT JOIN usuario u ON hu.email = u.email
       WHERE 1=1
     `;
-    
-    const params = [];
-    let paramCount = 0;
 
-    if (hotelId) {
-      paramCount++;
-      query += ` AND hotel.hotel_id = $${paramCount}`;
-      params.push(hotelId);
+    const params = [];
+    let idx = 1;
+
+    let membership = null;
+    if (tenant && usuario) {
+      membership = await fetchMembership({ tenant, usuario });
+      if (!membership) {
+        return res.status(403).json({ error: "El usuario no pertenece al tenant indicado" });
+      }
+
+      query += ` AND p.tenant_id = $${idx}`;
+      params.push(tenant);
+      idx += 1;
+    } else if (tenant) {
+      query += ` AND p.tenant_id = $${idx}`;
+      params.push(tenant);
+      idx += 1;
     }
 
-    if (estado_pago) {
-      paramCount++;
-      query += ` AND p.estado = $${paramCount}`;
-      params.push(estado_pago);
+    let hotelRow = null;
+    if (hotelId) {
+      if (tenant) {
+        hotelRow = await ensureHotelBelongs({ tenant, hotel: hotelId });
+        if (!hotelRow) {
+          return res.status(404).json({ error: "Hotel no encontrado para el tenant" });
+        }
+      }
+
+      query += ` AND hotel.hotel_id = $${idx}`;
+      params.push(hotelId);
+      idx += 1;
+    }
+
+    let sucursalFilter = null;
+
+    if (membership?.rol === "recepcionista") {
+      const recepcionistaSucursal = await fetchRecepcionistaSucursal({
+        usuarioId: usuario,
+        tenantId: tenant,
+        hotelId: hotelRow?.hotel_id || hotelId || null,
+      });
+
+      if (!recepcionistaSucursal) {
+        return res.status(403).json({ error: "El recepcionista no tiene una sucursal asignada" });
+      }
+
+      const validatedSucursal = sucursal
+        ? await ensureSucursalBelongs({
+            sucursalId: sucursal,
+            hotelId: recepcionistaSucursal.hotel_id,
+            tenantId: tenant,
+          })
+        : recepcionistaSucursal;
+
+      if (!validatedSucursal) {
+        return res.status(403).json({ error: "No puede acceder a otra sucursal" });
+      }
+
+      sucursalFilter = validatedSucursal.sucursal_id;
+
+      if (!hotelId) {
+        query += ` AND hotel.hotel_id = $${idx}`;
+        params.push(recepcionistaSucursal.hotel_id);
+        idx += 1;
+      }
+    } else if (sucursal && hotelId && tenant) {
+      const sucursalRow = await ensureSucursalBelongs({
+        sucursalId: sucursal,
+        hotelId,
+        tenantId: tenant,
+      });
+
+      if (!sucursalRow) {
+        return res.status(400).json({ error: "La sucursal indicada no pertenece al hotel" });
+      }
+
+      sucursalFilter = sucursalRow.sucursal_id;
+    } else if (sucursal) {
+      sucursalFilter = sucursal;
+    }
+
+    if (sucursalFilter) {
+      query += ` AND h.sucursal_id = $${idx}`;
+      params.push(sucursalFilter);
+      idx += 1;
+    }
+
+    if (estadoPago) {
+      query += ` AND p.estado = $${idx}`;
+      params.push(estadoPago);
+      idx += 1;
     }
 
     if (metodo) {
-      paramCount++;
-      query += ` AND p.metodo = $${paramCount}`;
+      query += ` AND p.metodo = $${idx}`;
       params.push(metodo);
+      idx += 1;
     }
 
-    query += ` ORDER BY p.fecha DESC`;
+    query += " ORDER BY p.fecha DESC";
 
     const result = await pool.query(query, params);
     res.json(result.rows);

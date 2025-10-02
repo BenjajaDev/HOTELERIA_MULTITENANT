@@ -119,7 +119,7 @@ const printStyles = `
   }
 `;
 
-const DetallePagoModal = ({ pagoId, isOpen, onClose }) => {
+const DetallePagoModal = ({ pagoId, isOpen, onClose, context = {} }) => {
   const [boleta, setBoleta] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -134,7 +134,7 @@ const DetallePagoModal = ({ pagoId, isOpen, onClose }) => {
     try {
       setLoading(true);
       setError("");
-      const data = await api.getBoleta(pagoId);
+      const data = await api.getBoleta(pagoId, context);
       setBoleta(data);
     } catch (err) {
       setError(err.error || "Error al cargar boleta");

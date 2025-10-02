@@ -76,17 +76,34 @@ export default function ReceptionistDashboard({ user }) {
   }, [habitacionContext]);
 
   const loadReservas = useCallback(async () => {
-    if (!user?.hotel_id) return;
+    if (!habitacionContext.hotelId || !habitacionContext.tenantId || !habitacionContext.usuarioId) {
+      setReservas([]);
+      setMsg("El usuario no tiene hotel asignado");
+      return;
+    }
+
+    if (!habitacionContext.sucursalId) {
+      setReservas([]);
+      setMsg("El usuario no tiene una sucursal asignada");
+      return;
+    }
+
     try {
       setReservasLoading(true);
-      const data = await api.getReservas({ hotelId: user.hotel_id });
+      setMsg("");
+      const data = await api.getReservas({
+        hotelId: habitacionContext.hotelId,
+        tenantId: habitacionContext.tenantId,
+        usuarioId: habitacionContext.usuarioId,
+        sucursalId: habitacionContext.sucursalId,
+      });
       setReservas(Array.isArray(data) ? data : []);
     } catch (err) {
       setMsg(err.error || JSON.stringify(err));
     } finally {
       setReservasLoading(false);
     }
-  }, [user]);
+  }, [habitacionContext]);
 
   useEffect(() => {
     loadHabitaciones();

@@ -29,6 +29,8 @@ export const api = {
     const search = new URLSearchParams();
     if (params.hotelId) search.set("hotelId", params.hotelId);
     if (params.tenantId) search.set("tenantId", params.tenantId);
+    if (params.usuarioId) search.set("usuarioId", params.usuarioId);
+    if (params.sucursalId) search.set("sucursalId", params.sucursalId);
     if (params.estado) search.set("estado", params.estado);
     if (params.metodoPago) search.set("metodo_pago", params.metodoPago);
     if (params.estadoPago) search.set("estado_pago", params.estadoPago);
@@ -97,20 +99,37 @@ export const api = {
   getPagos: (params = {}) => {
     const search = new URLSearchParams();
     if (params.hotelId) search.set("hotelId", params.hotelId);
+    if (params.tenantId) search.set("tenantId", params.tenantId);
+    if (params.usuarioId) search.set("usuarioId", params.usuarioId);
+    if (params.sucursalId) search.set("sucursalId", params.sucursalId);
     if (params.estado_pago) search.set("estado_pago", params.estado_pago);
     if (params.metodo) search.set("metodo", params.metodo);
     const suffix = search.toString();
     return request(`/api/pagos${suffix ? `?${suffix}` : ""}`, { method: "GET" });
   },
 
-  getDetallePago: (pagoId) => request(`/api/pagos/${pagoId}/detalle`, { method: "GET" }),
+  getDetallePago: (pagoId, params = {}) => {
+    const search = new URLSearchParams();
+    if (params.tenantId) search.set("tenantId", params.tenantId);
+    if (params.usuarioId) search.set("usuarioId", params.usuarioId);
+    if (params.sucursalId) search.set("sucursalId", params.sucursalId);
+    const suffix = search.toString();
+    return request(`/api/pagos/${pagoId}/detalle${suffix ? `?${suffix}` : ""}`, { method: "GET" });
+  },
 
   createDetallePago: (pagoId, body) => request(`/api/pagos/${pagoId}/detalle`, { 
     method: "POST", 
     body: JSON.stringify(body) 
   }),
 
-  getBoleta: (pagoId) => request(`/api/pagos/${pagoId}/boleta`, { method: "GET" }),
+  getBoleta: (pagoId, params = {}) => {
+    const search = new URLSearchParams();
+    if (params.tenantId) search.set("tenantId", params.tenantId);
+    if (params.usuarioId) search.set("usuarioId", params.usuarioId);
+    if (params.sucursalId) search.set("sucursalId", params.sucursalId);
+    const suffix = search.toString();
+    return request(`/api/pagos/${pagoId}/boleta${suffix ? `?${suffix}` : ""}`, { method: "GET" });
+  },
 
   // 🔹 API de Huéspedes
   getHuespedes: (params = {}) => {
