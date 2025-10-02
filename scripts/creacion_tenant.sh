@@ -56,12 +56,12 @@ sucursal_madero_bosque AS (
 ),
 admin_stella AS (
   INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('admin@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Administrador Stella')
+  VALUES ('admin@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Administrador de Hoteles')
   RETURNING usuario_id
 ),
 admin_madero AS (
   INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('admin2@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Administrador Madero')
+  VALUES ('admin2@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Administrador de Hoteles')
   RETURNING usuario_id
 ),
 gerente_stella AS (
