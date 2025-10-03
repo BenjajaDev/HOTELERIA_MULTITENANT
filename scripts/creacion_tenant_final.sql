@@ -1,14 +1,13 @@
-@echo off
-setlocal EnableDelayedExpansion
+-- Limpieza de datos existentes (en orden correcto para evitar violaciones FK)
+DELETE FROM tenant_usuario;
+DELETE FROM recepcionista_sucursal;
+DELETE FROM huesped;
+DELETE FROM habitacion;
+DELETE FROM sucursal;
+DELETE FROM hotel;
+DELETE FROM usuario;
+DELETE FROM tenant;
 
-REM Variables
-set "CONTAINER_NAME=hotel_db"
-set "DB_USER=postgres"
-set "DB_NAME=hotel_manager"
-set "SQL_FILE=creacion_tenant.sql"
-
-REM Generar el archivo SQL utilizando PowerShell para conservar el formato
-powershell -NoProfile -Command "@'
 BEGIN;
 
 WITH
@@ -58,12 +57,12 @@ sucursal_madero_bosque AS (
 ),
 admin_stella AS (
   INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('admin@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Administrador de Hoteles')
+  VALUES ('admin@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Administrador Hotel Stella')
   RETURNING usuario_id
 ),
 admin_madero AS (
   INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('admin2@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Administrador de Hoteles')
+  VALUES ('admin2@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Administrador Hotel Madero')
   RETURNING usuario_id
 ),
 gerente_stella AS (
@@ -73,22 +72,22 @@ gerente_stella AS (
 ),
 gerente_madero AS (
   INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('gerente_madero@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Matías Fuentes')
+  VALUES ('gerente_madero@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Matias Fuentes')
   RETURNING usuario_id
 ),
 recep_stella_centro AS (
   INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('recep_centro@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Alejandro González')
+  VALUES ('recep_centro@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Alejandro Gonzalez')
   RETURNING usuario_id
 ),
 recep_stella_aeropuerto AS (
   INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('recep_aeropuerto@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Daniela Pérez')
+  VALUES ('recep_aeropuerto@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Daniela Perez')
   RETURNING usuario_id
 ),
 recep_madero_centro AS (
   INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('recep_centro@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Benjamín Soto')
+  VALUES ('recep_centro@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Benjamin Soto')
   RETURNING usuario_id
 ),
 recep_madero_bosque AS (
@@ -103,12 +102,12 @@ huesped_stella_centro_1 AS (
 ),
 huesped_stella_centro_2 AS (
   INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('huesped2@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'María López')
+  VALUES ('huesped2@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Maria Lopez')
   RETURNING usuario_id
 ),
 huesped_stella_aeropuerto_1 AS (
   INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('huesped3@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Carlos Pérez')
+  VALUES ('huesped3@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Carlos Perez')
   RETURNING usuario_id
 ),
 huesped_stella_aeropuerto_2 AS (
@@ -118,17 +117,17 @@ huesped_stella_aeropuerto_2 AS (
 ),
 huesped_madero_centro_1 AS (
   INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('huesped1@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Lucario Martínez')
+  VALUES ('huesped1@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Lucario Martinez')
   RETURNING usuario_id
 ),
 huesped_madero_centro_2 AS (
   INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('huesped2@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Valeria Gómez')
+  VALUES ('huesped2@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Valeria Gomez')
   RETURNING usuario_id
 ),
 huesped_madero_bosque_1 AS (
   INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('huesped3@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Diego Hernández')
+  VALUES ('huesped3@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Diego Hernandez')
   RETURNING usuario_id
 ),
 huesped_madero_bosque_2 AS (
@@ -196,22 +195,22 @@ huesped_fichas AS (
   SELECT u.usuario_id, s.tenant_id, s.sucursal_id, 'David Goggins', 'huesped1@stella.com', '+56930010001', '20759513-6', now()
   FROM huesped_stella_centro_1 u, sucursal_stella_centro s
   UNION ALL
-  SELECT u.usuario_id, s.tenant_id, s.sucursal_id, 'María López', 'huesped2@stella.com', '+56930010002', '18222333-5', now()
+  SELECT u.usuario_id, s.tenant_id, s.sucursal_id, 'Maria Lopez', 'huesped2@stella.com', '+56930010002', '18222333-5', now()
   FROM huesped_stella_centro_2 u, sucursal_stella_centro s
   UNION ALL
-  SELECT u.usuario_id, s.tenant_id, s.sucursal_id, 'Carlos Pérez', 'huesped3@stella.com', '+56930010003', '20333444-7', now()
+  SELECT u.usuario_id, s.tenant_id, s.sucursal_id, 'Carlos Perez', 'huesped3@stella.com', '+56930010003', '20333444-7', now()
   FROM huesped_stella_aeropuerto_1 u, sucursal_stella_aeropuerto s
   UNION ALL
   SELECT u.usuario_id, s.tenant_id, s.sucursal_id, 'Andrea Castillo', 'huesped4@stella.com', '+56930010004', '21333555-9', now()
   FROM huesped_stella_aeropuerto_2 u, sucursal_stella_aeropuerto s
   UNION ALL
-  SELECT u.usuario_id, s.tenant_id, s.sucursal_id, 'Lucario Martínez', 'huesped1@madero.com', '+56930020001', '15333111-2', now()
+  SELECT u.usuario_id, s.tenant_id, s.sucursal_id, 'Lucario Martinez', 'huesped1@madero.com', '+56930020001', '15333111-2', now()
   FROM huesped_madero_centro_1 u, sucursal_madero_centro s
   UNION ALL
-  SELECT u.usuario_id, s.tenant_id, s.sucursal_id, 'Valeria Gómez', 'huesped2@madero.com', '+56930020002', '17666444-3', now()
+  SELECT u.usuario_id, s.tenant_id, s.sucursal_id, 'Valeria Gomez', 'huesped2@madero.com', '+56930020002', '17666444-3', now()
   FROM huesped_madero_centro_2 u, sucursal_madero_centro s
   UNION ALL
-  SELECT u.usuario_id, s.tenant_id, s.sucursal_id, 'Diego Hernández', 'huesped3@madero.com', '+56930020003', '18888777-5', now()
+  SELECT u.usuario_id, s.tenant_id, s.sucursal_id, 'Diego Hernandez', 'huesped3@madero.com', '+56930020003', '18888777-5', now()
   FROM huesped_madero_bosque_1 u, sucursal_madero_bosque s
   UNION ALL
   SELECT u.usuario_id, s.tenant_id, s.sucursal_id, 'Fernanda Silva', 'huesped4@madero.com', '+56930020004', '19999888-1', now()
@@ -257,18 +256,26 @@ SELECT COUNT(*) AS total_roles_insertados FROM tenant_roles;
 
 COMMIT;
 
-TABLE tenant;
-TABLE hotel;
-TABLE sucursal;
-TABLE usuario;
-TABLE tenant_usuario;
-TABLE recepcionista_sucursal;
-TABLE habitacion;
-TABLE huesped;
-'@ | Set-Content -Encoding UTF8 -LiteralPath '%SQL_FILE%'"
+-- Resumen final de datos creados
+\echo '=== RESUMEN DE DATOS CREADOS ===' 
+SELECT 'TENANTS:' as tipo, COUNT(*) as cantidad FROM tenant
+UNION ALL SELECT 'HOTELES:', COUNT(*) FROM hotel
+UNION ALL SELECT 'SUCURSALES:', COUNT(*) FROM sucursal  
+UNION ALL SELECT 'USUARIOS:', COUNT(*) FROM usuario
+UNION ALL SELECT 'HABITACIONES:', COUNT(*) FROM habitacion
+UNION ALL SELECT 'HUESPEDES:', COUNT(*) FROM huesped
+UNION ALL SELECT 'RECEPCIONISTAS:', COUNT(*) FROM recepcionista_sucursal
+UNION ALL SELECT 'ROLES ASIGNADOS:', COUNT(*) FROM tenant_usuario;
 
-REM Ejecutar el SQL dentro del contenedor
-echo Ejecutando SQL en %CONTAINER_NAME%...
-docker exec -i %CONTAINER_NAME% psql -U %DB_USER% -d %DB_NAME% -v ON_ERROR_STOP=1 -f %SQL_FILE%
+\echo '=== CREDENCIALES DE ACCESO ==='
+\echo 'Administradores:'
+SELECT 'Email: ' || email || ' - Password: admin123' as credenciales
+FROM usuario 
+WHERE email LIKE '%admin%'
+ORDER BY email;
 
-pause
+\echo 'Gerentes:'
+SELECT 'Email: ' || email || ' - Password: admin123' as credenciales
+FROM usuario 
+WHERE email LIKE '%gerente%'
+ORDER BY email;

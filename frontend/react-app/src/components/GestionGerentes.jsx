@@ -161,34 +161,44 @@ export default function GestionGerentes({ hoteles = [] }) {
 
   if (loading) {
     return (
-      <div className="text-center py-4">
-        <div className="spinner-border" role="status">
-          <span className="visually-hidden">Cargando...</span>
-        </div>
-        <p className="mt-2">Cargando gerentes...</p>
+      <div className="loading-state">
+        <div className="spinner"></div>
+        <p>Cargando gerentes...</p>
       </div>
     );
   }
 
   return (
     <div>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4>Gestión de Gerentes</h4>
-        <button className="btn btn-outline-secondary" onClick={loadGerentes}>
+      <div className="page-header">
+        <h2>Gestión de Gerentes</h2>
+        <button className="btn-secondary-custom" onClick={loadGerentes}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
+            <path d="M23 4v6h-6M1 20v-6h6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
           Refrescar
         </button>
       </div>
 
-      {error && <div className="alert alert-danger">{error}</div>}
+      {error && <div className="alert-box alert-error">{error}</div>}
 
-      <div className="row g-4">
-        <div className="col-lg-4">
-          <div className="card p-3">
-            <h5 className="mb-3">Asignar nuevo gerente</h5>
-            <form onSubmit={handleCreate}>
+      <div className="content-grid" style={{ gridTemplateColumns: '400px 1fr', gap: '24px' }}>
+        <div className="dashboard-card">
+          <h3 style={{ marginBottom: '20px', fontSize: '18px', fontWeight: '600' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" style={{ verticalAlign: 'middle', marginRight: '8px' }}>
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="8.5" cy="7" r="4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <line x1="20" y1="8" x2="20" y2="14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <line x1="23" y1="11" x2="17" y2="11" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Asignar Nuevo Gerente
+          </h3>
+          <form onSubmit={handleCreate}>
+            <div className="form-group">
               <label className="form-label">Hotel</label>
               <select
-                className="form-select mb-2"
+                className="form-input"
                 value={form.hotelId}
                 onChange={e => setForm(prev => ({ ...prev, hotelId: e.target.value }))}
                 required
@@ -200,121 +210,245 @@ export default function GestionGerentes({ hoteles = [] }) {
                   </option>
                 ))}
               </select>
+            </div>
 
+            <div className="form-group">
+              <label className="form-label">Nombre Completo</label>
               <input
-                className="form-control mb-2"
-                placeholder="Nombre"
+                className="form-input"
+                placeholder="Ej: Juan Pérez"
                 value={form.nombre}
                 onChange={e => setForm(prev => ({ ...prev, nombre: e.target.value }))}
                 required
               />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Email</label>
               <input
-                className="form-control mb-2"
-                placeholder="Email"
+                className="form-input"
+                placeholder="gerente@hotel.com"
                 type="email"
                 value={form.email}
                 onChange={e => setForm(prev => ({ ...prev, email: e.target.value }))}
                 required
               />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Contraseña</label>
               <input
-                className="form-control mb-2"
-                placeholder="Contraseña"
+                className="form-input"
+                placeholder="Mínimo 6 caracteres"
                 type="password"
                 value={form.password}
                 onChange={e => setForm(prev => ({ ...prev, password: e.target.value }))}
                 required
               />
-              <button className="btn btn-primary w-100" type="submit">Crear gerente</button>
-            </form>
-            {createMsg && <div className="small text-muted mt-2">{createMsg}</div>}
-          </div>
+            </div>
+            <button className="btn-primary-custom" type="submit" style={{ width: '100%' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="8.5" cy="7" r="4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <line x1="20" y1="8" x2="20" y2="14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <line x1="23" y1="11" x2="17" y2="11" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Crear Gerente
+            </button>
+          </form>
+          {createMsg && (
+            <div className={`alert-box ${createMsg.includes('✅') ? 'alert-success' : 'alert-info'}`} style={{ marginTop: '16px' }}>
+              {createMsg}
+            </div>
+          )}
         </div>
 
-        <div className="col-lg-8">
+        <div>
           {gerentes.length === 0 ? (
-            <div className="text-muted">No hay gerentes asignados.</div>
+            <div className="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="48" height="48">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="9" cy="7" r="4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <h3>No hay gerentes asignados</h3>
+              <p>Crea el primer gerente usando el formulario</p>
+            </div>
           ) : (
-            <div className="list-group">
-              {gerentes.map(gerente => (
-                <div key={`${gerente.tenant_id}-${gerente.usuario_id}`} className="list-group-item">
-                  <div className="d-flex justify-content-between align-items-start">
-                    <div>
-                      <strong>{gerente.nombre || gerente.email}</strong>
-                      <div className="small text-muted">Email: {gerente.email}</div>
-                      <div className="small text-muted">Hotel: {gerente.hotel_nombre || "Sin hotel"}</div>
-                      <div className="small text-muted">Tenant: {gerente.tenant_nombre}</div>
-                    </div>
-                    <div className="d-flex gap-2">
-                      <button
-                        className="btn btn-sm btn-outline-secondary"
-                        onClick={() => startEdit(gerente)}
-                      >
-                        Editar
-                      </button>
-                      <button
-                        className="btn btn-sm btn-outline-danger"
-                        onClick={() => handleDelete(gerente)}
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-                  </div>
-
-                  {editingId === gerente.usuario_id && (
-                    <div className="mt-3 border-top pt-3">
-                      <h6>Editar gerente</h6>
-                      <form onSubmit={handleUpdate}>
-                        <label className="form-label">Hotel</label>
-                        <select
-                          className="form-select mb-2"
-                          value={editForm.hotelId}
-                          onChange={e => setEditForm(prev => ({ ...prev, hotelId: e.target.value }))}
-                          required
-                        >
-                          {hotelOptions.map(h => (
-                            <option key={h.hotel_id} value={h.hotel_id}>
-                              {h.nombre}
-                            </option>
-                          ))}
-                        </select>
-
-                        <input
-                          className="form-control mb-2"
-                          placeholder="Nombre"
-                          value={editForm.nombre}
-                          onChange={e => setEditForm(prev => ({ ...prev, nombre: e.target.value }))}
-                        />
-                        <input
-                          className="form-control mb-2"
-                          type="email"
-                          placeholder="Email"
-                          value={editForm.email}
-                          onChange={e => setEditForm(prev => ({ ...prev, email: e.target.value }))}
-                          required
-                        />
-                        <input
-                          className="form-control mb-2"
-                          type="password"
-                          placeholder="Nueva contraseña (opcional)"
-                          value={editForm.password}
-                          onChange={e => setEditForm(prev => ({ ...prev, password: e.target.value }))}
-                        />
-                        <div className="d-flex gap-2">
-                          <button className="btn btn-primary" type="submit">Guardar</button>
-                          <button className="btn btn-outline-secondary" type="button" onClick={cancelEdit}>
-                            Cancelar
-                          </button>
-                        </div>
-                      </form>
-                      {editMsg && <div className="small text-muted mt-2">{editMsg}</div>}
-                    </div>
-                  )}
-                </div>
-              ))}
+            <div className="dashboard-card">
+              <div className="table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Gerente</th>
+                      <th>Email</th>
+                      <th>Hotel</th>
+                      <th>Tenant</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gerentes.map(gerente => (
+                      <React.Fragment key={`${gerente.tenant_id}-${gerente.usuario_id}`}>
+                        <tr>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div style={{ 
+                                width: 40, 
+                                height: 40, 
+                                borderRadius: '50%', 
+                                background: 'linear-gradient(135deg, #2563eb 0%, #0891b2 100%)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'white',
+                                fontWeight: 600,
+                                fontSize: 16,
+                                flexShrink: 0
+                              }}>
+                                {(gerente.nombre || gerente.email).charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 600, color: '#1f2937' }}>
+                                  {gerente.nombre || "Sin nombre"}
+                                </div>
+                                <div style={{ fontSize: 13, color: '#6b7280' }}>
+                                  ID: {gerente.usuario_id}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                              {gerente.email}
+                            </div>
+                          </td>
+                          <td>
+                            <span className="badge badge-primary">
+                              {gerente.hotel_nombre || "Sin hotel"}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="badge badge-info">
+                              {gerente.tenant_nombre}
+                            </span>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                className="btn-secondary-custom btn-icon"
+                                onClick={() => startEdit(gerente)}
+                                title="Editar"
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              </button>
+                              <button
+                                className="btn-danger-custom btn-icon"
+                                onClick={() => handleDelete(gerente)}
+                                title="Eliminar"
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                                  <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Modal de Edición */}
+      {editingId && (
+        <div className="modal-overlay" onClick={cancelEdit}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h3>Editar Gerente</h3>
+              <button className="modal-close" onClick={cancelEdit}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="24" height="24">
+                  <path d="M18 6L6 18M6 6l12 12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
+            <div className="modal-body">
+              <form onSubmit={handleUpdate}>
+                <div className="form-group">
+                  <label className="form-label">Hotel</label>
+                  <select
+                    className="form-input"
+                    value={editForm.hotelId}
+                    onChange={e => setEditForm(prev => ({ ...prev, hotelId: e.target.value }))}
+                    required
+                  >
+                    {hotelOptions.map(h => (
+                      <option key={h.hotel_id} value={h.hotel_id}>
+                        {h.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Nombre</label>
+                  <input
+                    className="form-input"
+                    placeholder="Nombre del gerente"
+                    value={editForm.nombre}
+                    onChange={e => setEditForm(prev => ({ ...prev, nombre: e.target.value }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Email</label>
+                  <input
+                    className="form-input"
+                    type="email"
+                    placeholder="Email"
+                    value={editForm.email}
+                    onChange={e => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Nueva Contraseña (opcional)</label>
+                  <input
+                    className="form-input"
+                    type="password"
+                    placeholder="Dejar vacío para mantener la actual"
+                    value={editForm.password}
+                    onChange={e => setEditForm(prev => ({ ...prev, password: e.target.value }))}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                  <button className="btn-primary-custom" type="submit" style={{ flex: 1 }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <polyline points="17 21 17 13 7 13 7 21" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <polyline points="7 3 7 8 15 8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Guardar Cambios
+                  </button>
+                  <button className="btn-secondary-custom" type="button" onClick={cancelEdit} style={{ flex: 1 }}>
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+              {editMsg && (
+                <div className={`alert-box ${editMsg.includes('✅') ? 'alert-success' : 'alert-info'}`} style={{ marginTop: '16px' }}>
+                  {editMsg}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -4,8 +4,10 @@ import GestionHuespedes from "./GestionHuespedes";
 import GestionSucursales from "./GestionSucursales";
 import GestionRecepcionistas from "./GestionRecepcionistas";
 import GestionGerentes from "./GestionGerentes";
+import DashboardLayout from "./DashboardLayout";
+import "./DashboardContent.css";
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState("hoteles");
   const [hoteles, setHoteles] = useState([]);
   const [form, setForm] = useState({ nombre: "", direccion: "", telefono: "", email: "" });
@@ -36,6 +38,39 @@ export default function AdminDashboard() {
     const diff = Math.max(1, Math.ceil((fin - inicio) / (1000 * 60 * 60 * 24)));
     return `${diff} ${diff === 1 ? "noche" : "noches"}`;
   };
+
+  const menuItems = [
+    {
+      id: 'hoteles',
+      label: 'Hoteles',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="9 22 9 12 15 12 15 22" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    },
+    {
+      id: 'sucursales',
+      label: 'Sucursales',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" stroke-width="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" stroke-width="2"/></svg>'
+    },
+    {
+      id: 'gerentes',
+      label: 'Gerentes',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="7" r="4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    },
+    {
+      id: 'recepcionistas',
+      label: 'Recepcionistas',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    },
+    {
+      id: 'huespedes',
+      label: 'Huéspedes',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    },
+    {
+      id: 'reservas',
+      label: 'Reservas',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="2" x2="8" y2="6" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="10" x2="21" y2="10" stroke-width="2"/></svg>'
+    }
+  ];
 
   const load = async () => {
     try {
@@ -116,61 +151,13 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div>
-      <h3>Panel de Administración</h3>
-
-      {/* Navegación por pestañas */}
-      <ul className="nav nav-tabs mb-4">
-        <li className="nav-item">
-          <button
-            className={`nav-link ${activeTab === "hoteles" ? "active" : ""}`}
-            onClick={() => setActiveTab("hoteles")}
-          >
-            <i className="bi bi-building"></i> Hoteles
-          </button>
-        </li>
-        <li className="nav-item">
-          <button
-            className={`nav-link ${activeTab === "sucursales" ? "active" : ""}`}
-            onClick={() => setActiveTab("sucursales")}
-          >
-            <i className="bi bi-diagram-3"></i> Sucursales
-          </button>
-        </li>
-        <li className="nav-item">
-          <button
-            className={`nav-link ${activeTab === "gerentes" ? "active" : ""}`}
-            onClick={() => setActiveTab("gerentes")}
-          >
-            <i className="bi bi-person-gear"></i> Gerentes
-          </button>
-        </li>
-        <li className="nav-item">
-          <button
-            className={`nav-link ${activeTab === "recepcionistas" ? "active" : ""}`}
-            onClick={() => setActiveTab("recepcionistas")}
-          >
-            <i className="bi bi-person-badge"></i> Recepcionistas
-          </button>
-        </li>
-        <li className="nav-item">
-          <button
-            className={`nav-link ${activeTab === "huespedes" ? "active" : ""}`}
-            onClick={() => setActiveTab("huespedes")}
-          >
-            <i className="bi bi-people"></i> Huéspedes
-          </button>
-        </li>
-        <li className="nav-item">
-          <button
-            className={`nav-link ${activeTab === "reservas" ? "active" : ""}`}
-            onClick={() => setActiveTab("reservas")}
-          >
-            <i className="bi bi-calendar-check"></i> Reservas
-          </button>
-        </li>
-      </ul>
-
+    <DashboardLayout
+      user={user}
+      onLogout={onLogout}
+      menuItems={menuItems}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+    >
       {/* Contenido de las pestañas */}
       {activeTab === "huespedes" && <GestionHuespedes />}
 
@@ -188,117 +175,235 @@ export default function AdminDashboard() {
 
       {activeTab === "hoteles" && (
         <div>
-          <h4>Administración de Hoteles</h4>
-          <div className="row">
-            <div className="col-md-5">
-              <div className="card p-3">
-                <h5>Crear Hotel</h5>
-                <form onSubmit={submit}>
-                  <input
-                    className="form-control mb-2"
-                    placeholder="Nombre"
-                    value={form.nombre}
-                    onChange={e => setForm({ ...form, nombre: e.target.value })}
-                  />
-                  <input
-                    className="form-control mb-2"
-                    placeholder="Dirección"
-                    value={form.direccion}
-                    onChange={e => setForm({ ...form, direccion: e.target.value })}
-                  />
-                  <input
-                    className="form-control mb-2"
-                    placeholder="Teléfono"
-                    value={form.telefono}
-                    onChange={e => setForm({ ...form, telefono: e.target.value })}
-                  />
-                  <input
-                    className="form-control mb-2"
-                    placeholder="Email"
-                    value={form.email}
-                    onChange={e => setForm({ ...form, email: e.target.value })}
-                  />
-                  <button className="btn btn-primary" type="submit">Crear</button>
-                </form>
-                <div className="mt-2 text-muted">{msg}</div>
+          {/* Stats Grid */}
+          <div className="stats-grid">
+            <div className="stat-card">
+              <div className="stat-card-icon blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </div>
+              <p className="stat-card-value">{hoteles.length}</p>
+              <p className="stat-card-label">Total Hoteles</p>
             </div>
 
-            {editingId && (
-              <div className="col-md-5">
-                <div className="card p-3">
-                  <h5>Editar Hotel</h5>
-                  <form onSubmit={submitEdit}>
-                    <input
-                      className="form-control mb-2"
-                      placeholder="Nombre"
-                      value={editForm.nombre}
-                      onChange={e => setEditForm({ ...editForm, nombre: e.target.value })}
-                    />
-                    <input
-                      className="form-control mb-2"
-                      placeholder="Dirección"
-                      value={editForm.direccion}
-                      onChange={e => setEditForm({ ...editForm, direccion: e.target.value })}
-                    />
-                    <input
-                      className="form-control mb-2"
-                      placeholder="Teléfono"
-                      value={editForm.telefono}
-                      onChange={e => setEditForm({ ...editForm, telefono: e.target.value })}
-                    />
-                    <input
-                      className="form-control mb-2"
-                      placeholder="Email"
-                      value={editForm.email}
-                      onChange={e => setEditForm({ ...editForm, email: e.target.value })}
-                    />
-                    <div className="d-flex gap-2">
-                      <button className="btn btn-primary" type="submit">Guardar</button>
-                      <button className="btn btn-outline-secondary" type="button" onClick={cancelEdit}>Cancelar</button>
-                    </div>
-                  </form>
-                  <div className="mt-2 text-muted">{editMsg}</div>
-                </div>
+            <div className="stat-card">
+              <div className="stat-card-icon green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </div>
-            )}
+              <p className="stat-card-value">
+                {formatMoney(hoteles.reduce((sum, h) => sum + (h.total_ganancias || 0), 0))}
+              </p>
+              <p className="stat-card-label">Ganancias Confirmadas</p>
+            </div>
 
-            <div className="col-md-7">
-              <div className="card p-3">
-                <h5>Hoteles</h5>
-                {hoteles.length === 0 ? (
-                  <p className="text-muted">No hay hoteles</p>
-                ) : (
-                  <ul className="list-group">
-                    {hoteles.map(h => (
-                      <li key={h.hotel_id} className="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                          <strong>{h.nombre}</strong><br />
-                          <small className="text-muted">{h.direccion} • {h.email}</small>
-                          <div>
-                            <small className="text-muted">
-                              Tenant: {h.tenant_nombre || h.tenant_id}
-                            </small>
-                          </div>
-                          <div className="small mt-1">
-                            <div className="text-success">Ganancias confirmadas: {formatMoney(h.total_ganancias)}</div>
-                            <div className="text-warning">Ingresos pendientes: {formatMoney(h.total_pendiente)}</div>
-                          </div>
-                        </div>
-                        <div>
-                          <button
-                            className="btn btn-secondary btn-sm me-2"
-                            onClick={() => startEdit(h)}
-                          >
-                            Editar
-                          </button>
-                          <button className="btn btn-danger btn-sm" onClick={() => del(h.hotel_id)}>Eliminar</button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+            <div className="stat-card">
+              <div className="stat-card-icon orange">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+                  <polyline points="12 6 12 12 16 14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </div>
+              <p className="stat-card-value">
+                {formatMoney(hoteles.reduce((sum, h) => sum + (h.total_pendiente || 0), 0))}
+              </p>
+              <p className="stat-card-label">Ingresos Pendientes</p>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-card-icon purple">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <rect x="2" y="7" width="20" height="14" rx="2" strokeWidth="2"/>
+                  <path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" strokeWidth="2"/>
+                </svg>
+              </div>
+              <p className="stat-card-value">{hoteles.reduce((sum, h) => sum + (h.sucursales_count || 0), 0)}</p>
+              <p className="stat-card-label">Total Sucursales</p>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: editingId ? '1fr 1fr' : '2fr 1fr', gap: '24px', alignItems: 'start' }}>
+            {/* Lista de Hoteles */}
+            <div className="dashboard-card">
+              <div className="dashboard-card-header">
+                <div>
+                  <h3 className="dashboard-card-title">Hoteles Registrados</h3>
+                  <p className="dashboard-card-subtitle">Gestiona todos los hoteles del sistema</p>
+                </div>
+                <button className="btn-primary-custom" onClick={load}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                    <path d="M1 4v6h6M23 20v-6h-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Actualizar
+                </button>
+              </div>
+
+              {hoteles.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <h4 className="empty-state-title">No hay hoteles registrados</h4>
+                  <p className="empty-state-text">Comienza creando tu primer hotel en el panel de la derecha</p>
+                </div>
+              ) : (
+                <div className="table-container">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Hotel</th>
+                        <th>Contacto</th>
+                        <th>Tenant</th>
+                        <th>Finanzas</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {hoteles.map(h => (
+                        <tr key={h.hotel_id}>
+                          <td>
+                            <div style={{ fontWeight: 600, color: '#1f2937', marginBottom: '4px' }}>{h.nombre}</div>
+                            <div style={{ fontSize: '13px', color: '#6b7280' }}>{h.direccion}</div>
+                          </td>
+                          <td>
+                            <div style={{ fontSize: '13px', color: '#4b5563' }}>
+                              <div>{h.telefono}</div>
+                              <div style={{ color: '#6b7280' }}>{h.email}</div>
+                            </div>
+                          </td>
+                          <td>
+                            <span className="badge badge-info">
+                              {h.tenant_nombre || h.tenant_id}
+                            </span>
+                          </td>
+                          <td>
+                            <div style={{ fontSize: '13px' }}>
+                              <div style={{ color: '#059669', fontWeight: 500 }}>✓ {formatMoney(h.total_ganancias)}</div>
+                              <div style={{ color: '#d97706', fontWeight: 500 }}>⏱ {formatMoney(h.total_pendiente)}</div>
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                className="btn-secondary-custom btn-icon"
+                                onClick={() => startEdit(h)}
+                                title="Editar"
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              </button>
+                              <button
+                                className="btn-danger-custom btn-icon"
+                                onClick={() => del(h.hotel_id)}
+                                title="Eliminar"
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                                  <polyline points="3 6 5 6 21 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Formulario de Creación/Edición */}
+            <div className="dashboard-card">
+              <div className="dashboard-card-header">
+                <h3 className="dashboard-card-title">
+                  {editingId ? 'Editar Hotel' : 'Nuevo Hotel'}
+                </h3>
+              </div>
+
+              {msg && <div className="alert-box alert-info">{msg}</div>}
+              {editMsg && <div className="alert-box alert-info">{editMsg}</div>}
+
+              <form onSubmit={editingId ? submitEdit : submit}>
+                <div className="form-grid">
+                  <div className="form-field" style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">Nombre del Hotel</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Hotel Paraíso"
+                      value={editingId ? editForm.nombre : form.nombre}
+                      onChange={e => editingId 
+                        ? setEditForm({ ...editForm, nombre: e.target.value })
+                        : setForm({ ...form, nombre: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+
+                  <div className="form-field" style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">Dirección</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Av. Principal 123"
+                      value={editingId ? editForm.direccion : form.direccion}
+                      onChange={e => editingId 
+                        ? setEditForm({ ...editForm, direccion: e.target.value })
+                        : setForm({ ...form, direccion: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+
+                  <div className="form-field">
+                    <label className="form-label">Teléfono</label>
+                    <input
+                      type="tel"
+                      className="form-input"
+                      placeholder="+56912345678"
+                      value={editingId ? editForm.telefono : form.telefono}
+                      onChange={e => editingId 
+                        ? setEditForm({ ...editForm, telefono: e.target.value })
+                        : setForm({ ...form, telefono: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+
+                  <div className="form-field">
+                    <label className="form-label">Email</label>
+                    <input
+                      type="email"
+                      className="form-input"
+                      placeholder="info@hotel.com"
+                      value={editingId ? editForm.email : form.email}
+                      onChange={e => editingId 
+                        ? setEditForm({ ...editForm, email: e.target.value })
+                        : setForm({ ...form, email: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                  <button type="submit" className="btn-primary-custom" style={{ flex: 1 }}>
+                    {editingId ? 'Guardar Cambios' : 'Crear Hotel'}
+                  </button>
+                  {editingId && (
+                    <button type="button" onClick={cancelEdit} className="btn-secondary-custom">
+                      Cancelar
+                    </button>
+                  )}
+                </div>
+              </form>
             </div>
           </div>
         </div>
@@ -306,51 +411,167 @@ export default function AdminDashboard() {
 
       {activeTab === "reservas" && (
         <div>
-          <h4>Reservas del sistema</h4>
-          <div className="card p-3">
-            <div className="d-flex justify-content-between align-items-center">
-              <h5 className="mb-0">Reservas recientes</h5>
-              <button className="btn btn-sm btn-outline-secondary" onClick={loadReservas}>
-                Refrescar
+          {/* Stats de Reservas */}
+          <div className="stats-grid">
+            <div className="stat-card">
+              <div className="stat-card-icon blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <rect x="3" y="4" width="18" height="18" rx="2" strokeWidth="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6" strokeWidth="2" strokeLinecap="round"/>
+                  <line x1="8" y1="2" x2="8" y2="6" strokeWidth="2" strokeLinecap="round"/>
+                  <line x1="3" y1="10" x2="21" y2="10" strokeWidth="2"/>
+                </svg>
+              </div>
+              <p className="stat-card-value">{reservas.length}</p>
+              <p className="stat-card-label">Total Reservas</p>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-card-icon green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <polyline points="20 6 9 17 4 12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <p className="stat-card-value">
+                {reservas.filter(r => r.estado === 'confirmada').length}
+              </p>
+              <p className="stat-card-label">Confirmadas</p>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-card-icon orange">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+                  <polyline points="12 6 12 12 16 14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <p className="stat-card-value">
+                {reservas.filter(r => r.pago_estado === 'pendiente').length}
+              </p>
+              <p className="stat-card-label">Pagos Pendientes</p>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-card-icon purple">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <p className="stat-card-value">
+                {formatMoney(reservas.reduce((sum, r) => sum + (r.total || 0), 0))}
+              </p>
+              <p className="stat-card-label">Ingresos Totales</p>
+            </div>
+          </div>
+
+          <div className="dashboard-card">
+            <div className="dashboard-card-header">
+              <div>
+                <h3 className="dashboard-card-title">Reservas del Sistema</h3>
+                <p className="dashboard-card-subtitle">Todas las reservas registradas en la plataforma</p>
+              </div>
+              <button className="btn-primary-custom" onClick={loadReservas}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                  <path d="M1 4v6h6M23 20v-6h-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Actualizar
               </button>
             </div>
-            {reservasMsg && <div className="text-danger small mt-2">{reservasMsg}</div>}
+
+            {reservasMsg && <div className="alert-box alert-error">{reservasMsg}</div>}
+
             {!reservasMsg && reservas.length === 0 && (
-              <p className="text-muted mt-2">Aún no hay reservas registradas.</p>
+              <div className="empty-state">
+                <div className="empty-state-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <rect x="3" y="4" width="18" height="18" rx="2" strokeWidth="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6" strokeWidth="2" strokeLinecap="round"/>
+                    <line x1="8" y1="2" x2="8" y2="6" strokeWidth="2" strokeLinecap="round"/>
+                    <line x1="3" y1="10" x2="21" y2="10" strokeWidth="2"/>
+                  </svg>
+                </div>
+                <h4 className="empty-state-title">No hay reservas registradas</h4>
+                <p className="empty-state-text">Las reservas aparecerán aquí cuando los huéspedes realicen reservaciones</p>
+              </div>
             )}
+
             {!reservasMsg && reservas.length > 0 && (
-              <ul className="list-group mt-2">
-                {reservas.slice(0, 8).map(r => {
-                  const pagoClass = r.pago_estado === "pagado" ? "text-success" : r.pago_estado === "pendiente" ? "text-warning" : "text-muted";
-                  const reservaClass = r.estado === "confirmada" ? "text-success" : r.estado === "pendiente" ? "text-warning" : "text-muted";
-                  return (
-                    <li key={r.reserva_id} className="list-group-item">
-                      <div className="d-flex justify-content-between align-items-start">
-                        <div>
-                          <strong>{r.hotel_nombre}</strong>
-                          <div className="small text-muted">Habitación {r.habitacion_numero}</div>
-                          <div className="small text-muted">{r.fecha_inicio} → {r.fecha_fin}</div>
-                        </div>
-                        <div className="text-end small">
-                          <div>{formatMoney(r.total)}</div>
-                          <div className={`${pagoClass} text-capitalize`}>
-                            {r.pago_metodo || "sin método"} • {r.pago_estado || "sin estado"}
-                          </div>
-                          <div className={`${reservaClass} text-capitalize`}>Reserva: {r.estado}</div>
-                        </div>
-                      </div>
-                      <div className="d-flex justify-content-end mt-2">
-                        <button
-                          className="btn btn-sm btn-outline-primary"
-                          onClick={() => setSelectedReserva(r)}
-                        >
-                          Ver detalles
-                        </button>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+              <div className="table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Hotel & Habitación</th>
+                      <th>Fechas</th>
+                      <th>Estadía</th>
+                      <th>Total</th>
+                      <th>Estado Pago</th>
+                      <th>Estado Reserva</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reservas.map(r => {
+                      const getBadgeClass = (estado) => {
+                        if (estado === 'pagado' || estado === 'confirmada') return 'badge-success';
+                        if (estado === 'pendiente') return 'badge-warning';
+                        return 'badge-danger';
+                      };
+
+                      return (
+                        <tr key={r.reserva_id}>
+                          <td>
+                            <div style={{ fontWeight: 600, color: '#1f2937', marginBottom: '4px' }}>
+                              {r.hotel_nombre}
+                            </div>
+                            <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                              Habitación {r.habitacion_numero}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontSize: '13px', color: '#4b5563' }}>
+                              <div>{formatDate(r.fecha_inicio)}</div>
+                              <div style={{ color: '#6b7280' }}>→ {formatDate(r.fecha_fin)}</div>
+                            </div>
+                          </td>
+                          <td>
+                            <span style={{ fontSize: '13px', fontWeight: 500, color: '#4b5563' }}>
+                              {formatNights(r)}
+                            </span>
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 600, color: '#1f2937' }}>
+                              {formatMoney(r.total)}
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`badge ${getBadgeClass(r.pago_estado)}`}>
+                              {r.pago_estado || 'sin estado'}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`badge ${getBadgeClass(r.estado)}`}>
+                              {r.estado}
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              className="btn-secondary-custom btn-icon"
+                              onClick={() => setSelectedReserva(r)}
+                              title="Ver detalles"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <circle cx="12" cy="12" r="3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </div>
@@ -384,6 +605,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-    </div>
+    </DashboardLayout>
   );
 }

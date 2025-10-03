@@ -192,311 +192,416 @@ export default function GestionHuespedes({ restrictTenantId = "", allowCreate = 
 
   if (loading) {
     return (
-      <div className="text-center py-4">
-        <div className="spinner-border" role="status">
-          <span className="visually-hidden">Cargando...</span>
-        </div>
-        <p className="mt-2">Cargando huéspedes...</p>
+      <div className="loading-state">
+        <div className="spinner"></div>
+        <p>Cargando huéspedes...</p>
       </div>
     );
   }
 
   return (
     <div>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4>Gestión de Huéspedes</h4>
-        <button className="btn btn-outline-primary" onClick={loadHuespedes}>
+      <div className="page-header">
+        <h2>Gestión de Huéspedes</h2>
+        <button className="btn-secondary-custom" onClick={loadHuespedes}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
+            <path d="M23 4v6h-6M1 20v-6h6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
           Refrescar
         </button>
       </div>
 
       {error && (
-        <div className="alert alert-danger" role="alert">
+        <div className="alert-box alert-error">
           {error}
         </div>
       )}
 
       {allowCreate && (
-        <div className="card p-3 mb-4">
-          <h5 className="mb-3">Registrar huésped</h5>
-          <form className="row g-3" onSubmit={handleCreate}>
-            <div className="col-md-4">
-              <label className="form-label">Nombre completo</label>
-              <input
-                className="form-control"
-                value={createForm.nombre_completo}
-                onChange={e => setCreateForm(prev => ({ ...prev, nombre_completo: e.target.value }))}
-                required
-              />
+        <div className="dashboard-card" style={{ marginBottom: '24px' }}>
+          <h3 style={{ marginBottom: '20px', fontSize: '18px', fontWeight: '600' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" style={{ verticalAlign: 'middle', marginRight: '8px' }}>
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="8.5" cy="7" r="4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <line x1="20" y1="8" x2="20" y2="14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <line x1="23" y1="11" x2="17" y2="11" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Registrar Nuevo Huésped
+          </h3>
+          <form onSubmit={handleCreate}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+              <div className="form-group">
+                <label className="form-label">Nombre Completo</label>
+                <input
+                  className="form-input"
+                  placeholder="Juan Pérez"
+                  value={createForm.nombre_completo}
+                  onChange={e => setCreateForm(prev => ({ ...prev, nombre_completo: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Email</label>
+                <input
+                  type="email"
+                  className="form-input"
+                  placeholder="juan@example.com"
+                  value={createForm.email}
+                  onChange={e => setCreateForm(prev => ({ ...prev, email: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Teléfono</label>
+                <input
+                  className="form-input"
+                  placeholder="+1234567890"
+                  value={createForm.telefono}
+                  onChange={e => setCreateForm(prev => ({ ...prev, telefono: e.target.value }))}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Documento</label>
+                <input
+                  className="form-input"
+                  placeholder="DNI/Pasaporte"
+                  value={createForm.documento}
+                  onChange={e => setCreateForm(prev => ({ ...prev, documento: e.target.value }))}
+                />
+              </div>
             </div>
-            <div className="col-md-3">
-              <label className="form-label">Email</label>
-              <input
-                type="email"
-                className="form-control"
-                value={createForm.email}
-                onChange={e => setCreateForm(prev => ({ ...prev, email: e.target.value }))}
-                required
-              />
-            </div>
-            <div className="col-md-2">
-              <label className="form-label">Teléfono</label>
-              <input
-                className="form-control"
-                value={createForm.telefono}
-                onChange={e => setCreateForm(prev => ({ ...prev, telefono: e.target.value }))}
-              />
-            </div>
-            <div className="col-md-3">
-              <label className="form-label">Documento</label>
-              <input
-                className="form-control"
-                value={createForm.documento}
-                onChange={e => setCreateForm(prev => ({ ...prev, documento: e.target.value }))}
-              />
-            </div>
-            <div className="col-12">
-              <button className="btn btn-primary" type="submit">Crear huésped</button>
-              {createMsg && <span className="small text-muted ms-3">{createMsg}</span>}
+            <div style={{ marginTop: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <button className="btn-primary-custom" type="submit">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <circle cx="8.5" cy="7" r="4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <line x1="20" y1="8" x2="20" y2="14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <line x1="23" y1="11" x2="17" y2="11" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Crear Huésped
+              </button>
+              {createMsg && (
+                <div className={`alert-box ${createMsg.includes('✅') ? 'alert-success' : 'alert-info'}`} style={{ margin: 0, padding: '8px 12px' }}>
+                  {createMsg}
+                </div>
+              )}
             </div>
           </form>
         </div>
       )}
 
       {filteredHuespedes.length === 0 ? (
-        <div className="text-center py-4">
-          <p className="text-muted">No hay huéspedes registrados</p>
+        <div className="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="48" height="48">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <circle cx="8.5" cy="7" r="4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M20 8v6M23 11h-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <h3>No hay huéspedes registrados</h3>
+          <p>Los huéspedes aparecerán aquí una vez registrados</p>
         </div>
       ) : (
-        <div className="table-responsive">
-          <table className="table table-hover">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Email</th>
-                <th>Teléfono</th>
-                <th>Sucursal</th>
-                <th>Tipo</th>
-                <th>Tenant</th>
-                <th>Reservas</th>
-                <th>Total Gastado</th>
-                <th>Registro</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredHuespedes.map(huesped => (
-                <tr key={huesped.id}>
-                  <td>
-                    {editingHuesped === huesped.id ? (
-                      <input
-                        className="form-control form-control-sm"
-                        value={editForm.nombre_completo}
-                        onChange={e => setEditForm({...editForm, nombre_completo: e.target.value})}
-                        required
-                      />
-                    ) : (
-                      <strong>{huesped.nombre_completo || "Sin nombre"}</strong>
-                    )}
-                  </td>
-                  <td>
-                    {editingHuesped === huesped.id ? (
-                      <input
-                        type="email"
-                        className="form-control form-control-sm"
-                        value={editForm.email}
-                        onChange={e => setEditForm({...editForm, email: e.target.value})}
-                        required
-                      />
-                    ) : (
-                      huesped.email || "—"
-                    )}
-                  </td>
-                  <td>
-                    {editingHuesped === huesped.id ? (
-                      <input
-                        className="form-control form-control-sm"
-                        value={editForm.telefono}
-                        onChange={e => setEditForm({...editForm, telefono: e.target.value})}
-                      />
-                    ) : (
-                      huesped.telefono || "—"
-                    )}
-                  </td>
-                  <td>
-                    <small className="text-muted">
-                      {huesped.sucursal_nombre || huesped.sucursal_id || "—"}
-                    </small>
-                  </td>
-                  <td>
-                    <span className={`badge ${huesped.source === 'huesped_table' ? 'bg-primary' : 'bg-info'}`}>
-                      {huesped.source === 'huesped_table' ? 'Ficha' : 'Usuario'}
-                    </span>
-                  </td>
-                  <td>
-                    <small className="text-muted">
-                      {huesped.tenant_nombre || huesped.tenant_id}
-                    </small>
-                  </td>
-                  <td>
-                    <div className="small">
-                      <div className="text-success"><i className="bi bi-check-circle"></i> {huesped.reservas_confirmadas || 0}</div>
-                      <div className="text-warning"><i className="bi bi-clock"></i> {huesped.reservas_pendientes || 0}</div>
-                      <div className="text-muted">Total: {huesped.total_reservas || 0}</div>
-                    </div>
-                  </td>
-                  <td>
-                    <span className="text-success">
-                      {formatMoney(huesped.total_gastado)}
-                    </span>
-                  </td>
-                  <td>
-                    <small className="text-muted">
-                      {formatDate(huesped.created_at)}
-                    </small>
-                  </td>
-                  <td>
-                    {editingHuesped === huesped.id ? (
-                      <div className="btn-group btn-group-sm">
-                        <button 
-                          className="btn btn-success"
-                          onClick={saveEdit}
-                          type="button"
-                        >
-                          <i className="bi bi-check"></i>
-                        </button>
-                        <button 
-                          className="btn btn-secondary"
-                          onClick={cancelEdit}
-                          type="button"
-                        >
-                          <i className="bi bi-x"></i>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="btn-group btn-group-sm">
-                        <button 
-                          className="btn btn-outline-info"
-                          onClick={() => verDetalles(huesped)}
-                          title="Ver detalles"
-                        >
-                          <i className="bi bi-eye"></i>
-                        </button>
-                        {huesped.source === 'huesped_table' && (
-                          <button 
-                            className="btn btn-outline-primary"
-                            onClick={() => startEdit(huesped)}
-                            title="Editar"
-                          >
-                            <i className="bi bi-pencil"></i>
-                          </button>
-                        )}
-                        <button 
-                          className="btn btn-outline-danger"
-                          onClick={() => deleteHuesped(huesped)}
-                          title="Eliminar"
-                          disabled={huesped.total_reservas > 0 && (huesped.reservas_confirmadas > 0 || huesped.reservas_pendientes > 0)}
-                        >
-                          <i className="bi bi-trash"></i>
-                        </button>
-                      </div>
-                    )}
-                  </td>
+        <div className="dashboard-card">
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Huésped</th>
+                  <th>Contacto</th>
+                  <th>Tipo</th>
+                  <th>Reservas</th>
+                  <th>Total Gastado</th>
+                  <th>Registro</th>
+                  <th>Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredHuespedes.map(huesped => (
+                  <React.Fragment key={huesped.id}>
+                    <tr>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ 
+                            width: 40, 
+                            height: 40, 
+                            borderRadius: '50%', 
+                            background: 'linear-gradient(135deg, #10b981 0%, #3b82f6 100%)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontWeight: 600,
+                            fontSize: 16,
+                            flexShrink: 0
+                          }}>
+                            {(huesped.nombre_completo || huesped.email || "?").charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 600, color: '#1f2937' }}>
+                              {huesped.nombre_completo || "Sin nombre"}
+                            </div>
+                            <div style={{ fontSize: 13, color: '#6b7280' }}>
+                              ID: {huesped.id}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: '13px' }}>
+                          <div style={{ color: '#6b7280', marginBottom: '4px' }}>
+                            ✉️ {huesped.email || "—"}
+                          </div>
+                          <div style={{ color: '#6b7280' }}>
+                            📞 {huesped.telefono || "—"}
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`badge ${huesped.source === 'huesped_table' ? 'badge-primary' : 'badge-info'}`}>
+                          {huesped.source === 'huesped_table' ? '📋 Ficha' : '👤 Usuario'}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: '13px' }}>
+                          <div style={{ color: '#10b981', marginBottom: '2px' }}>
+                            ✓ {huesped.reservas_confirmadas || 0} confirmadas
+                          </div>
+                          <div style={{ color: '#f59e0b', marginBottom: '2px' }}>
+                            ⏱ {huesped.reservas_pendientes || 0} pendientes
+                          </div>
+                          <div style={{ color: '#6b7280', fontWeight: '600' }}>
+                            Total: {huesped.total_reservas || 0}
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span style={{ color: '#10b981', fontWeight: '600', fontSize: '14px' }}>
+                          {formatMoney(huesped.total_gastado)}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: '13px', color: '#6b7280' }}>
+                          {formatDate(huesped.created_at)}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            className="btn-secondary-custom btn-icon"
+                            onClick={() => verDetalles(huesped)}
+                            title="Ver detalles"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              <circle cx="12" cy="12" r="3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </button>
+                          {huesped.source === 'huesped_table' && editingHuesped !== huesped.id && (
+                            <button
+                              className="btn-secondary-custom btn-icon"
+                              onClick={() => startEdit(huesped)}
+                              title="Editar"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </button>
+                          )}
+                          <button
+                            className="btn-danger-custom btn-icon"
+                            onClick={() => deleteHuesped(huesped)}
+                            title="Eliminar"
+                            disabled={huesped.total_reservas > 0 && (huesped.reservas_confirmadas > 0 || huesped.reservas_pendientes > 0)}
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                              <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Edición */}
+      {editingHuesped && (
+        <div className="modal-overlay" onClick={cancelEdit}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h3>Editar Huésped</h3>
+              <button className="modal-close" onClick={cancelEdit}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="24" height="24">
+                  <path d="M18 6L6 18M6 6l12 12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
+            <div className="modal-body">
+              <form onSubmit={saveEdit}>
+                <div className="form-group">
+                  <label className="form-label">Nombre Completo</label>
+                  <input
+                    className="form-input"
+                    value={editForm.nombre_completo}
+                    onChange={e => setEditForm({...editForm, nombre_completo: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Email</label>
+                  <input
+                    type="email"
+                    className="form-input"
+                    value={editForm.email}
+                    onChange={e => setEditForm({...editForm, email: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Teléfono</label>
+                  <input
+                    className="form-input"
+                    value={editForm.telefono}
+                    onChange={e => setEditForm({...editForm, telefono: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Documento</label>
+                  <input
+                    className="form-input"
+                    value={editForm.documento}
+                    onChange={e => setEditForm({...editForm, documento: e.target.value})}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                  <button className="btn-primary-custom" type="submit" style={{ flex: 1 }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <polyline points="17 21 17 13 7 13 7 21" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <polyline points="7 3 7 8 15 8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Guardar Cambios
+                  </button>
+                  <button className="btn-secondary-custom" type="button" onClick={cancelEdit} style={{ flex: 1 }}>
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Modal de detalles */}
       {showModal && selectedHuesped && (
-        <div className="modal fade show" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}>
-          <div className="modal-dialog modal-lg">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Detalles de {selectedHuesped.nombre_completo}</h5>
-                <button 
-                  type="button" 
-                  className="btn-close" 
-                  onClick={() => setShowModal(false)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <div className="row">
-                  <div className="col-md-6">
-                    <h6>Información Personal</h6>
-                    <p><strong>Tipo:</strong> 
-                      <span className={`badge ms-1 ${selectedHuesped.source === 'huesped_table' ? 'bg-primary' : 'bg-info'}`}>
-                        {selectedHuesped.source === 'huesped_table' ? 'Ficha de Huésped' : 'Usuario Registrado'}
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px' }}>
+            <div className="modal-header">
+              <h3>Detalles del Huésped</h3>
+              <button className="modal-close" onClick={() => setShowModal(false)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="24" height="24">
+                  <path d="M18 6L6 18M6 6l12 12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                <div>
+                  <h4 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#1f2937' }}>
+                    Información Personal
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div>
+                      <span style={{ fontSize: '13px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Tipo</span>
+                      <span className={`badge ${selectedHuesped.source === 'huesped_table' ? 'badge-primary' : 'badge-info'}`}>
+                        {selectedHuesped.source === 'huesped_table' ? '📋 Ficha de Huésped' : '👤 Usuario Registrado'}
                       </span>
-                    </p>
-                    <p><strong>Nombre:</strong> {selectedHuesped.nombre_completo || "—"}</p>
-                    <p><strong>Email:</strong> {selectedHuesped.email || "—"}</p>
-                    <p><strong>Teléfono:</strong> {selectedHuesped.telefono || "—"}</p>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '13px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Nombre</span>
+                      <span style={{ fontWeight: '600', color: '#1f2937' }}>{selectedHuesped.nombre_completo || "—"}</span>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '13px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Email</span>
+                      <span style={{ color: '#1f2937' }}>{selectedHuesped.email || "—"}</span>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '13px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Teléfono</span>
+                      <span style={{ color: '#1f2937' }}>{selectedHuesped.telefono || "—"}</span>
+                    </div>
                     {selectedHuesped.source === 'huesped_table' && (
-                      <p><strong>Documento:</strong> {selectedHuesped.documento || "—"}</p>
-                    )}
-                    <p><strong>Tenant:</strong> {selectedHuesped.tenant_nombre || selectedHuesped.tenant_id}</p>
-                    <p><strong>Registrado:</strong> {formatDate(selectedHuesped.created_at)}</p>
-                  </div>
-                  <div className="col-md-6">
-                    <h6>Historial de Reservas</h6>
-                    {selectedHuesped.reservas && selectedHuesped.reservas.length > 0 ? (
-                      <div className="table-responsive" style={{ maxHeight: "300px", overflowY: "auto" }}>
-                        <table className="table table-sm">
-                          <thead>
-                            <tr>
-                              <th>Hotel</th>
-                              <th>Hab.</th>
-                              <th>Fechas</th>
-                              <th>Estado</th>
-                              <th>Total</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {selectedHuesped.reservas.map(reserva => (
-                              <tr key={reserva.reserva_id}>
-                                <td>
-                                  <small>{reserva.hotel_nombre}</small>
-                                </td>
-                                <td>
-                                  <small>{reserva.habitacion_numero}</small>
-                                </td>
-                                <td>
-                                  <small>
-                                    {formatDate(reserva.fecha_inicio)} - {formatDate(reserva.fecha_fin)}
-                                  </small>
-                                </td>
-                                <td>
-                                  <small>
-                                    <span className={`badge ${reserva.estado === 'confirmada' ? 'bg-success' : reserva.estado === 'pendiente' ? 'bg-warning' : 'bg-secondary'}`}>
-                                      {reserva.estado}
-                                    </span>
-                                  </small>
-                                </td>
-                                <td>
-                                  <small>{formatMoney(reserva.total)}</small>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                      <div>
+                        <span style={{ fontSize: '13px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Documento</span>
+                        <span style={{ color: '#1f2937' }}>{selectedHuesped.documento || "—"}</span>
                       </div>
-                    ) : (
-                      <p className="text-muted">No tiene reservas registradas</p>
                     )}
+                    <div>
+                      <span style={{ fontSize: '13px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Registrado</span>
+                      <span style={{ color: '#1f2937' }}>{formatDate(selectedHuesped.created_at)}</span>
+                    </div>
                   </div>
                 </div>
+                <div>
+                  <h4 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#1f2937' }}>
+                    Historial de Reservas
+                  </h4>
+                  {selectedHuesped.reservas && selectedHuesped.reservas.length > 0 ? (
+                    <div style={{ maxHeight: "300px", overflowY: "auto", border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                      <table className="data-table" style={{ marginBottom: 0 }}>
+                        <thead>
+                          <tr>
+                            <th>Hotel</th>
+                            <th>Hab.</th>
+                            <th>Fechas</th>
+                            <th>Estado</th>
+                            <th>Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedHuesped.reservas.map(reserva => (
+                            <tr key={reserva.reserva_id}>
+                              <td style={{ fontSize: '13px' }}>{reserva.hotel_nombre}</td>
+                              <td style={{ fontSize: '13px' }}>{reserva.habitacion_numero}</td>
+                              <td style={{ fontSize: '12px', color: '#6b7280' }}>
+                                {formatDate(reserva.fecha_inicio)} - {formatDate(reserva.fecha_fin)}
+                              </td>
+                              <td>
+                                <span className={`badge ${reserva.estado === 'confirmada' ? 'badge-success' : reserva.estado === 'pendiente' ? 'badge-warning' : 'badge-secondary'}`}>
+                                  {reserva.estado}
+                                </span>
+                              </td>
+                              <td style={{ fontSize: '13px', fontWeight: '600', color: '#10b981' }}>
+                                {formatMoney(reserva.total)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="empty-state" style={{ padding: '40px 20px' }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="32" height="32">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <line x1="16" y1="2" x2="16" y2="6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <line x1="8" y1="2" x2="8" y2="6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <line x1="3" y1="10" x2="21" y2="10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <p style={{ margin: '8px 0 0 0', fontSize: '14px' }}>No tiene reservas</p>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="modal-footer">
-                <button 
-                  className="btn btn-secondary" 
-                  onClick={() => setShowModal(false)}
-                >
-                  Cerrar
-                </button>
-              </div>
+            </div>
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="btn-secondary-custom" onClick={() => setShowModal(false)}>
+                Cerrar
+              </button>
             </div>
           </div>
         </div>

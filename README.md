@@ -114,7 +114,25 @@ Las rutas comparten utilidades como:
 - Roles (`rol_enum`) se respetan en cada router: solo admin puede crear nuevos hoteles o listar huéspedes globalmente; los recepcionistas quedan restringidos al hotel/tenant asignado; los huéspedes únicamente operan sobre sus reservas.
 
 ### Frontend (React)
-- **Inicio de sesión y registro** integrados al flujo multi-tenant.
+#### Autenticación Moderna - AuthPage.jsx
+Nuevo componente de autenticación unificado con diseño moderno implementando:
+- **UI/UX Premium**: Diseño con Tailwind CSS featuring gradients, backdrop-blur, animaciones smooth
+- **Login y Registro en un solo componente**: Toggle animado entre modos
+- **Validación de RUT chileno**: Formato `12345678-9` o `1234567-K`
+- **Integración Multi-tenant**: 
+  - Selector dinámico de hoteles (carga desde API)
+  - Selector de sucursales filtrado por hotel seleccionado
+  - Campos específicos: nombre, teléfono, email, documento
+- **Iconografía moderna**: Uso de lucide-react (Mail, Lock, User, Building2, Phone, Hotel, Waves)
+- **Responsive design**: Layout adaptable mobile-first
+- **Features destacadas**:
+  - Animaciones de transición suaves
+  - Indicadores visuales de validación
+  - Mensajes de error/éxito contextuales
+  - Logo animado con olas
+  - Cards con glass-morphism effect
+
+#### Dashboards por Rol
 - **Dashboard de Admin**: creación/edición/eliminación de hoteles, visualización de métricas financieras, monitoreo de reservas globales y gestión de huéspedes.
 - **Dashboard de Recepcionista**: inventario de habitaciones del hotel asignado, flujos para crear/editar habitaciones, confirmar pagos, revisar reservas y acceder a detalle de boletas.
 - **Dashboard de Huésped**: buscador de habitaciones disponibles con filtros por fecha, cálculo dinámico de tarifa y simulación de pasarelas de pago (tarjeta, transferencia, efectivo).

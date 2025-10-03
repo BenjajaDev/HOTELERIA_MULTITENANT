@@ -296,34 +296,42 @@ export default function GestionRecepcionistas({ hoteles = [], restrictHotelId = 
 
   if (loading) {
     return (
-      <div className="text-center py-4">
-        <div className="spinner-border" role="status">
-          <span className="visually-hidden">Cargando...</span>
-        </div>
-        <p className="mt-2">Cargando recepcionistas...</p>
+      <div className="loading-state">
+        <div className="spinner"></div>
+        <p>Cargando recepcionistas...</p>
       </div>
     );
   }
 
   return (
     <div>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4>Gestión de Recepcionistas</h4>
-        <button className="btn btn-outline-secondary" onClick={loadInitialData}>
+      <div className="page-header">
+        <h2>Gestión de Recepcionistas</h2>
+        <button className="btn-secondary-custom" onClick={loadInitialData}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
+            <path d="M23 4v6h-6M1 20v-6h6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
           Refrescar
         </button>
       </div>
 
-      {error && <div className="alert alert-danger">{error}</div>}
+      {error && <div className="alert-box alert-error">{error}</div>}
 
-      <div className="row g-4">
-        <div className="col-lg-4">
-          <div className="card p-3">
-            <h5 className="mb-3">Crear recepcionista</h5>
-            <form onSubmit={handleCreate}>
+      <div className="content-grid" style={{ gridTemplateColumns: '400px 1fr', gap: '24px' }}>
+        <div className="dashboard-card">
+          <h3 style={{ marginBottom: '20px', fontSize: '18px', fontWeight: '600' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" style={{ verticalAlign: 'middle', marginRight: '8px' }}>
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="12" cy="7" r="4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Crear Recepcionista
+          </h3>
+          <form onSubmit={handleCreate}>
+            <div className="form-group">
               <label className="form-label">Hotel</label>
               <select
-                className="form-select mb-2"
+                className="form-input"
                 value={formHotelId}
                 onChange={e => setFormHotelId(e.target.value)}
                 disabled={isRestricted}
@@ -334,16 +342,18 @@ export default function GestionRecepcionistas({ hoteles = [], restrictHotelId = 
                   </option>
                 ))}
               </select>
+            </div>
 
+            <div className="form-group">
               <label className="form-label">Sucursal</label>
               <select
-                className="form-select mb-2"
+                className="form-input"
                 value={form.sucursalId}
                 onChange={e => setForm(prev => ({ ...prev, sucursalId: e.target.value }))}
                 required
               >
                 {sucursalesParaFormulario.length === 0 && (
-                  <option value="">Sin sucursales</option>
+                  <option value="">Sin sucursales disponibles</option>
                 )}
                 {sucursalesParaFormulario.map(s => (
                   <option key={s.sucursal_id} value={s.sucursal_id}>
@@ -351,194 +361,320 @@ export default function GestionRecepcionistas({ hoteles = [], restrictHotelId = 
                   </option>
                 ))}
               </select>
+            </div>
 
+            <div className="form-group">
+              <label className="form-label">Nombre Completo</label>
               <input
-                className="form-control mb-2"
-                placeholder="Nombre"
+                className="form-input"
+                placeholder="Ej: María González"
                 value={form.nombre}
                 onChange={e => setForm(prev => ({ ...prev, nombre: e.target.value }))}
                 required
               />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Email</label>
               <input
                 type="email"
-                className="form-control mb-2"
-                placeholder="Email"
+                className="form-input"
+                placeholder="recepcion@hotel.com"
                 value={form.email}
                 onChange={e => setForm(prev => ({ ...prev, email: e.target.value }))}
                 required
               />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Teléfono (opcional)</label>
               <input
-                className="form-control mb-2"
-                placeholder="Teléfono"
+                className="form-input"
+                placeholder="+1234567890"
                 value={form.telefono}
                 onChange={e => setForm(prev => ({ ...prev, telefono: e.target.value }))}
               />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Contraseña</label>
               <input
                 type="password"
-                className="form-control mb-2"
-                placeholder="Contraseña"
+                className="form-input"
+                placeholder="Mínimo 6 caracteres"
                 value={form.password}
                 onChange={e => setForm(prev => ({ ...prev, password: e.target.value }))}
                 required
               />
-              <button className="btn btn-primary w-100" type="submit" disabled={!form.sucursalId}>
-                Crear recepcionista
-              </button>
-            </form>
-            {createMsg && <div className="small text-muted mt-2">{createMsg}</div>}
-          </div>
+            </div>
+            <button className="btn-primary-custom" type="submit" disabled={!form.sucursalId} style={{ width: '100%' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="12" cy="7" r="4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Crear Recepcionista
+            </button>
+          </form>
+          {createMsg && (
+            <div className={`alert-box ${createMsg.includes('✅') ? 'alert-success' : 'alert-info'}`} style={{ marginTop: '16px' }}>
+              {createMsg}
+            </div>
+          )}
         </div>
 
-        <div className="col-lg-8">
-          <div className="row g-3 mb-3">
-            {!isRestricted && (
-              <div className="col-md-6">
-                <label className="form-label">Filtrar por hotel</label>
+        <div>
+          {/* Filtros */}
+          <div className="dashboard-card" style={{ marginBottom: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: !isRestricted ? '1fr 1fr' : '1fr', gap: '16px' }}>
+              {!isRestricted && (
+                <div>
+                  <label className="form-label">Filtrar por hotel</label>
+                  <select
+                    className="form-input"
+                    value={filters.hotelId}
+                    onChange={e => setFilters(prev => ({ hotelId: e.target.value, sucursalId: "" }))}
+                  >
+                    <option value="">Todos los hoteles</option>
+                    {hotelOptions.map(h => (
+                      <option key={h.hotel_id} value={h.hotel_id}>
+                        {h.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div>
+                <label className="form-label">Filtrar por sucursal</label>
                 <select
-                  className="form-select"
-                  value={filters.hotelId}
-                  onChange={e => setFilters(prev => ({ hotelId: e.target.value, sucursalId: "" }))}
+                  className="form-input"
+                  value={filters.sucursalId}
+                  onChange={e => setFilters(prev => ({ ...prev, sucursalId: e.target.value }))}
+                  disabled={!isRestricted && filters.hotelId && sucursalesParaFiltro.length === 0}
                 >
-                  <option value="">Todos los hoteles</option>
-                  {hotelOptions.map(h => (
-                    <option key={h.hotel_id} value={h.hotel_id}>
-                      {h.nombre}
+                  <option value="">Todas las sucursales</option>
+                  {sucursalesParaFiltro.map(s => (
+                    <option key={s.sucursal_id} value={s.sucursal_id}>
+                      {s.nombre}
                     </option>
                   ))}
                 </select>
               </div>
-            )}
-            <div className={isRestricted ? "col-12" : "col-md-6"}>
-              <label className="form-label">Filtrar por sucursal</label>
-              <select
-                className="form-select"
-                value={filters.sucursalId}
-                onChange={e => setFilters(prev => ({ ...prev, sucursalId: e.target.value }))}
-                disabled={!isRestricted && filters.hotelId && sucursalesParaFiltro.length === 0}
-              >
-                <option value="">Todas</option>
-                {sucursalesParaFiltro.map(s => (
-                  <option key={s.sucursal_id} value={s.sucursal_id}>
-                    {s.nombre}
-                  </option>
-                ))}
-              </select>
             </div>
           </div>
 
           {filteredRecepcionistas.length === 0 ? (
-            <div className="text-muted">No hay recepcionistas registrados.</div>
+            <div className="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="48" height="48">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="12" cy="7" r="4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <h3>No hay recepcionistas</h3>
+              <p>Crea el primer recepcionista usando el formulario</p>
+            </div>
           ) : (
-            <div className="list-group">
-              {filteredRecepcionistas.map(recepcionista => (
-                <div key={recepcionista.recepcionista_sucursal_id} className="list-group-item">
-                  <div className="d-flex justify-content-between align-items-start">
-                    <div>
-                      <strong>{recepcionista.nombre || recepcionista.email}</strong>
-                      <div className="small text-muted">Email: {recepcionista.email}</div>
-                      <div className="small text-muted">Tel: {recepcionista.telefono || "—"}</div>
-                      <div className="small text-muted">
-                        Hotel: {recepcionista.hotel_nombre} • Sucursal: {recepcionista.sucursal_nombre}
-                      </div>
-                      <span className={`badge ${recepcionista.activo ? "bg-success" : "bg-secondary"} mt-2`}>
-                        {recepcionista.activo ? "Activo" : "Inactivo"}
-                      </span>
-                    </div>
-                    <div className="d-flex gap-2">
-                      <button
-                        className="btn btn-sm btn-outline-secondary"
-                        onClick={() => startEdit(recepcionista)}
-                      >
-                        Editar
-                      </button>
-                      <button
-                        className="btn btn-sm btn-outline-danger"
-                        onClick={() => handleDelete(recepcionista)}
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-                  </div>
-
-                  {editingId === recepcionista.recepcionista_sucursal_id && (
-                    <div className="mt-3 border-top pt-3">
-                      <h6 className="mb-3">Editar recepcionista</h6>
-                      <form onSubmit={handleUpdate}>
-                        <div className="row g-2">
-                          <div className="col-md-6">
-                            <label className="form-label">Sucursal</label>
-                            <select
-                              className="form-select"
-                              value={editForm.sucursalId}
-                              onChange={e => setEditForm(prev => ({ ...prev, sucursalId: e.target.value }))}
-                              required
-                            >
-                              {sucursales.map(s => (
-                                <option key={s.sucursal_id} value={s.sucursal_id}>
-                                  {s.nombre} ({s.hotel_nombre})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="col-md-6 align-self-end">
-                            <div className="form-check">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                id={`activo-${editingId}`}
-                                checked={Boolean(editForm.activo)}
-                                onChange={e => setEditForm(prev => ({ ...prev, activo: e.target.checked }))}
-                              />
-                              <label className="form-check-label" htmlFor={`activo-${editingId}`}>
-                                Activo
-                              </label>
+            <div className="dashboard-card">
+              <div className="table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Recepcionista</th>
+                      <th>Contacto</th>
+                      <th>Hotel / Sucursal</th>
+                      <th>Estado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRecepcionistas.map(recepcionista => (
+                      <React.Fragment key={recepcionista.recepcionista_sucursal_id}>
+                        <tr>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div style={{ 
+                                width: 40, 
+                                height: 40, 
+                                borderRadius: '50%', 
+                                background: 'linear-gradient(135deg, #0891b2 0%, #2563eb 100%)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'white',
+                                fontWeight: 600,
+                                fontSize: 16,
+                                flexShrink: 0
+                              }}>
+                                {(recepcionista.nombre || recepcionista.email).charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 600, color: '#1f2937' }}>
+                                  {recepcionista.nombre || "Sin nombre"}
+                                </div>
+                                <div style={{ fontSize: 13, color: '#6b7280' }}>
+                                  ID: {recepcionista.recepcionista_sucursal_id}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
-
-                        <input
-                          className="form-control mb-2 mt-2"
-                          placeholder="Nombre"
-                          value={editForm.nombre}
-                          onChange={e => setEditForm(prev => ({ ...prev, nombre: e.target.value }))}
-                        />
-                        <input
-                          type="email"
-                          className="form-control mb-2"
-                          placeholder="Email"
-                          value={editForm.email}
-                          onChange={e => setEditForm(prev => ({ ...prev, email: e.target.value }))}
-                          required
-                        />
-                        <input
-                          className="form-control mb-2"
-                          placeholder="Teléfono"
-                          value={editForm.telefono}
-                          onChange={e => setEditForm(prev => ({ ...prev, telefono: e.target.value }))}
-                        />
-                        <input
-                          type="password"
-                          className="form-control mb-2"
-                          placeholder="Nueva contraseña (opcional)"
-                          value={editForm.password}
-                          onChange={e => setEditForm(prev => ({ ...prev, password: e.target.value }))}
-                        />
-                        <div className="d-flex gap-2">
-                          <button className="btn btn-primary" type="submit">Guardar</button>
-                          <button className="btn btn-outline-secondary" type="button" onClick={cancelEdit}>
-                            Cancelar
-                          </button>
-                        </div>
-                      </form>
-                      {editMsg && <div className="small text-muted mt-2">{editMsg}</div>}
-                    </div>
-                  )}
-                </div>
-              ))}
+                          </td>
+                          <td>
+                            <div style={{ fontSize: 13 }}>
+                              <div style={{ color: '#6b7280', marginBottom: 4 }}>
+                                ✉️ {recepcionista.email}
+                              </div>
+                              <div style={{ color: '#6b7280' }}>
+                                📞 {recepcionista.telefono || "—"}
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <div>
+                              <span className="badge badge-primary" style={{ display: 'block', marginBottom: '6px' }}>
+                                {recepcionista.hotel_nombre}
+                              </span>
+                              <span className="badge badge-info">
+                                {recepcionista.sucursal_nombre}
+                              </span>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`badge ${recepcionista.activo ? 'badge-success' : 'badge-secondary'}`}>
+                              {recepcionista.activo ? '✓ Activo' : '✗ Inactivo'}
+                            </span>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                className="btn-secondary-custom btn-icon"
+                                onClick={() => startEdit(recepcionista)}
+                                title="Editar"
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              </button>
+                              <button
+                                className="btn-danger-custom btn-icon"
+                                onClick={() => handleDelete(recepcionista)}
+                                title="Eliminar"
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                                  <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Modal de Edición */}
+      {editingId && (
+        <div className="modal-overlay" onClick={cancelEdit}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h3>Editar Recepcionista</h3>
+              <button className="modal-close" onClick={cancelEdit}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="24" height="24">
+                  <path d="M18 6L6 18M6 6l12 12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
+            <div className="modal-body">
+              <form onSubmit={handleUpdate}>
+                <div className="form-group">
+                  <label className="form-label">Sucursal</label>
+                  <select
+                    className="form-input"
+                    value={editForm.sucursalId}
+                    onChange={e => setEditForm(prev => ({ ...prev, sucursalId: e.target.value }))}
+                    required
+                  >
+                    {sucursales.map(s => (
+                      <option key={s.sucursal_id} value={s.sucursal_id}>
+                        {s.hotel_nombre} - {s.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Nombre</label>
+                  <input
+                    className="form-input"
+                    placeholder="Nombre del recepcionista"
+                    value={editForm.nombre}
+                    onChange={e => setEditForm(prev => ({ ...prev, nombre: e.target.value }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Email</label>
+                  <input
+                    className="form-input"
+                    type="email"
+                    placeholder="Email"
+                    value={editForm.email}
+                    onChange={e => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Teléfono</label>
+                  <input
+                    className="form-input"
+                    placeholder="Teléfono"
+                    value={editForm.telefono}
+                    onChange={e => setEditForm(prev => ({ ...prev, telefono: e.target.value }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Nueva Contraseña (opcional)</label>
+                  <input
+                    className="form-input"
+                    type="password"
+                    placeholder="Dejar vacío para mantener la actual"
+                    value={editForm.password}
+                    onChange={e => setEditForm(prev => ({ ...prev, password: e.target.value }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={editForm.activo}
+                      onChange={e => setEditForm(prev => ({ ...prev, activo: e.target.checked }))}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <span className="form-label" style={{ margin: 0 }}>Usuario activo</span>
+                  </label>
+                </div>
+                <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                  <button className="btn-primary-custom" type="submit" style={{ flex: 1 }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <polyline points="17 21 17 13 7 13 7 21" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <polyline points="7 3 7 8 15 8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Guardar Cambios
+                  </button>
+                  <button className="btn-secondary-custom" type="button" onClick={cancelEdit} style={{ flex: 1 }}>
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+              {editMsg && (
+                <div className={`alert-box ${editMsg.includes('✅') ? 'alert-success' : 'alert-info'}`} style={{ marginTop: '16px' }}>
+                  {editMsg}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -16,6 +16,7 @@ async function request(path, opts = {}) {
   return res.status === 204 ? null : res.json();
 }
 
+
 export const api = {
   login: (body) => request("/api/usuarios/login", { method: "POST", body: JSON.stringify(body) }),
   registerHuesped: (body) => request("/api/usuarios/register-huesped", { method: "POST", body: JSON.stringify(body) }),
