@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import DetallePagoModal from "./DetallePagoModal";
+import "./DashboardContent.css";
 
 const PagosManager = ({ user }) => {
   const [pagos, setPagos] = useState([]);
@@ -89,158 +90,220 @@ const PagosManager = ({ user }) => {
 
   const getEstadoBadge = (estado) => {
     const badges = {
-      pagado: "bg-success",
-      pendiente: "bg-warning text-dark"
+      pagado: "status-success",
+      pendiente: "status-warning"
     };
-    return badges[estado] || "bg-secondary";
+    return badges[estado] || "status-secondary";
   };
 
   const getMetodoBadge = (metodo) => {
     const badges = {
-      tarjeta: "bg-primary",
-      efectivo: "bg-success",
-      transferencia: "bg-info"
+      tarjeta: "status-info",
+      efectivo: "status-success",
+      transferencia: "status-info"
     };
-    return badges[metodo] || "bg-secondary";
+    return badges[metodo] || "status-secondary";
   };
 
-  return (
-    <div className="container-fluid">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h3>Gestión de Pagos</h3>
-        <button 
-          className="btn btn-outline-secondary"
-          onClick={loadPagos}
-          disabled={loading}
-        >
-          <i className="bi bi-arrow-clockwise"></i> Actualizar
-        </button>
-      </div>
+  // Calcular estadísticas
+  const stats = useMemo(() => {
+    const total = pagos.reduce((sum, p) => sum + (p.monto || 0), 0);
+    const pagados = pagos.filter(p => p.estado === "pagado");
+    const totalPagado = pagados.reduce((sum, p) => sum + (p.monto || 0), 0);
+    const totalPendiente = total - totalPagado;
+    return {
+      total,
+      totalPagado,
+      totalPendiente,
+      cantidadPagados: pagados.length,
+      cantidadPendientes: pagos.length - pagados.length
+    };
+  }, [pagos]);
 
+  return (
+    <div>
       {msg && (
-        <div className={`alert ${msg.includes("Error") ? "alert-danger" : "alert-info"}`}>
+        <div className={`alert ${msg.includes("Error") ? "alert-danger" : "alert-success"} mb-3`}>
           {msg}
         </div>
       )}
 
-      {/* Filtros */}
-      <div className="card mb-4">
-        <div className="card-body">
-          <h6 className="card-title">Filtros</h6>
-          <div className="row">
-            <div className="col-md-3">
-              <label className="form-label">Estado de Pago</label>
-              <select
-                className="form-select"
-                value={filters.estado_pago}
-                onChange={(e) => setFilters({...filters, estado_pago: e.target.value})}
-              >
-                <option value="">Todos los estados</option>
-                <option value="pagado">Pagado</option>
-                <option value="pendiente">Pendiente</option>
-              </select>
-            </div>
-            <div className="col-md-3">
-              <label className="form-label">Método de Pago</label>
-              <select
-                className="form-select"
-                value={filters.metodo}
-                onChange={(e) => setFilters({...filters, metodo: e.target.value})}
-              >
-                <option value="">Todos los métodos</option>
-                <option value="tarjeta">Tarjeta</option>
-                <option value="efectivo">Efectivo</option>
-                <option value="transferencia">Transferencia</option>
-              </select>
-            </div>
+      {/* Stats Grid */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-card-icon blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <rect x="1" y="4" width="22" height="16" rx="2" strokeWidth="2"/>
+              <line x1="1" y1="10" x2="23" y2="10" strokeWidth="2"/>
+            </svg>
           </div>
+          <p className="stat-card-value">{pagos.length}</p>
+          <p className="stat-card-label">Total Pagos</p>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-card-icon green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <polyline points="20 6 9 17 4 12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <p className="stat-card-value">{formatMoney(stats.totalPagado)}</p>
+          <p className="stat-card-label">Total Pagado ({stats.cantidadPagados})</p>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-card-icon orange">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+              <polyline points="12 6 12 12 16 14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <p className="stat-card-value">{formatMoney(stats.totalPendiente)}</p>
+          <p className="stat-card-label">Total Pendiente ({stats.cantidadPendientes})</p>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-card-icon purple">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <p className="stat-card-value">{formatMoney(stats.total)}</p>
+          <p className="stat-card-label">Total General</p>
         </div>
       </div>
 
-      {loading && (
-        <div className="text-center">
-          <div className="spinner-border" role="status">
-            <span className="visually-hidden">Cargando...</span>
+      {/* Filtros y Lista */}
+      <div className="dashboard-card">
+        <div className="dashboard-card-header">
+          <div>
+            <h3 className="dashboard-card-title">Historial de Pagos</h3>
+            <p className="dashboard-card-subtitle">Gestiona y consulta todos los pagos registrados</p>
           </div>
+          <button 
+            className="btn-primary-custom"
+            onClick={loadPagos}
+            disabled={loading}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+              <path d="M1 4v6h6M23 20v-6h-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            {loading ? "Actualizando..." : "Actualizar"}
+          </button>
         </div>
-      )}
 
-      {/* Tabla de Pagos */}
-      {!loading && (
-        <div className="card">
-          <div className="card-body">
-            {pagos.length === 0 ? (
-              <div className="text-center text-muted">
-                <p>No hay pagos registrados</p>
-              </div>
-            ) : (
-              <div className="table-responsive">
-                <table className="table table-hover">
-                  <thead>
-                    <tr>
-                      <th>ID Pago</th>
-                      <th>Hotel</th>
-                      <th>Huésped</th>
-                      <th>Habitación</th>
-                      <th>Reserva</th>
-                      <th>Monto</th>
-                      <th>Método</th>
-                      <th>Estado</th>
-                      <th>Fecha</th>
-                      <th>Referencia</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pagos.map((pago) => (
-                      <tr key={pago.pago_id}>
-                        <td>
-                          <small className="text-muted">
-                            {pago.pago_id.slice(0, 8)}...
-                          </small>
-                        </td>
-                        <td>{pago.hotel_nombre}</td>
-                        <td>{pago.huesped_nombre || "—"}</td>
-                        <td>#{pago.habitacion_numero}</td>
-                        <td>
-                          <small>
-                            {formatDate(pago.fecha_inicio)} - {formatDate(pago.fecha_fin)}
-                          </small>
-                        </td>
-                        <td className="fw-bold">{formatMoney(pago.monto)}</td>
-                        <td>
-                          <span className={`badge ${getMetodoBadge(pago.metodo)}`}>
-                            {pago.metodo}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={`badge ${getEstadoBadge(pago.estado)}`}>
-                            {pago.estado}
-                          </span>
-                        </td>
-                        <td>{formatDate(pago.fecha)}</td>
-                        <td>
-                          <small className="text-muted">
-                            {pago.referencia_transaccion || "—"}
-                          </small>
-                        </td>
-                        <td>
-                          <button
-                            className="btn btn-sm btn-outline-primary"
-                            onClick={() => openDetalle(pago.pago_id)}
-                          >
-                            Ver Detalle
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+        {/* Filtros */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px', padding: '0 4px' }}>
+          <div>
+            <label className="form-label">Estado de Pago</label>
+            <select
+              className="form-select"
+              value={filters.estado_pago}
+              onChange={(e) => setFilters({...filters, estado_pago: e.target.value})}
+            >
+              <option value="">Todos los estados</option>
+              <option value="pagado">Pagado</option>
+              <option value="pendiente">Pendiente</option>
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Método de Pago</label>
+            <select
+              className="form-select"
+              value={filters.metodo}
+              onChange={(e) => setFilters({...filters, metodo: e.target.value})}
+            >
+              <option value="">Todos los métodos</option>
+              <option value="tarjeta">Tarjeta</option>
+              <option value="efectivo">Efectivo</option>
+              <option value="transferencia">Transferencia</option>
+            </select>
           </div>
         </div>
-      )}
+
+        {loading && (
+          <div className="text-center py-4">
+            <div className="spinner-border text-primary" role="status">
+              <span className="visually-hidden">Cargando...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Lista de Pagos */}
+        {!loading && pagos.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="48" height="48">
+                <rect x="1" y="4" width="22" height="16" rx="2" strokeWidth="2"/>
+                <line x1="1" y1="10" x2="23" y2="10" strokeWidth="2"/>
+              </svg>
+            </div>
+            <p className="empty-state-text">No hay pagos registrados</p>
+          </div>
+        )}
+
+        {!loading && pagos.length > 0 && (
+          <div className="items-list">
+            {pagos.map((pago) => (
+              <div key={pago.pago_id} className="item-card">
+                <div className="item-header">
+                  <div className="item-info">
+                    <div className="item-title">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" style={{ marginRight: '8px' }}>
+                        <rect x="1" y="4" width="22" height="16" rx="2" strokeWidth="2"/>
+                        <line x1="1" y1="10" x2="23" y2="10" strokeWidth="2"/>
+                      </svg>
+                      {pago.hotel_nombre}
+                    </div>
+                    <div className="item-subtitle">
+                      <strong>Huésped:</strong> {pago.huesped_nombre || "—"} • 
+                      <strong> Habitación #{pago.habitacion_numero}</strong>
+                    </div>
+                    <div className="item-subtitle" style={{ marginTop: '4px' }}>
+                      <strong>Reserva:</strong> {formatDate(pago.fecha_inicio)} → {formatDate(pago.fecha_fin)}
+                    </div>
+                    <div className="mt-2" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span className={`status-badge ${getMetodoBadge(pago.metodo)}`}>
+                        {pago.metodo}
+                      </span>
+                      <span className={`status-badge ${getEstadoBadge(pago.estado)}`}>
+                        {pago.estado}
+                      </span>
+                      <small className="text-muted">
+                        Fecha: {formatDate(pago.fecha)}
+                      </small>
+                      {pago.referencia_transaccion && (
+                        <small className="text-muted">
+                          Ref: {pago.referencia_transaccion.slice(0, 10)}...
+                        </small>
+                      )}
+                    </div>
+                    <button
+                      className="btn-secondary-custom btn-sm mt-2"
+                      onClick={() => openDetalle(pago.pago_id)}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14">
+                        <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+                        <path d="M12 16v-4M12 8h.01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      Ver Detalle Completo
+                    </button>
+                  </div>
+                  <div className="item-actions" style={{ textAlign: 'right' }}>
+                    <div className="fw-bold fs-3" style={{ color: pago.estado === 'pagado' ? '#10b981' : '#f59e0b' }}>
+                      {formatMoney(pago.monto)}
+                    </div>
+                    <small className="text-muted">
+                      ID: {pago.pago_id.slice(0, 8)}...
+                    </small>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Modal de Detalle */}
       <DetallePagoModal

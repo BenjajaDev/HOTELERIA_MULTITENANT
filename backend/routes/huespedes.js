@@ -1,5 +1,7 @@
 import express from 'express';
-import { pool } from '../models/db.js';
+import { Huesped, Usuario, Tenant, TenantUsuario, Reserva, Habitacion, Hotel, Pago, Sucursal } from '../models/index.js';
+import { Op } from 'sequelize';
+import db from '../models/index.js';
 
 const router = express.Router();
 
@@ -8,18 +10,21 @@ async function ensureTenantPermission({ usuarioId }, tenantId, allowedRoles = ["
     return null;
   }
 
-  const membership = await pool.query(
-    `SELECT rol FROM tenant_usuario WHERE usuario_id = $1 AND tenant_id = $2 LIMIT 1`,
-    [usuarioId, tenantId]
-  );
+  const membership = await TenantUsuario.findOne({
+    where: {
+      usuario_id: usuarioId,
+      tenant_id: tenantId
+    },
+    attributes: ['rol']
+  });
 
-  if (membership.rowCount === 0) {
+  if (!membership) {
     const err = new Error("No autorizado para gestionar huéspedes en este hotel");
     err.status = 403;
     throw err;
   }
 
-  const rol = membership.rows[0].rol;
+  const rol = membership.rol;
   if (!allowedRoles.includes(rol)) {
     const err = new Error("El rol no tiene permisos suficientes");
     err.status = 403;
@@ -32,69 +37,110 @@ async function ensureTenantPermission({ usuarioId }, tenantId, allowedRoles = ["
 // GET /api/huespedes - Obtener todos los huéspedes (solo admin)
 router.get('/', async (req, res) => {
   try {
-    // Obtener huéspedes de la tabla huesped
-    const queryHuespedes = `
-      SELECT 
-        h.huesped_id as id,
-        h.tenant_id,
-        h.sucursal_id,
-        s.nombre AS sucursal_nombre,
-        s.hotel_id,
-        h.nombre_completo,
-        h.email,
-        h.telefono,
-        h.documento,
-        h.created_at,
-        t.nombre as tenant_nombre,
-        COUNT(r.reserva_id) as total_reservas,
-        COUNT(CASE WHEN r.estado = 'confirmada' THEN 1 END) as reservas_confirmadas,
-        COUNT(CASE WHEN r.estado = 'pendiente' THEN 1 END) as reservas_pendientes,
-        SUM(CASE WHEN r.estado = 'confirmada' THEN r.total ELSE 0 END) as total_gastado,
-        'huesped_table' as source
-      FROM huesped h
-      LEFT JOIN tenant t ON h.tenant_id = t.tenant_id
-      LEFT JOIN sucursal s ON s.sucursal_id = h.sucursal_id
-      LEFT JOIN reserva r ON h.huesped_id = r.huesped_id
-      GROUP BY h.huesped_id, h.tenant_id, h.sucursal_id, s.nombre, s.hotel_id,
-               h.nombre_completo, h.email, h.telefono, h.documento, h.created_at, t.nombre
-    `;
+    // Obtener huéspedes de la tabla huesped con sus estadísticas
+    const huespedes = await Huesped.findAll({
+      include: [
+        {
+          model: Tenant,
+          as: 'tenant',
+          attributes: ['nombre']
+        },
+        {
+          model: Sucursal,
+          as: 'sucursal',
+          required: false,
+          attributes: ['nombre', 'hotel_id']
+        },
+        {
+          model: Reserva,
+          as: 'reservas',
+          required: false,
+          attributes: ['reserva_id', 'estado', 'total']
+        }
+      ]
+    });
 
-    // Obtener usuarios con rol de huésped
-    const queryUsuarios = `
-      SELECT 
-        u.usuario_id as id,
-        tu.tenant_id,
-        u.nombre as nombre_completo,
-        u.email,
-        NULL as telefono,
-        NULL as documento,
-        u.created_at,
-        t.nombre as tenant_nombre,
-        NULL as sucursal_id,
-        NULL as sucursal_nombre,
-        NULL as hotel_id,
-        0 as total_reservas,
-        0 as reservas_confirmadas,
-        0 as reservas_pendientes,
-        0 as total_gastado,
-        'usuario_table' as source
-      FROM usuario u
-      JOIN tenant_usuario tu ON u.usuario_id = tu.usuario_id
-      JOIN tenant t ON tu.tenant_id = t.tenant_id
-      WHERE tu.rol = 'huesped'
-        AND u.usuario_id NOT IN (SELECT huesped_id FROM huesped WHERE huesped_id = u.usuario_id)
-    `;
+    const huespedResults = huespedes.map(h => {
+      const plain = h.get({ plain: true });
+      const totalReservas = plain.reservas?.length || 0;
+      const reservasConfirmadas = plain.reservas?.filter(r => r.estado === 'confirmada').length || 0;
+      const reservasPendientes = plain.reservas?.filter(r => r.estado === 'pendiente').length || 0;
+      const totalGastado = plain.reservas
+        ?.filter(r => r.estado === 'confirmada')
+        .reduce((sum, r) => sum + parseFloat(r.total || 0), 0) || 0;
 
-    const [huespedResult, usuarioResult] = await Promise.all([
-      pool.query(queryHuespedes),
-      pool.query(queryUsuarios)
-    ]);
+      return {
+        id: plain.huesped_id,
+        tenant_id: plain.tenant_id,
+        sucursal_id: plain.sucursal_id,
+        sucursal_nombre: plain.sucursal?.nombre || null,
+        hotel_id: plain.sucursal?.hotel_id || null,
+        nombre_completo: plain.nombre_completo,
+        email: plain.email,
+        telefono: plain.telefono,
+        documento: plain.documento,
+        created_at: plain.created_at,
+        tenant_nombre: plain.tenant?.nombre || null,
+        total_reservas: totalReservas,
+        reservas_confirmadas: reservasConfirmadas,
+        reservas_pendientes: reservasPendientes,
+        total_gastado: totalGastado,
+        source: 'huesped_table'
+      };
+    });
 
-    // Combinar resultados
-    const combinedResults = [
-      ...huespedResult.rows,
-      ...usuarioResult.rows
-    ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    // Obtener IDs de huéspedes que ya están en la tabla huesped
+    const huespedIds = huespedes.map(h => h.huesped_id);
+
+    // Obtener usuarios con rol de huésped que NO están en tabla huesped
+    const usuarios = await Usuario.findAll({
+      include: [
+        {
+          model: TenantUsuario,
+          as: 'tenant_usuarios',
+          required: true,
+          where: { rol: 'huesped' },
+          include: [
+            {
+              model: Tenant,
+              as: 'tenant',
+              attributes: ['nombre']
+            }
+          ]
+        }
+      ],
+      where: huespedIds.length > 0 ? {
+        usuario_id: { [Op.notIn]: huespedIds }
+      } : {}
+    });
+
+    const usuarioResults = usuarios.map(u => {
+      const plain = u.get({ plain: true });
+      const tenantUsuario = plain.tenant_usuarios?.[0] || {};
+
+      return {
+        id: plain.usuario_id,
+        tenant_id: tenantUsuario.tenant_id || null,
+        sucursal_id: null,
+        sucursal_nombre: null,
+        hotel_id: null,
+        nombre_completo: plain.nombre,
+        email: plain.email,
+        telefono: null,
+        documento: null,
+        created_at: plain.created_at,
+        tenant_nombre: tenantUsuario.tenant?.nombre || null,
+        total_reservas: 0,
+        reservas_confirmadas: 0,
+        reservas_pendientes: 0,
+        total_gastado: 0,
+        source: 'usuario_table'
+      };
+    });
+
+    // Combinar y ordenar por fecha de creación
+    const combinedResults = [...huespedResults, ...usuarioResults]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     res.json(combinedResults);
   } catch (error) {
@@ -138,16 +184,15 @@ router.post('/', async (req, res) => {
 
   try {
     if (!targetTenantId && hotelId) {
-      const hotelResult = await pool.query(
-        'SELECT tenant_id FROM hotel WHERE hotel_id = $1',
-        [hotelId]
-      );
+      const hotel = await Hotel.findByPk(hotelId, {
+        attributes: ['tenant_id']
+      });
 
-      if (hotelResult.rowCount === 0) {
+      if (!hotel) {
         return res.status(404).json({ error: 'Hotel no encontrado' });
       }
 
-      targetTenantId = hotelResult.rows[0].tenant_id;
+      targetTenantId = hotel.tenant_id;
     }
 
     if (!targetTenantId) {
@@ -156,38 +201,42 @@ router.post('/', async (req, res) => {
 
     await ensureTenantPermission({ usuarioId }, targetTenantId);
 
-    const emailHuesped = await pool.query(
-      `SELECT huesped_id FROM huesped WHERE tenant_id = $1 AND LOWER(email) = $2 LIMIT 1`,
-      [targetTenantId, emailLower]
-    );
+    const emailHuesped = await Huesped.findOne({
+      where: {
+        tenant_id: targetTenantId,
+        email: db.sequelize.where(
+          db.sequelize.fn('LOWER', db.sequelize.col('email')),
+          emailLower
+        )
+      }
+    });
 
-    if (emailHuesped.rowCount > 0) {
+    if (emailHuesped) {
       return res.status(409).json({ error: 'Ya existe un huésped con ese email en el hotel' });
     }
 
-    const emailUsuario = await pool.query(
-      `SELECT usuario_id FROM usuario WHERE LOWER(email) = $1 LIMIT 1`,
-      [emailLower]
-    );
+    const emailUsuario = await Usuario.findOne({
+      where: {
+        email: db.sequelize.where(
+          db.sequelize.fn('LOWER', db.sequelize.col('email')),
+          emailLower
+        )
+      }
+    });
 
-    if (emailUsuario.rowCount > 0) {
+    if (emailUsuario) {
       return res.status(409).json({ error: 'El email ya está en uso por otro usuario' });
     }
 
-    const insertResult = await pool.query(
-      `INSERT INTO huesped (tenant_id, nombre_completo, email, telefono, documento)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
-      [
-        targetTenantId,
-        nombre_completo.trim(),
-        emailLower,
-        telefonoNormalizado || null,
-        documentoNormalizado || null,
-      ]
-    );
+    const nuevoHuesped = await Huesped.create({
+      tenant_id: targetTenantId,
+      nombre_completo: nombre_completo.trim(),
+      email: emailLower,
+      telefono: telefonoNormalizado || null,
+      documento: documentoNormalizado || null
+    });
 
-    res.status(201).json(insertResult.rows[0]);
+    res.status(201).json(nuevoHuesped);
   } catch (error) {
     console.error('Error al crear huésped:', error);
     const status = error.status || 500;
@@ -201,84 +250,129 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
     
     // Primero buscar en la tabla huesped
-    const huespedQuery = `
-      SELECT 
-        h.huesped_id as id,
-        h.tenant_id,
-        h.sucursal_id,
-        s.nombre AS sucursal_nombre,
-        s.hotel_id,
-        h.nombre_completo,
-        h.email,
-        h.telefono,
-        h.documento,
-        h.created_at,
-        t.nombre as tenant_nombre,
-        'huesped_table' as source
-      FROM huesped h
-      LEFT JOIN tenant t ON h.tenant_id = t.tenant_id
-      LEFT JOIN sucursal s ON s.sucursal_id = h.sucursal_id
-      WHERE h.huesped_id = $1
-    `;
+    let huesped = await Huesped.findByPk(id, {
+      include: [
+        {
+          model: Tenant,
+          as: 'tenant',
+          attributes: ['nombre']
+        },
+        {
+          model: Sucursal,
+          as: 'sucursal',
+          required: false,
+          attributes: ['nombre', 'hotel_id']
+        }
+      ]
+    });
     
-    let huespedResult = await pool.query(huespedQuery, [id]);
+    let huespedData;
+    let source = 'huesped_table';
     
-    // Si no se encuentra en huesped, buscar en usuarios con rol de huesped
-    if (huespedResult.rows.length === 0) {
-      const usuarioQuery = `
-        SELECT 
-        u.usuario_id as id,
-        tu.tenant_id,
-        u.nombre as nombre_completo,
-        u.email,
-        NULL as telefono,
-        NULL as documento,
-        u.created_at,
-        t.nombre as tenant_nombre,
-        NULL as sucursal_id,
-        NULL as sucursal_nombre,
-        NULL as hotel_id,
-        'usuario_table' as source
-        FROM usuario u
-        JOIN tenant_usuario tu ON u.usuario_id = tu.usuario_id
-        JOIN tenant t ON tu.tenant_id = t.tenant_id
-        WHERE u.usuario_id = $1 AND tu.rol = 'huesped'
-      `;
+    if (huesped) {
+      const plain = huesped.get({ plain: true });
+      huespedData = {
+        id: plain.huesped_id,
+        tenant_id: plain.tenant_id,
+        sucursal_id: plain.sucursal_id,
+        sucursal_nombre: plain.sucursal?.nombre || null,
+        hotel_id: plain.sucursal?.hotel_id || null,
+        nombre_completo: plain.nombre_completo,
+        email: plain.email,
+        telefono: plain.telefono,
+        documento: plain.documento,
+        created_at: plain.created_at,
+        tenant_nombre: plain.tenant?.nombre || null,
+        source
+      };
+    } else {
+      // Si no se encuentra en huesped, buscar en usuarios con rol de huesped
+      const usuario = await Usuario.findByPk(id, {
+        include: [
+          {
+            model: TenantUsuario,
+            as: 'tenant_usuarios',
+            required: true,
+            where: { rol: 'huesped' },
+            include: [
+              {
+                model: Tenant,
+                as: 'tenant',
+                attributes: ['nombre']
+              }
+            ]
+          }
+        ]
+      });
       
-      huespedResult = await pool.query(usuarioQuery, [id]);
-    }
-    
-    if (huespedResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Huésped no encontrado' });
+      if (!usuario) {
+        return res.status(404).json({ error: 'Huésped no encontrado' });
+      }
+      
+      const plain = usuario.get({ plain: true });
+      const tenantUsuario = plain.tenant_usuarios?.[0] || {};
+      
+      huespedData = {
+        id: plain.usuario_id,
+        tenant_id: tenantUsuario.tenant_id || null,
+        sucursal_id: null,
+        sucursal_nombre: null,
+        hotel_id: null,
+        nombre_completo: plain.nombre,
+        email: plain.email,
+        telefono: null,
+        documento: null,
+        created_at: plain.created_at,
+        tenant_nombre: tenantUsuario.tenant?.nombre || null,
+        source: 'usuario_table'
+      };
     }
     
     // Obtener reservas del huésped
-    const reservasQuery = `
-      SELECT 
-        r.reserva_id,
-        r.fecha_inicio,
-        r.fecha_fin,
-        r.estado,
-        r.total,
-        h_hotel.nombre as hotel_nombre,
-        hab.numero as habitacion_numero,
-        hab.tipo,
-        p.metodo as pago_metodo,
-        p.estado as pago_estado
-      FROM reserva r
-      LEFT JOIN habitacion hab ON r.habitacion_id = hab.habitacion_id
-      LEFT JOIN hotel h_hotel ON hab.hotel_id = h_hotel.hotel_id
-      LEFT JOIN pago p ON r.reserva_id = p.reserva_id
-      WHERE r.huesped_id = $1
-      ORDER BY r.created_at DESC
-    `;
+    const reservas = await Reserva.findAll({
+      where: { huesped_id: id },
+      include: [
+        {
+          model: Habitacion,
+          as: 'habitacion',
+          attributes: ['numero', 'tipo'],
+          include: [
+            {
+              model: Hotel,
+              as: 'hotel',
+              attributes: ['nombre']
+            }
+          ]
+        },
+        {
+          model: Pago,
+          as: 'pagos',
+          required: false,
+          attributes: ['metodo', 'estado']
+        }
+      ],
+      order: [['created_at', 'DESC']]
+    });
     
-    const reservasResult = await pool.query(reservasQuery, [id]);
+    huespedData.reservas = reservas.map(r => {
+      const plain = r.get({ plain: true });
+      const pago = plain.pagos && plain.pagos.length > 0 ? plain.pagos[0] : null;
+      
+      return {
+        reserva_id: plain.reserva_id,
+        fecha_inicio: plain.fecha_inicio,
+        fecha_fin: plain.fecha_fin,
+        estado: plain.estado,
+        total: plain.total,
+        hotel_nombre: plain.habitacion?.hotel?.nombre || null,
+        habitacion_numero: plain.habitacion?.numero || null,
+        tipo: plain.habitacion?.tipo || null,
+        pago_metodo: pago?.metodo || null,
+        pago_estado: pago?.estado || null
+      };
+    });
     
-    const huesped = huespedResult.rows[0];
-    huesped.reservas = reservasResult.rows;
-    
-    res.json(huesped);
+    res.json(huespedData);
   } catch (error) {
     console.error('Error al obtener huésped:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -287,107 +381,114 @@ router.get('/:id', async (req, res) => {
 
 // DELETE /api/huespedes/:id - Eliminar un huésped (solo admin)
 router.delete('/:id', async (req, res) => {
-  const client = await pool.connect();
+  const transaction = await db.sequelize.transaction();
   try {
     const { id } = req.params;
     const usuarioId = req.body?.usuarioId || req.body?.usuario_id || null;
     
-    await client.query('BEGIN');
-    
     // Verificar si el huésped existe en la tabla huesped
-    const checkHuespedQuery = 'SELECT huesped_id, tenant_id FROM huesped WHERE huesped_id = $1';
-    const checkHuespedResult = await client.query(checkHuespedQuery, [id]);
+    const checkHuesped = await Huesped.findByPk(id, { transaction });
     
     // Verificar si el usuario existe con rol de huésped
-    const checkUsuarioQuery = `
-      SELECT u.usuario_id 
-      FROM usuario u
-      JOIN tenant_usuario tu ON u.usuario_id = tu.usuario_id
-      WHERE u.usuario_id = $1 AND tu.rol = 'huesped'
-    `;
-    const checkUsuarioResult = await client.query(checkUsuarioQuery, [id]);
+    const checkUsuario = await Usuario.findOne({
+      where: { usuario_id: id },
+      include: [
+        {
+          model: TenantUsuario,
+          as: 'tenant_usuarios',
+          where: { rol: 'huesped' },
+          required: true
+        }
+      ],
+      transaction
+    });
     
-    if (checkHuespedResult.rows.length === 0 && checkUsuarioResult.rows.length === 0) {
-      await client.query('ROLLBACK');
+    if (!checkHuesped && !checkUsuario) {
+      await transaction.rollback();
       return res.status(404).json({ error: 'Huésped no encontrado' });
     }
 
-    let targetTenantId = checkHuespedResult.rows[0]?.tenant_id || null;
+    let targetTenantId = checkHuesped?.tenant_id || null;
 
-    if (!targetTenantId && checkUsuarioResult.rows.length > 0) {
-      const tenantLookup = await client.query(
-        `SELECT tenant_id FROM tenant_usuario WHERE usuario_id = $1 LIMIT 1`,
-        [id]
-      );
-      targetTenantId = tenantLookup.rows[0]?.tenant_id || null;
+    if (!targetTenantId && checkUsuario) {
+      const tenantUsuario = await TenantUsuario.findOne({
+        where: { usuario_id: id },
+        attributes: ['tenant_id'],
+        transaction
+      });
+      targetTenantId = tenantUsuario?.tenant_id || null;
     }
 
     if (targetTenantId) {
       try {
         await ensureTenantPermission({ usuarioId }, targetTenantId);
       } catch (err) {
-        await client.query('ROLLBACK');
+        await transaction.rollback();
         return res.status(err.status || 500).json({ error: err.message });
       }
     }
     
     // Verificar si tiene reservas activas o confirmadas
-    const reservasActivasQuery = `
-      SELECT COUNT(*) as count 
-      FROM reserva 
-      WHERE huesped_id = $1 
-      AND estado IN ('confirmada', 'pendiente')
-      AND fecha_fin >= CURRENT_DATE
-    `;
+    const reservasActivas = await Reserva.count({
+      where: {
+        huesped_id: id,
+        estado: { [Op.in]: ['confirmada', 'pendiente'] },
+        fecha_fin: { [Op.gte]: new Date() }
+      },
+      transaction
+    });
     
-    const reservasActivasResult = await client.query(reservasActivasQuery, [id]);
-    
-    if (parseInt(reservasActivasResult.rows[0].count) > 0) {
-      await client.query('ROLLBACK');
+    if (reservasActivas > 0) {
+      await transaction.rollback();
       return res.status(400).json({ 
         error: 'No se puede eliminar el huésped porque tiene reservas activas o futuras' 
       });
     }
     
     // Si existe en la tabla huesped, eliminarlo
-    if (checkHuespedResult.rows.length > 0) {
-      const deleteHuespedQuery = 'DELETE FROM huesped WHERE huesped_id = $1';
-      await client.query(deleteHuespedQuery, [id]);
+    if (checkHuesped) {
+      await checkHuesped.destroy({ transaction });
     }
     
     // Si existe como usuario con rol de huésped, eliminar la relación tenant-usuario y el usuario
-    if (checkUsuarioResult.rows.length > 0) {
-      // Eliminar relación tenant-usuario
-      const deleteTenantUsuarioQuery = 'DELETE FROM tenant_usuario WHERE usuario_id = $1 AND rol = $2';
-      await client.query(deleteTenantUsuarioQuery, [id, 'huesped']);
+    if (checkUsuario) {
+      // Eliminar relación tenant-usuario con rol huesped
+      await TenantUsuario.destroy({
+        where: {
+          usuario_id: id,
+          rol: 'huesped'
+        },
+        transaction
+      });
       
       // Verificar si el usuario tiene otros roles
-      const otherRolesQuery = 'SELECT COUNT(*) as count FROM tenant_usuario WHERE usuario_id = $1';
-      const otherRolesResult = await client.query(otherRolesQuery, [id]);
+      const otherRoles = await TenantUsuario.count({
+        where: { usuario_id: id },
+        transaction
+      });
       
       // Si no tiene otros roles, eliminar el usuario
-      if (parseInt(otherRolesResult.rows[0].count) === 0) {
-        const deleteUsuarioQuery = 'DELETE FROM usuario WHERE usuario_id = $1';
-        await client.query(deleteUsuarioQuery, [id]);
+      if (otherRoles === 0) {
+        await Usuario.destroy({
+          where: { usuario_id: id },
+          transaction
+        });
       }
     }
     
-    await client.query('COMMIT');
+    await transaction.commit();
     res.status(204).send();
     
   } catch (error) {
-    await client.query('ROLLBACK');
+    await transaction.rollback();
     console.error('Error al eliminar huésped:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
-  } finally {
-    client.release();
   }
 });
 
 // PUT /api/huespedes/:id - Actualizar datos de un huésped
 router.put('/:id', async (req, res) => {
-  const client = await pool.connect();
-  let transactionStarted = false;
+  const transaction = await db.sequelize.transaction();
   try {
     const { id } = req.params;
     const { nombre_completo, email, telefono, documento } = req.body;
@@ -397,84 +498,80 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ error: 'Nombre completo y email son requeridos' });
     }
 
-    await client.query('BEGIN');
-    transactionStarted = true;
-
-    const [huespedExistResult, usuarioExistResult] = await Promise.all([
-      client.query('SELECT huesped_id, tenant_id FROM huesped WHERE huesped_id = $1', [id]),
-      client.query('SELECT usuario_id FROM usuario WHERE usuario_id = $1', [id])
+    const [huespedExist, usuarioExist] = await Promise.all([
+      Huesped.findByPk(id, { 
+        attributes: ['huesped_id', 'tenant_id'],
+        transaction 
+      }),
+      Usuario.findByPk(id, { 
+        attributes: ['usuario_id'],
+        transaction 
+      })
     ]);
 
-    if (huespedExistResult.rows.length === 0 && usuarioExistResult.rows.length === 0) {
-      await client.query('ROLLBACK');
-      transactionStarted = false;
+    if (!huespedExist && !usuarioExist) {
+      await transaction.rollback();
       return res.status(404).json({ error: 'Huésped no encontrado' });
     }
 
-    const targetTenantId = huespedExistResult.rows[0]?.tenant_id || null;
+    const targetTenantId = huespedExist?.tenant_id || null;
 
     if (targetTenantId) {
       try {
         await ensureTenantPermission({ usuarioId }, targetTenantId);
       } catch (err) {
-        await client.query('ROLLBACK');
-        transactionStarted = false;
+        await transaction.rollback();
         return res.status(err.status || 500).json({ error: err.message });
       }
     }
 
-    const emailHuespedResult = await client.query(
-      `SELECT huesped_id FROM huesped WHERE email = $1 AND huesped_id != $2`,
-      [email, id]
-    );
+    const emailHuespedExist = await Huesped.findOne({
+      where: {
+        email,
+        huesped_id: { [Op.ne]: id }
+      },
+      transaction
+    });
 
-    if (emailHuespedResult.rows.length > 0) {
-      await client.query('ROLLBACK');
-      transactionStarted = false;
+    if (emailHuespedExist) {
+      await transaction.rollback();
       return res.status(400).json({ error: 'Ya existe otro huésped con ese email' });
     }
 
-    const emailUsuarioResult = await client.query(
-      `SELECT usuario_id FROM usuario WHERE email = $1 AND usuario_id != $2`,
-      [email, id]
-    );
+    const emailUsuarioExist = await Usuario.findOne({
+      where: {
+        email,
+        usuario_id: { [Op.ne]: id }
+      },
+      transaction
+    });
 
-    if (emailUsuarioResult.rows.length > 0) {
-      await client.query('ROLLBACK');
-      transactionStarted = false;
+    if (emailUsuarioExist) {
+      await transaction.rollback();
       return res.status(400).json({ error: 'Ya existe otro usuario con ese email' });
     }
 
     let updatedHuesped = null;
 
-    if (huespedExistResult.rows.length > 0) {
-      const huespedUpdate = await client.query(
-        `UPDATE huesped
-         SET nombre_completo = $1, email = $2, telefono = $3, documento = $4
-         WHERE huesped_id = $5
-         RETURNING *`,
-        [
-          nombre_completo,
-          email,
-          telefono ?? null,
-          documento ?? null,
-          id
-        ]
-      );
-      updatedHuesped = huespedUpdate.rows[0] || null;
+    if (huespedExist) {
+      await huespedExist.update({
+        nombre_completo,
+        email,
+        telefono: telefono ?? null,
+        documento: documento ?? null
+      }, { transaction });
+      
+      updatedHuesped = huespedExist.get({ plain: true });
     }
 
-    if (usuarioExistResult.rows.length > 0) {
-      await client.query(
-        `UPDATE usuario
-         SET nombre = $1, email = $2
-         WHERE usuario_id = $3`,
-        [nombre_completo, email, id]
-      );
+    if (usuarioExist) {
+      await usuarioExist.update({
+        nombre: nombre_completo,
+        email
+      }, { transaction });
     }
 
-    await client.query('COMMIT');
-    transactionStarted = false;
+    await transaction.commit();
 
     if (updatedHuesped) {
       return res.json(updatedHuesped);
@@ -482,24 +579,16 @@ router.put('/:id', async (req, res) => {
 
     return res.json({
       huesped_id: id,
-      tenant_id: huespedExistResult.rows[0]?.tenant_id || null,
+      tenant_id: huespedExist?.tenant_id || null,
       nombre_completo,
       email,
       telefono: telefono ?? null,
       documento: documento ?? null
     });
   } catch (error) {
-    if (transactionStarted) {
-      try {
-        await client.query('ROLLBACK');
-      } catch (rollbackError) {
-        console.error('Error al revertir la transacción:', rollbackError);
-      }
-    }
+    await transaction.rollback();
     console.error('Error al actualizar huésped:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
-  } finally {
-    client.release();
   }
 });
 

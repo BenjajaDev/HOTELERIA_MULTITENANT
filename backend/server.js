@@ -3,6 +3,7 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import { pool } from "./models/db.js";
 import { ensureRedisConnection, quitRedis } from "./models/redisClient.js";
+import db from "./models/index.js"; // Importar modelos Sequelize
 import hotelesRouter from "./routes/hoteles.js";
 import usuariosRouter from "./routes/usuarios.js";
 import reservasRouter from "./routes/reservas.js";
@@ -45,6 +46,10 @@ app.get("/", (req, res) => {
 
 async function start() {
   try {
+    // Inicializar Sequelize (sincronización de modelos)
+    await db.sequelize.sync({ alter: false }); // alter: false para no modificar tablas existentes
+    console.log('✅ Modelos Sequelize sincronizados');
+    
     await ensureRedisConnection();
     app.listen(PORT, () => {
       console.log(`Servidor escuchando en puerto ${PORT}`);

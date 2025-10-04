@@ -2,8 +2,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import PagosManager from "./PagosManager";
+import DashboardLayout from "./DashboardLayout";
+import "./DashboardContent.css";
 
-export default function ReceptionistDashboard({ user }) {
+export default function ReceptionistDashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState("habitaciones");
   const [habitaciones, setHabitaciones] = useState([]);
   const [msg, setMsg] = useState("");
@@ -242,52 +244,46 @@ export default function ReceptionistDashboard({ user }) {
   const pendientes = reservasOrdenadas.filter(r => r.estado === "pendiente");
   const otrasReservas = reservasOrdenadas.filter(r => r.estado !== "pendiente");
 
+  const menuItems = [
+    {
+      id: 'habitaciones',
+      label: 'Habitaciones',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke-width="2"/><path d="M9 3v18M3 9h18M3 15h6M15 9h6" stroke-width="2"/></svg>'
+    },
+    {
+      id: 'reservas',
+      label: 'Reservas',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="2" x2="8" y2="6" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="10" x2="21" y2="10" stroke-width="2"/></svg>'
+    },
+    {
+      id: 'pagos',
+      label: 'Pagos',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="1" y="4" width="22" height="16" rx="2" ry="2" stroke-width="2"/><line x1="1" y1="10" x2="23" y2="10" stroke-width="2"/></svg>'
+    }
+  ];
+
   return (
-    <div>
-      <h3>Panel de Recepcionista</h3>
+    <DashboardLayout
+      user={user}
+      onLogout={onLogout}
+      menuItems={menuItems}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+    >
+        {activeTab === "pagos" && <PagosManager user={user} />}
       
-      {/* Navegación por pestañas */}
-      <ul className="nav nav-tabs mb-4">
-        <li className="nav-item">
-          <button 
-            className={`nav-link ${activeTab === "habitaciones" ? "active" : ""}`}
-            onClick={() => setActiveTab("habitaciones")}
-          >
-            <i className="bi bi-door-open"></i> Habitaciones
-          </button>
-        </li>
-        <li className="nav-item">
-          <button 
-            className={`nav-link ${activeTab === "reservas" ? "active" : ""}`}
-            onClick={() => setActiveTab("reservas")}
-          >
-            <i className="bi bi-calendar-check"></i> Reservas
-          </button>
-        </li>
-        <li className="nav-item">
-          <button 
-            className={`nav-link ${activeTab === "pagos" ? "active" : ""}`}
-            onClick={() => setActiveTab("pagos")}
-          >
-            <i className="bi bi-credit-card"></i> Pagos
-          </button>
-        </li>
-      </ul>
+        {activeTab === "habitaciones" && (
+          <div>
+            {msg && <div className="alert alert-success mb-3">{msg}</div>}
 
-      {/* Contenido de las pestañas */}
-      {activeTab === "pagos" && <PagosManager user={user} />}
-      
-      {activeTab === "habitaciones" && (
-        <div>
-          <h4>Gestión de Habitaciones</h4>
-          {msg && <div className="alert alert-info">{msg}</div>}
-
-          <div className="row g-3">
-            <div className="col-lg-4">
-              <div className="card p-3">
-                <h5>Nueva habitación</h5>
+            <div style={{ display: 'grid', gridTemplateColumns: editing ? '1fr 1fr' : '1fr 2fr', gap: '24px', alignItems: 'start' }}>
+              {/* Formulario Nueva Habitación */}
+              <div className="dashboard-card">
+                <div className="dashboard-card-header">
+                  <h3 className="dashboard-card-title">Nueva Habitación</h3>
+                </div>
                 <form onSubmit={handleCreate}>
-                  <div className="mb-2">
+                  <div className="mb-3">
                     <label className="form-label">Número</label>
                     <input
                       className="form-control"
@@ -296,9 +292,10 @@ export default function ReceptionistDashboard({ user }) {
                       required
                       min="1"
                       type="number"
+                      placeholder="Ej: 101"
                     />
                   </div>
-                  <div className="mb-2">
+                  <div className="mb-3">
                     <label className="form-label">Tipo</label>
                     <select
                       className="form-select"
@@ -311,7 +308,7 @@ export default function ReceptionistDashboard({ user }) {
                       <option value="suite">Suite</option>
                     </select>
                   </div>
-                  <div className="mb-2">
+                  <div className="mb-3">
                     <label className="form-label">Precio por noche</label>
                     <input
                       className="form-control"
@@ -320,6 +317,7 @@ export default function ReceptionistDashboard({ user }) {
                       value={newRoom.precio_noche}
                       onChange={(e) => setNewRoom({ ...newRoom, precio_noche: e.target.value })}
                       required
+                      placeholder="Ej: 50000"
                     />
                   </div>
                   <div className="mb-3">
@@ -334,47 +332,73 @@ export default function ReceptionistDashboard({ user }) {
                       <option value="limpieza">Limpieza</option>
                     </select>
                   </div>
-                  <button className="btn btn-success" type="submit">Crear habitación</button>
+                  <button className="btn-primary-custom w-100" type="submit">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                      <line x1="12" y1="5" x2="12" y2="19" strokeWidth="2" strokeLinecap="round"/>
+                      <line x1="5" y1="12" x2="19" y2="12" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                    Crear Habitación
+                  </button>
                 </form>
               </div>
-            </div>
 
-            <div className="col-lg-8">
-              <div className="card p-3">
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <h5 className="mb-0">Habitaciones registradas</h5>
-                  <button className="btn btn-sm btn-outline-secondary" type="button" onClick={loadHabitaciones} disabled={loading}>
+              {/* Lista de Habitaciones */}
+              <div className="dashboard-card">
+                <div className="dashboard-card-header">
+                  <div>
+                    <h3 className="dashboard-card-title">Habitaciones Registradas</h3>
+                    <p className="dashboard-card-subtitle">Gestiona las habitaciones de tu sucursal</p>
+                  </div>
+                  <button className="btn-primary-custom" type="button" onClick={loadHabitaciones} disabled={loading}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                      <path d="M1 4v6h6M23 20v-6h-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
                     {loading ? "Actualizando..." : "Actualizar"}
                   </button>
                 </div>
 
-                <ul className="list-group">
-                  {habitaciones.length > 0 ? (
-                    habitaciones.map(h => (
-                      <li
-                        key={h.habitacion_id}
-                        className="list-group-item"
-                      >
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                          <div>
-                            <strong>Hab. {h.numero}</strong> — {h.tipo}
-                            <div className="text-muted small">
-                              Precio: {formatMoney(h.precio_noche)} • Hotel: {h.hotel_id}
+                {habitaciones.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="empty-state-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="48" height="48">
+                        <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth="2"/>
+                        <path d="M9 3v18M3 9h18M3 15h6M15 9h6" strokeWidth="2"/>
+                      </svg>
+                    </div>
+                    <p className="empty-state-text">No hay habitaciones registradas</p>
+                  </div>
+                ) : (
+                  <div className="items-list">
+                    {habitaciones.map(h => (
+                      <div key={h.habitacion_id} className="item-card">
+                        <div className="item-header">
+                          <div className="item-info">
+                            <div className="item-title">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" style={{ marginRight: '8px' }}>
+                                <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth="2"/>
+                                <path d="M9 3v18M3 9h18M3 15h6M15 9h6" strokeWidth="2"/>
+                              </svg>
+                              Habitación {h.numero}
+                            </div>
+                            <div className="item-subtitle">
+                              Tipo: <strong>{h.tipo}</strong> • {formatMoney(h.precio_noche)}/noche
                             </div>
                           </div>
-                          <div className="d-flex align-items-center">
+                          <div className="item-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                             <span
-                              className={`badge me-2 ${
-                                h.estado === "disponible" ? "bg-success"
-                                : h.estado === "ocupada" ? "bg-danger"
-                                : h.estado === "limpieza" ? "bg-warning"
-                                : "bg-secondary"
+                              className={`status-badge ${
+                                h.estado === "disponible" ? "status-success"
+                                : h.estado === "ocupada" ? "status-danger"
+                                : h.estado === "limpieza" ? "status-warning"
+                                : "status-secondary"
                               }`}
                             >
                               {h.estado}
                             </span>
                             <select
-                              className="form-select form-select-sm me-2"
+                              className="form-select form-select-sm"
+                              style={{ width: "auto", minWidth: "130px" }}
                               value={h.estado}
                               onChange={(e) => updateEstado(h, e.target.value)}
                             >
@@ -382,185 +406,337 @@ export default function ReceptionistDashboard({ user }) {
                               <option value="ocupada">Ocupada</option>
                               <option value="limpieza">Limpieza</option>
                             </select>
-                            <button className="btn btn-sm btn-outline-primary me-2" onClick={() => startEdit(h)}>Editar</button>
-                            <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(h)}>Eliminar</button>
+                            <button className="btn-secondary-custom btn-icon" onClick={() => startEdit(h)} title="Editar">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </button>
+                            <button className="btn-danger-custom btn-icon" onClick={() => handleDelete(h)} title="Eliminar">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                                <polyline points="3 6 5 6 21 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </button>
                           </div>
                         </div>
-                      </li>
-                    ))
-                  ) : (
-                    <li className="list-group-item text-muted">
-                      No hay habitaciones registradas para este hotel.
-                    </li>
-                  )}
-                </ul>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
+
+            {editing && (
+              <div className="dashboard-card">
+                <div className="dashboard-card-header">
+                  <h3 className="dashboard-card-title">Editar Habitación #{editing.numero}</h3>
+                </div>
+                <form onSubmit={handleEditSubmit}>
+                  <div className="mb-3">
+                    <label className="form-label">Número</label>
+                    <input
+                      className="form-control"
+                      type="number"
+                      min="1"
+                      value={editing.numero}
+                      onChange={(e) => handleEditChange("numero", e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Tipo</label>
+                    <select
+                      className="form-select"
+                      value={editing.tipo}
+                      onChange={(e) => handleEditChange("tipo", e.target.value)}
+                      required
+                    >
+                      <option value="simple">Simple</option>
+                      <option value="doble">Doble</option>
+                      <option value="suite">Suite</option>
+                    </select>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Precio/noche</label>
+                    <input
+                      className="form-control"
+                      type="number"
+                      min="0"
+                      value={editing.precio_noche}
+                      onChange={(e) => handleEditChange("precio_noche", e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Estado</label>
+                    <select
+                      className="form-select"
+                      value={editing.estado}
+                      onChange={(e) => handleEditChange("estado", e.target.value)}
+                    >
+                      <option value="disponible">Disponible</option>
+                      <option value="ocupada">Ocupada</option>
+                      <option value="limpieza">Limpieza</option>
+                    </select>
+                  </div>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button type="button" className="btn-secondary-custom" style={{ flex: 1 }} onClick={() => setEditing(null)}>
+                      Cancelar
+                    </button>
+                    <button className="btn-primary-custom" style={{ flex: 1 }} type="submit">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                        <polyline points="20 6 9 17 4 12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      Guardar Cambios
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
+        )}
 
-          {editing && (
-            <div className="card p-3 mt-3">
-              <h5>Editar habitación #{editing.numero}</h5>
-              <form onSubmit={handleEditSubmit} className="row g-2">
-                <div className="col-sm-3">
-                  <label className="form-label">Número</label>
-                  <input
-                    className="form-control"
-                    type="number"
-                    min="1"
-                    value={editing.numero}
-                    onChange={(e) => handleEditChange("numero", e.target.value)}
-                    required
-                  />
+        {activeTab === "reservas" && (
+          <div>
+            {msg && <div className="alert alert-success mb-3">{msg}</div>}
+            <div className="dashboard-card">
+              <div className="dashboard-card-header">
+                <div>
+                  <h3 className="dashboard-card-title">Reservas Recientes</h3>
+                  <p className="dashboard-card-subtitle">Gestiona y confirma las reservas de los huéspedes</p>
                 </div>
-                <div className="col-sm-3">
-                  <label className="form-label">Tipo</label>
-                  <select
-                    className="form-select"
-                    value={editing.tipo}
-                    onChange={(e) => handleEditChange("tipo", e.target.value)}
-                    required
-                  >
-                    <option value="simple">Simple</option>
-                    <option value="doble">Doble</option>
-                    <option value="suite">Suite</option>
-                  </select>
-                </div>
-                <div className="col-sm-3">
-                  <label className="form-label">Precio/noche</label>
-                  <input
-                    className="form-control"
-                    type="number"
-                    min="0"
-                    value={editing.precio_noche}
-                    onChange={(e) => handleEditChange("precio_noche", e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="col-sm-3">
-                  <label className="form-label">Estado</label>
-                  <select
-                    className="form-select"
-                    value={editing.estado}
-                    onChange={(e) => handleEditChange("estado", e.target.value)}
-                  >
-                    <option value="disponible">Disponible</option>
-                    <option value="ocupada">Ocupada</option>
-                    <option value="limpieza">Limpieza</option>
-                  </select>
-                </div>
-                <div className="col-12 d-flex justify-content-end gap-2 mt-2">
-                  <button type="button" className="btn btn-light" onClick={() => setEditing(null)}>Cancelar</button>
-                  <button className="btn btn-primary" type="submit">Guardar cambios</button>
-                </div>
-              </form>
-            </div>
-          )}
-        </div>
-      )}
+                <button
+                  className="btn-primary-custom"
+                  type="button"
+                  onClick={loadReservas}
+                  disabled={reservasLoading}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                    <path d="M1 4v6h6M23 20v-6h-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  {reservasLoading ? "Actualizando..." : "Actualizar"}
+                </button>
+              </div>
 
-      {activeTab === "reservas" && (
-        <div>
-          <h4>Reservas del hotel</h4>
-          {msg && <div className="alert alert-info">{msg}</div>}
-          <div className="card p-3">
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <h5 className="mb-0">Reservas recientes</h5>
-              <button
-                className="btn btn-sm btn-outline-secondary"
-                type="button"
-                onClick={loadReservas}
-                disabled={reservasLoading}
-              >
-                {reservasLoading ? "Actualizando..." : "Actualizar"}
-              </button>
-            </div>
-
-            {reservasLoading && <div className="text-muted small">Cargando reservas...</div>}
+            {reservasLoading && (
+              <div className="text-center py-4">
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Cargando...</span>
+                </div>
+              </div>
+            )}
 
             {!reservasLoading && reservasOrdenadas.length === 0 && (
-              <div className="text-muted">Aún no hay reservas registradas.</div>
-            )}
-
-            {!reservasLoading && reservasOrdenadas.length > 0 && (
-              <ul className="list-group">
+              <div className="empty-state">
+                <div className="empty-state-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="48" height="48">
+                    <rect x="3" y="4" width="18" height="18" rx="2" strokeWidth="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6" strokeWidth="2" strokeLinecap="round"/>
+                    <line x1="8" y1="2" x2="8" y2="6" strokeWidth="2" strokeLinecap="round"/>
+                    <line x1="3" y1="10" x2="21" y2="10" strokeWidth="2"/>
+                  </svg>
+                </div>
+                <p className="empty-state-text">Aún no hay reservas registradas</p>
+              </div>
+            )}            {!reservasLoading && reservasOrdenadas.length > 0 && (
+              <div className="items-list">
                 {reservasOrdenadas.map((r) => {
                   const esPendiente = r.estado === "pendiente";
-                  const pagoLabel = r.pago_estado === "pagado"
-                    ? "text-success"
-                    : r.pago_estado === "pendiente"
-                    ? "text-warning"
-                    : "text-muted";
                   return (
-                    <li key={r.reserva_id} className="list-group-item d-flex justify-content-between align-items-start">
-                      <div>
-                        <strong>{r.hotel_nombre || user?.hotel_nombre || "Hotel sin nombre"}</strong>
-                        <div className="small text-muted">Habitación {r.habitacion_numero}</div>
-                        <div className="small text-muted">{r.fecha_inicio} → {r.fecha_fin}</div>
-                        <div className={`small ${pagoLabel}`}>
-                          {r.pago_metodo || "sin método"} • {r.pago_estado || "sin estado"}
-                        </div>
-                        <div className={`small ${esPendiente ? "text-warning" : "text-muted"} text-capitalize`}>
-                          Reserva: {r.estado || "sin estado"}
-                        </div>
-                        <button
-                          className="btn btn-link btn-sm px-0"
-                          onClick={() => setSelectedReserva(r)}
-                        >
-                          Ver detalles
-                        </button>
-                      </div>
-                      <div className="text-end">
-                        <div className="fw-semibold">{formatMoney(r.total)}</div>
-                        {esPendiente ? (
+                    <div key={r.reserva_id} className="item-card">
+                      <div className="item-header">
+                        <div className="item-info">
+                          <div className="item-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" style={{ marginRight: '8px' }}>
+                              <rect x="3" y="4" width="18" height="18" rx="2" strokeWidth="2"/>
+                              <line x1="16" y1="2" x2="16" y2="6" strokeWidth="2" strokeLinecap="round"/>
+                              <line x1="8" y1="2" x2="8" y2="6" strokeWidth="2" strokeLinecap="round"/>
+                              <line x1="3" y1="10" x2="21" y2="10" strokeWidth="2"/>
+                            </svg>
+                            {r.hotel_nombre || user?.hotel_nombre || "Hotel sin nombre"}
+                          </div>
+                          <div className="item-subtitle">
+                            <strong>Habitación {r.habitacion_numero}</strong> • {formatDate(r.fecha_inicio)} → {formatDate(r.fecha_fin)}
+                          </div>
+                          <div className="mt-2" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            <span className={`status-badge ${
+                              r.pago_estado === "pagado" ? "status-success" :
+                              r.pago_estado === "pendiente" ? "status-warning" :
+                              "status-secondary"
+                            }`}>
+                              {r.pago_metodo || "sin método"} • {r.pago_estado || "sin estado"}
+                            </span>
+                            <span className={`status-badge ${
+                              r.estado === "confirmada" ? "status-success" :
+                              r.estado === "pendiente" ? "status-warning" :
+                              r.estado === "cancelada" ? "status-danger" :
+                              "status-secondary"
+                            }`}>
+                              Reserva: {r.estado || "sin estado"}
+                            </span>
+                          </div>
                           <button
-                            className="btn btn-sm btn-success mt-1"
-                            onClick={() => confirmReserva(r)}
-                            disabled={confirmingId === r.reserva_id}
+                            className="btn-secondary-custom btn-sm mt-2"
+                            onClick={() => setSelectedReserva(r)}
                           >
-                            {confirmingId === r.reserva_id ? "Confirmando..." : "Marcar como pagada"}
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14">
+                              <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+                              <path d="M12 16v-4M12 8h.01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                            Ver Detalles
                           </button>
-                        ) : (
-                          <span className="badge bg-success mt-2">Confirmada</span>
-                        )}
+                        </div>
+                        <div className="item-actions" style={{ textAlign: 'right' }}>
+                          <div className="fw-bold fs-4 mb-3" style={{ color: '#2563eb' }}>{formatMoney(r.total)}</div>
+                          {esPendiente ? (
+                            <button
+                              className="btn-primary-custom"
+                              onClick={() => confirmReserva(r)}
+                              disabled={confirmingId === r.reserva_id}
+                              style={{ whiteSpace: 'nowrap' }}
+                            >
+                              {confirmingId === r.reserva_id ? (
+                                <>
+                                  <span className="spinner-border spinner-border-sm"></span>
+                                  Confirmando...
+                                </>
+                              ) : (
+                                <>
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                                    <polyline points="20 6 9 17 4 12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                  Marcar como Pagada
+                                </>
+                              )}
+                            </button>
+                          ) : (
+                            <span className="status-badge status-success" style={{ fontSize: '14px', padding: '8px 16px' }}>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16" style={{ marginRight: '6px' }}>
+                                <polyline points="20 6 9 17 4 12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                              Confirmada
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </li>
+                    </div>
                   );
                 })}
-              </ul>
+              </div>
             )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {selectedReserva && (
-        <div className="modal fade show" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.35)" }}>
-          <div className="modal-dialog">
+        {selectedReserva && (
+        <div className="modal fade show" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <div className="modal-dialog modal-lg">
             <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Detalle de reserva</h5>
+              <div className="modal-header border-0 pb-0">
+                <h5 className="modal-title fw-bold">
+                  <i className="bi bi-info-circle me-2"></i>
+                  Detalle de reserva
+                </h5>
                 <button type="button" className="btn-close" onClick={() => setSelectedReserva(null)}></button>
               </div>
               <div className="modal-body">
-                <p><strong>Hotel:</strong> {selectedReserva.hotel_nombre || user?.hotel_nombre || "—"}</p>
-                <p><strong>Habitación:</strong> {selectedReserva.habitacion_numero}</p>
-                <p><strong>Huésped:</strong> {selectedReserva.huesped_nombre || "Sin nombre registrado"}</p>
-                <p><strong>Email huésped:</strong> {selectedReserva.huesped_email || "—"}</p>
-                <p><strong>Ingreso:</strong> {formatDate(selectedReserva.fecha_inicio)}</p>
-                <p><strong>Salida:</strong> {formatDate(selectedReserva.fecha_fin)}</p>
-                <p><strong>Estadía:</strong> {formatNights(selectedReserva)}</p>
-                <p><strong>Total:</strong> {formatMoney(selectedReserva.total)}</p>
-                <p><strong>Método de pago:</strong> {selectedReserva.pago_metodo || "—"}</p>
-                <p><strong>Estado de pago:</strong> {selectedReserva.pago_estado || "—"}</p>
-                <p><strong>Estado de la reserva:</strong> {selectedReserva.estado}</p>
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <div className="detail-item">
+                      <label className="detail-label">Hotel</label>
+                      <div className="detail-value">{selectedReserva.hotel_nombre || user?.hotel_nombre || "—"}</div>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="detail-item">
+                      <label className="detail-label">Habitación</label>
+                      <div className="detail-value">#{selectedReserva.habitacion_numero}</div>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="detail-item">
+                      <label className="detail-label">Huésped</label>
+                      <div className="detail-value">{selectedReserva.huesped_nombre || "Sin nombre registrado"}</div>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="detail-item">
+                      <label className="detail-label">Email huésped</label>
+                      <div className="detail-value">{selectedReserva.huesped_email || "—"}</div>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="detail-item">
+                      <label className="detail-label">Fecha de ingreso</label>
+                      <div className="detail-value">{formatDate(selectedReserva.fecha_inicio)}</div>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="detail-item">
+                      <label className="detail-label">Fecha de salida</label>
+                      <div className="detail-value">{formatDate(selectedReserva.fecha_fin)}</div>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="detail-item">
+                      <label className="detail-label">Duración de estadía</label>
+                      <div className="detail-value">{formatNights(selectedReserva)}</div>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="detail-item">
+                      <label className="detail-label">Total</label>
+                      <div className="detail-value fw-bold text-success">{formatMoney(selectedReserva.total)}</div>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="detail-item">
+                      <label className="detail-label">Método de pago</label>
+                      <div className="detail-value text-capitalize">{selectedReserva.pago_metodo || "—"}</div>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="detail-item">
+                      <label className="detail-label">Estado de pago</label>
+                      <div className="detail-value">
+                        <span className={`status-badge ${
+                          selectedReserva.pago_estado === "pagado" ? "status-success" :
+                          selectedReserva.pago_estado === "pendiente" ? "status-warning" :
+                          "status-secondary"
+                        }`}>
+                          {selectedReserva.pago_estado || "—"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="col-12">
+                    <div className="detail-item">
+                      <label className="detail-label">Estado de la reserva</label>
+                      <div className="detail-value">
+                        <span className={`status-badge ${
+                          selectedReserva.estado === "confirmada" ? "status-success" :
+                          selectedReserva.estado === "pendiente" ? "status-warning" :
+                          selectedReserva.estado === "cancelada" ? "status-danger" :
+                          "status-secondary"
+                        }`}>
+                          {selectedReserva.estado}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setSelectedReserva(null)}>Cerrar</button>
+              <div className="modal-footer border-0">
+                <button className="btn btn-secondary" onClick={() => setSelectedReserva(null)}>
+                  Cerrar
+                </button>
               </div>
             </div>
           </div>
         </div>
-      )}
-    </div>
+        )}
+    </DashboardLayout>
   );
 }

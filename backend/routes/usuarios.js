@@ -2,6 +2,7 @@ import express from "express";
 import { pool } from "../models/db.js";
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
+import { Usuario, Tenant, TenantUsuario, Hotel } from "../models/index.js";
 
 const router = express.Router();
 

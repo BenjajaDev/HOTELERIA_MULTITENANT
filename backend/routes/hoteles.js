@@ -1,6 +1,7 @@
 import express from "express";
-import { pool } from "../models/db.js";
+import { Hotel, Tenant, Habitacion, Reserva, Pago } from "../models/index.js";
 import { ensureRedisConnection } from "../models/redisClient.js";
+import { Op } from "sequelize";
 
 const router = express.Router();
 
@@ -8,31 +9,7 @@ const HOTEL_LIST_CACHE_KEY = "cache:hoteles:list";
 const HOTEL_CACHE_PREFIX = "cache:hoteles:id:";
 const HOTEL_CACHE_TTL_SECONDS = 60;
 
-const HOTEL_BASE_QUERY = `
-  SELECT
-    h.*,
-    t.nombre AS tenant_nombre,
-    COALESCE(totales.total_pagado, 0)::INTEGER AS total_ganancias,
-    COALESCE(totales.total_pendiente, 0)::INTEGER AS total_pendiente
-  FROM hotel h
-  JOIN tenant t ON h.tenant_id = t.tenant_id
-  LEFT JOIN LATERAL (
-    SELECT 
-      SUM(CASE WHEN p.estado = 'pagado' THEN p.monto ELSE 0 END) AS total_pagado,
-      SUM(CASE WHEN p.estado = 'pendiente' THEN p.monto ELSE 0 END) AS total_pendiente
-    FROM reserva r
-    JOIN habitacion hab ON hab.habitacion_id = r.habitacion_id
-    LEFT JOIN pago p ON p.reserva_id = r.reserva_id
-    WHERE hab.hotel_id = h.hotel_id
-  ) AS totales ON true
-`;
-
-async function fetchHotelById(hotelId) {
-  const result = await pool.query(`${HOTEL_BASE_QUERY} WHERE h.hotel_id = $1`, [hotelId]);
-  return result.rows[0] || null;
-}
-
-// GET /api/hoteles
+// GET /api/hoteles - Obtener todos los hoteles
 router.get("/", async (req, res) => {
   try {
     const redis = await ensureRedisConnection();
@@ -42,25 +19,78 @@ router.get("/", async (req, res) => {
       return res.json(JSON.parse(cachedHotels));
     }
 
-    const result = await pool.query(`${HOTEL_BASE_QUERY} ORDER BY h.created_at DESC NULLS LAST`);
-    const hotels = result.rows;
+    const hotels = await Hotel.findAll({
+      include: [
+        {
+          model: Tenant,
+          as: 'tenant',
+          attributes: ['tenant_id', 'nombre']
+        }
+      ],
+      order: [['created_at', 'DESC']],
+      raw: false
+    });
+
+    // Calcular ganancias para cada hotel
+    const hotelsWithStats = await Promise.all(hotels.map(async (hotel) => {
+      const habitaciones = await Habitacion.findAll({
+        where: { hotel_id: hotel.hotel_id },
+        attributes: ['habitacion_id']
+      });
+
+      const habitacionIds = habitaciones.map(h => h.habitacion_id);
+
+      let total_ganancias = 0;
+      let total_pendiente = 0;
+
+      if (habitacionIds.length > 0) {
+        const reservas = await Reserva.findAll({
+          where: { habitacion_id: { [Op.in]: habitacionIds } },
+          include: [
+            {
+              model: Pago,
+              as: 'pagos',
+              attributes: ['monto', 'estado']
+            }
+          ]
+        });
+
+        reservas.forEach(reserva => {
+          reserva.pagos?.forEach(pago => {
+            if (pago.estado === 'pagado') {
+              total_ganancias += pago.monto || 0;
+            } else if (pago.estado === 'pendiente') {
+              total_pendiente += pago.monto || 0;
+            }
+          });
+        });
+      }
+
+      return {
+        ...hotel.toJSON(),
+        tenant_nombre: hotel.tenant?.nombre,
+        total_ganancias,
+        total_pendiente
+      };
+    }));
 
     await redis.setEx(
       HOTEL_LIST_CACHE_KEY,
       HOTEL_CACHE_TTL_SECONDS,
-      JSON.stringify(hotels)
+      JSON.stringify(hotelsWithStats)
     );
 
-    res.json(hotels);
+    res.json(hotelsWithStats);
   } catch (err) {
     console.error("Error al obtener hoteles:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/hoteles/:id
+// GET /api/hoteles/:id - Obtener un hotel específico
 router.get("/:id", async (req, res) => {
   const { id } = req.params;
+  
   try {
     const redis = await ensureRedisConnection();
     const cacheKey = `${HOTEL_CACHE_PREFIX}${id}`;
@@ -70,72 +100,202 @@ router.get("/:id", async (req, res) => {
       return res.json(JSON.parse(cachedHotel));
     }
 
-    const hotel = await fetchHotelById(id);
+    const hotel = await Hotel.findByPk(id, {
+      include: [
+        {
+          model: Tenant,
+          as: 'tenant',
+          attributes: ['tenant_id', 'nombre']
+        }
+      ]
+    });
+
     if (!hotel) {
       return res.status(404).json({ error: "Hotel no encontrado" });
     }
-    await redis.setEx(cacheKey, HOTEL_CACHE_TTL_SECONDS, JSON.stringify(hotel));
-    res.json(hotel);
+
+    // Calcular stats
+    const habitaciones = await Habitacion.findAll({
+      where: { hotel_id: hotel.hotel_id },
+      attributes: ['habitacion_id']
+    });
+
+    const habitacionIds = habitaciones.map(h => h.habitacion_id);
+
+    let total_ganancias = 0;
+    let total_pendiente = 0;
+
+    if (habitacionIds.length > 0) {
+      const reservas = await Reserva.findAll({
+        where: { habitacion_id: { [Op.in]: habitacionIds } },
+        include: [
+          {
+            model: Pago,
+            as: 'pagos',
+            attributes: ['monto', 'estado']
+          }
+        ]
+      });
+
+      reservas.forEach(reserva => {
+        reserva.pagos?.forEach(pago => {
+          if (pago.estado === 'pagado') {
+            total_ganancias += pago.monto || 0;
+          } else if (pago.estado === 'pendiente') {
+            total_pendiente += pago.monto || 0;
+          }
+        });
+      });
+    }
+
+    const hotelWithStats = {
+      ...hotel.toJSON(),
+      tenant_nombre: hotel.tenant?.nombre,
+      total_ganancias,
+      total_pendiente
+    };
+
+    await redis.setEx(cacheKey, HOTEL_CACHE_TTL_SECONDS, JSON.stringify(hotelWithStats));
+    res.json(hotelWithStats);
   } catch (err) {
     console.error("Error al obtener hotel:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/hoteles
+// POST /api/hoteles - Crear un nuevo hotel
 router.post("/", async (req, res) => {
   const { nombre, direccion, telefono, email } = req.body;
 
   try {
     // 1. Crear tenant con el nombre del hotel
-    const tenantResult = await pool.query(
-      "INSERT INTO tenant (nombre) VALUES ($1) RETURNING tenant_id",
-      [nombre]
-    );
-    const tenant_id = tenantResult.rows[0].tenant_id;
+    const tenant = await Tenant.create({
+      nombre: nombre
+    });
 
     // 2. Crear hotel asociado al tenant
-    const hotelResult = await pool.query(
-      `INSERT INTO hotel (tenant_id, nombre, direccion, telefono, email) 
-       VALUES ($1, $2, $3, $4, $5) RETURNING hotel_id`,
-      [tenant_id, nombre, direccion, telefono, email]
-    );
+    const hotel = await Hotel.create({
+      tenant_id: tenant.tenant_id,
+      nombre,
+      direccion,
+      telefono,
+      email
+    });
 
-    const created = await fetchHotelById(hotelResult.rows[0].hotel_id);
+    // 3. Obtener el hotel completo con relaciones
+    const created = await Hotel.findByPk(hotel.hotel_id, {
+      include: [
+        {
+          model: Tenant,
+          as: 'tenant',
+          attributes: ['tenant_id', 'nombre']
+        }
+      ]
+    });
+
+    const hotelResponse = {
+      ...created.toJSON(),
+      tenant_nombre: created.tenant?.nombre,
+      total_ganancias: 0,
+      total_pendiente: 0
+    };
 
     const redis = await ensureRedisConnection();
     await Promise.all([
       redis.del(HOTEL_LIST_CACHE_KEY),
       redis.setEx(
-        `${HOTEL_CACHE_PREFIX}${created.hotel_id}`,
+        `${HOTEL_CACHE_PREFIX}${hotel.hotel_id}`,
         HOTEL_CACHE_TTL_SECONDS,
-        JSON.stringify(created)
+        JSON.stringify(hotelResponse)
       ),
     ]);
 
-    res.status(201).json(created);
+    res.status(201).json(hotelResponse);
   } catch (err) {
     console.error("Error al crear hotel:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// PUT /api/hoteles/:id
+// PUT /api/hoteles/:id - Actualizar un hotel
 router.put("/:id", async (req, res) => {
   const { id } = req.params;
   const { nombre, direccion, telefono, email } = req.body;
+
   try {
-    const result = await pool.query(
-      "UPDATE hotel SET nombre=$1, direccion=$2, telefono=$3, email=$4 WHERE hotel_id=$5 RETURNING *",
-      [nombre, direccion, telefono, email, id]
-    );
-    if (result.rows.length === 0) {
+    const hotel = await Hotel.findByPk(id);
+
+    if (!hotel) {
       return res.status(404).json({ error: "Hotel no encontrado" });
     }
+
+    // Actualizar hotel
+    await hotel.update({
+      nombre,
+      direccion,
+      telefono,
+      email
+    });
+
+    // Actualizar nombre del tenant si cambió el nombre del hotel
     if (nombre) {
-      await pool.query("UPDATE tenant SET nombre=$1 WHERE tenant_id=$2", [nombre, result.rows[0].tenant_id]);
+      await Tenant.update(
+        { nombre },
+        { where: { tenant_id: hotel.tenant_id } }
+      );
     }
-    const updated = await fetchHotelById(id);
+
+    // Obtener hotel actualizado con stats
+    const updated = await Hotel.findByPk(id, {
+      include: [
+        {
+          model: Tenant,
+          as: 'tenant',
+          attributes: ['tenant_id', 'nombre']
+        }
+      ]
+    });
+
+    // Calcular stats
+    const habitaciones = await Habitacion.findAll({
+      where: { hotel_id: id },
+      attributes: ['habitacion_id']
+    });
+
+    const habitacionIds = habitaciones.map(h => h.habitacion_id);
+
+    let total_ganancias = 0;
+    let total_pendiente = 0;
+
+    if (habitacionIds.length > 0) {
+      const reservas = await Reserva.findAll({
+        where: { habitacion_id: { [Op.in]: habitacionIds } },
+        include: [
+          {
+            model: Pago,
+            as: 'pagos',
+            attributes: ['monto', 'estado']
+          }
+        ]
+      });
+
+      reservas.forEach(reserva => {
+        reserva.pagos?.forEach(pago => {
+          if (pago.estado === 'pagado') {
+            total_ganancias += pago.monto || 0;
+          } else if (pago.estado === 'pendiente') {
+            total_pendiente += pago.monto || 0;
+          }
+        });
+      });
+    }
+
+    const hotelResponse = {
+      ...updated.toJSON(),
+      tenant_nombre: updated.tenant?.nombre,
+      total_ganancias,
+      total_pendiente
+    };
 
     const redis = await ensureRedisConnection();
     await Promise.all([
@@ -143,72 +303,37 @@ router.put("/:id", async (req, res) => {
       redis.setEx(
         `${HOTEL_CACHE_PREFIX}${id}`,
         HOTEL_CACHE_TTL_SECONDS,
-        JSON.stringify(updated)
+        JSON.stringify(hotelResponse)
       ),
     ]);
 
-    res.json(updated);
+    res.json(hotelResponse);
   } catch (err) {
     console.error("Error al actualizar hotel:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// DELETE /api/hoteles/:id
+// DELETE /api/hoteles/:id - Eliminar un hotel
 router.delete("/:id", async (req, res) => {
   const { id } = req.params;
-  const client = await pool.connect();
 
   try {
-    await client.query("BEGIN");
+    const hotel = await Hotel.findByPk(id);
 
-    const hotelResult = await client.query(
-      "SELECT hotel_id, tenant_id FROM hotel WHERE hotel_id = $1",
-      [id]
-    );
-
-    if (hotelResult.rows.length === 0) {
-      await client.query("ROLLBACK");
+    if (!hotel) {
       return res.status(404).json({ error: "Hotel no encontrado" });
     }
 
-    const { tenant_id: tenantId } = hotelResult.rows[0];
+    const tenant_id = hotel.tenant_id;
 
-    const membershipsResult = await client.query(
-      `DELETE FROM tenant_usuario
-       WHERE tenant_id = $1
-         AND rol IN ('recepcionista', 'huesped', 'gerente')
-       RETURNING usuario_id, rol`,
-      [tenantId]
-    );
+    // Eliminar hotel (cascade eliminará habitaciones, reservas, etc.)
+    await hotel.destroy();
 
-    // Borramos fichas de huéspedes asociadas al hotel (tenant)
-    await client.query(
-      "DELETE FROM huesped WHERE tenant_id = $1",
-      [tenantId]
-    );
-
-    const removedUserIds = membershipsResult.rows.map(row => row.usuario_id);
-
-    if (removedUserIds.length > 0) {
-      await client.query(
-        `DELETE FROM usuario
-         WHERE usuario_id = ANY($1::uuid[])
-           AND NOT EXISTS (
-             SELECT 1
-             FROM tenant_usuario tu
-             WHERE tu.usuario_id = usuario.usuario_id
-           )`,
-        [removedUserIds]
-      );
-    }
-
-    const deleteResult = await client.query(
-      "DELETE FROM hotel WHERE hotel_id = $1 RETURNING *",
-      [id]
-    );
-
-    await client.query("COMMIT");
+    // Eliminar tenant asociado
+    await Tenant.destroy({
+      where: { tenant_id }
+    });
 
     const redis = await ensureRedisConnection();
     await Promise.all([
@@ -216,17 +341,10 @@ router.delete("/:id", async (req, res) => {
       redis.del(`${HOTEL_CACHE_PREFIX}${id}`),
     ]);
 
-    res.json({
-      message: "Hotel eliminado",
-      hotel: deleteResult.rows[0],
-      usuariosEliminados: membershipsResult.rows.length,
-    });
+    res.status(204).send();
   } catch (err) {
-    await client.query("ROLLBACK");
     console.error("Error al eliminar hotel:", err);
     res.status(500).json({ error: err.message });
-  } finally {
-    client.release();
   }
 });
 

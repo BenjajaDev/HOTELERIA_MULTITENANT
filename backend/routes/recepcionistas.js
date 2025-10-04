@@ -1,39 +1,57 @@
 import express from "express";
 import bcrypt from "bcrypt";
-import { pool } from "../models/db.js";
+import { RecepcionistaSucursal, Usuario, Sucursal, Hotel, Tenant, TenantUsuario } from "../models/index.js";
+import { Op } from "sequelize";
+import db from "../models/index.js";
 
 const router = express.Router();
 
 const BCRYPT_ROUNDS = Number.parseInt(process.env.BCRYPT_ROUNDS || "10", 10);
 
-const RECEPCIONISTA_BASE_QUERY = `
-  SELECT
-    rs.recepcionista_sucursal_id,
-    rs.usuario_id,
-    rs.sucursal_id,
-    rs.hotel_id,
-    rs.tenant_id,
-    rs.telefono,
-    rs.activo,
-    rs.created_at,
-    u.nombre,
-    u.email,
-    h.nombre AS hotel_nombre,
-    s.nombre AS sucursal_nombre,
-    t.nombre AS tenant_nombre
-  FROM recepcionista_sucursal rs
-  JOIN usuario u ON u.usuario_id = rs.usuario_id
-  JOIN sucursal s ON s.sucursal_id = rs.sucursal_id
-  JOIN hotel h ON h.hotel_id = rs.hotel_id
-  JOIN tenant t ON t.tenant_id = rs.tenant_id
-`;
-
 async function fetchRecepcionistaById(id) {
-  const result = await pool.query(
-    `${RECEPCIONISTA_BASE_QUERY} WHERE rs.recepcionista_sucursal_id = $1`,
-    [id]
-  );
-  return result.rows[0] || null;
+  const recepcionista = await RecepcionistaSucursal.findByPk(id, {
+    include: [
+      {
+        model: Usuario,
+        as: 'usuario',
+        attributes: ['nombre', 'email']
+      },
+      {
+        model: Sucursal,
+        as: 'sucursal',
+        attributes: ['nombre']
+      },
+      {
+        model: Hotel,
+        as: 'hotel',
+        attributes: ['nombre']
+      },
+      {
+        model: Tenant,
+        as: 'tenant',
+        attributes: ['nombre']
+      }
+    ]
+  });
+
+  if (!recepcionista) return null;
+
+  const plain = recepcionista.get({ plain: true });
+  return {
+    recepcionista_sucursal_id: plain.recepcionista_sucursal_id,
+    usuario_id: plain.usuario_id,
+    sucursal_id: plain.sucursal_id,
+    hotel_id: plain.hotel_id,
+    tenant_id: plain.tenant_id,
+    telefono: plain.telefono,
+    activo: plain.activo,
+    created_at: plain.created_at,
+    nombre: plain.usuario?.nombre,
+    email: plain.usuario?.email,
+    hotel_nombre: plain.hotel?.nombre,
+    sucursal_nombre: plain.sucursal?.nombre,
+    tenant_nombre: plain.tenant?.nombre
+  };
 }
 
 async function ensureTenantPermission({ usuarioId }, tenantId, allowedRoles = ["admin", "gerente"]) {
@@ -41,18 +59,21 @@ async function ensureTenantPermission({ usuarioId }, tenantId, allowedRoles = ["
     return null;
   }
 
-  const membershipResult = await pool.query(
-    `SELECT rol FROM tenant_usuario WHERE usuario_id = $1 AND tenant_id = $2 LIMIT 1`,
-    [usuarioId, tenantId]
-  );
+  const membership = await TenantUsuario.findOne({
+    where: {
+      usuario_id: usuarioId,
+      tenant_id: tenantId
+    },
+    attributes: ['rol']
+  });
 
-  if (membershipResult.rowCount === 0) {
+  if (!membership) {
     const err = new Error("No autorizado para gestionar recepcionistas en este hotel");
     err.status = 403;
     throw err;
   }
 
-  const rol = membershipResult.rows[0].rol;
+  const rol = membership.rol;
   if (!allowedRoles.includes(rol)) {
     const err = new Error("El rol no tiene permisos suficientes");
     err.status = 403;
@@ -64,33 +85,68 @@ async function ensureTenantPermission({ usuarioId }, tenantId, allowedRoles = ["
 
 router.get("/", async (req, res) => {
   const { hotelId, tenantId, sucursalId } = req.query;
-  const conditions = [];
-  const values = [];
-  let idx = 1;
+  const where = {};
 
   if (hotelId) {
-    conditions.push(`rs.hotel_id = $${idx++}`);
-    values.push(hotelId);
+    where.hotel_id = hotelId;
   }
 
   if (tenantId) {
-    conditions.push(`rs.tenant_id = $${idx++}`);
-    values.push(tenantId);
+    where.tenant_id = tenantId;
   }
 
   if (sucursalId) {
-    conditions.push(`rs.sucursal_id = $${idx++}`);
-    values.push(sucursalId);
+    where.sucursal_id = sucursalId;
   }
 
-  const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-
   try {
-    const result = await pool.query(
-      `${RECEPCIONISTA_BASE_QUERY} ${whereClause} ORDER BY rs.created_at DESC NULLS LAST`,
-      values
-    );
-    res.json(result.rows);
+    const recepcionistas = await RecepcionistaSucursal.findAll({
+      where,
+      include: [
+        {
+          model: Usuario,
+          as: 'usuario',
+          attributes: ['nombre', 'email']
+        },
+        {
+          model: Sucursal,
+          as: 'sucursal',
+          attributes: ['nombre']
+        },
+        {
+          model: Hotel,
+          as: 'hotel',
+          attributes: ['nombre']
+        },
+        {
+          model: Tenant,
+          as: 'tenant',
+          attributes: ['nombre']
+        }
+      ],
+      order: [['created_at', 'DESC']]
+    });
+
+    const formatted = recepcionistas.map(r => {
+      const plain = r.get({ plain: true });
+      return {
+        recepcionista_sucursal_id: plain.recepcionista_sucursal_id,
+        usuario_id: plain.usuario_id,
+        sucursal_id: plain.sucursal_id,
+        hotel_id: plain.hotel_id,
+        tenant_id: plain.tenant_id,
+        telefono: plain.telefono,
+        activo: plain.activo,
+        created_at: plain.created_at,
+        nombre: plain.usuario?.nombre,
+        email: plain.usuario?.email,
+        hotel_nombre: plain.hotel?.nombre,
+        sucursal_nombre: plain.sucursal?.nombre,
+        tenant_nombre: plain.tenant?.nombre
+      };
+    });
+
+    res.json(formatted);
   } catch (err) {
     console.error("Error al obtener recepcionistas:", err);
     res.status(500).json({ error: err.message });
@@ -140,24 +196,18 @@ router.post("/", async (req, res) => {
     return res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres" });
   }
 
-  const client = await pool.connect();
+  const transaction = await db.sequelize.transaction();
 
   try {
-    await client.query("BEGIN");
+    const sucursal = await Sucursal.findByPk(sucursalId, {
+      attributes: ['sucursal_id', 'tenant_id', 'hotel_id'],
+      transaction
+    });
 
-    const sucursalResult = await client.query(
-      `SELECT sucursal_id, tenant_id, hotel_id
-       FROM sucursal
-       WHERE sucursal_id = $1`,
-      [sucursalId]
-    );
-
-    if (sucursalResult.rowCount === 0) {
-      await client.query("ROLLBACK");
+    if (!sucursal) {
+      await transaction.rollback();
       return res.status(404).json({ error: "Sucursal no encontrada" });
     }
-
-    const sucursal = sucursalResult.rows[0];
 
     try {
       await ensureTenantPermission(
@@ -167,55 +217,61 @@ router.post("/", async (req, res) => {
         sucursal.tenant_id
       );
     } catch (err) {
-      await client.query("ROLLBACK");
+      await transaction.rollback();
       return res.status(err.status || 500).json({ error: err.message });
     }
 
-    const existingEmail = await client.query(
-      "SELECT usuario_id FROM usuario WHERE LOWER(email) = $1",
-      [emailNormalizado]
-    );
+    const existingEmail = await Usuario.findOne({
+      where: {
+        email: db.sequelize.where(
+          db.sequelize.fn('LOWER', db.sequelize.col('email')),
+          emailNormalizado
+        )
+      },
+      transaction
+    });
 
-    if (existingEmail.rowCount > 0) {
-      await client.query("ROLLBACK");
+    if (existingEmail) {
+      await transaction.rollback();
       return res.status(409).json({ error: "El email ya está registrado" });
     }
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
-    const usuarioResult = await client.query(
-      `INSERT INTO usuario (email, password_hash, nombre)
-       VALUES ($1, $2, $3)
-       RETURNING usuario_id`,
-      [emailNormalizado, passwordHash, nombre.trim()]
-    );
+    const nuevoUsuario = await Usuario.create({
+      email: emailNormalizado,
+      password_hash: passwordHash,
+      nombre: nombre.trim()
+    }, { transaction });
 
-    const usuarioId = usuarioResult.rows[0].usuario_id;
+    const usuarioId = nuevoUsuario.usuario_id;
 
-    await client.query(
-      `INSERT INTO tenant_usuario (tenant_id, usuario_id, rol)
-       VALUES ($1, $2, 'recepcionista')
-       ON CONFLICT DO NOTHING`,
-      [sucursal.tenant_id, usuarioId]
-    );
+    await TenantUsuario.create({
+      tenant_id: sucursal.tenant_id,
+      usuario_id: usuarioId,
+      rol: 'recepcionista'
+    }, { 
+      transaction,
+      ignoreDuplicates: true 
+    });
 
-    const insertResult = await client.query(
-      `INSERT INTO recepcionista_sucursal (tenant_id, hotel_id, sucursal_id, usuario_id, telefono, activo)
-       VALUES ($1, $2, $3, $4, $5, TRUE)
-       RETURNING recepcionista_sucursal_id`,
-      [sucursal.tenant_id, sucursal.hotel_id, sucursal.sucursal_id, usuarioId, telefono || null]
-    );
+    const nuevoRecepcionista = await RecepcionistaSucursal.create({
+      tenant_id: sucursal.tenant_id,
+      hotel_id: sucursal.hotel_id,
+      sucursal_id: sucursal.sucursal_id,
+      usuario_id: usuarioId,
+      telefono: telefono || null,
+      activo: true
+    }, { transaction });
 
-    await client.query("COMMIT");
+    await transaction.commit();
 
-    const created = await fetchRecepcionistaById(insertResult.rows[0].recepcionista_sucursal_id);
+    const created = await fetchRecepcionistaById(nuevoRecepcionista.recepcionista_sucursal_id);
     res.status(201).json(created);
   } catch (err) {
-    await client.query("ROLLBACK");
+    await transaction.rollback();
     console.error("Error al crear recepcionista:", err);
     res.status(500).json({ error: err.message });
-  } finally {
-    client.release();
   }
 });
 
@@ -231,131 +287,118 @@ router.put("/:id", async (req, res) => {
     activo,
   } = req.body;
 
-  const client = await pool.connect();
+  const transaction = await db.sequelize.transaction();
 
   try {
-    await client.query("BEGIN");
+    const current = await RecepcionistaSucursal.findByPk(id, {
+      include: [
+        {
+          model: Usuario,
+          as: 'usuario',
+          attributes: ['email', 'nombre']
+        }
+      ],
+      lock: transaction.LOCK.UPDATE,
+      transaction
+    });
 
-    const currentResult = await client.query(
-      `SELECT
-        rs.recepcionista_sucursal_id,
-        rs.usuario_id,
-        rs.sucursal_id,
-        rs.hotel_id,
-        rs.tenant_id,
-        rs.telefono,
-        rs.activo,
-        u.email,
-        u.nombre
-       FROM recepcionista_sucursal rs
-       JOIN usuario u ON u.usuario_id = rs.usuario_id
-       WHERE rs.recepcionista_sucursal_id = $1
-       FOR UPDATE`,
-      [id]
-    );
-
-    if (currentResult.rowCount === 0) {
-      await client.query("ROLLBACK");
+    if (!current) {
+      await transaction.rollback();
       return res.status(404).json({ error: "Recepcionista no encontrado" });
     }
 
-    const current = currentResult.rows[0];
+    const currentPlain = current.get({ plain: true });
 
     try {
       await ensureTenantPermission(
         {
           usuarioId: req.body.usuarioId || req.body.usuario_id || null,
         },
-        current.tenant_id
+        currentPlain.tenant_id
       );
     } catch (err) {
-      await client.query("ROLLBACK");
+      await transaction.rollback();
       return res.status(err.status || 500).json({ error: err.message });
     }
 
-    const userUpdates = [];
-    const userValues = [];
-    let userIdx = 1;
+    const userUpdates = {};
 
     if (nombre !== undefined) {
-      userUpdates.push(`nombre = $${userIdx++}`);
-      userValues.push(nombre);
+      userUpdates.nombre = nombre;
     }
 
     if (email !== undefined) {
       const emailNormalizado = email ? email.trim().toLowerCase() : "";
       if (!emailNormalizado) {
-        await client.query("ROLLBACK");
+        await transaction.rollback();
         return res.status(400).json({ error: "El email no puede quedar vacío" });
       }
 
-      if (emailNormalizado !== current.email.toLowerCase()) {
-        const emailResult = await client.query(
-          "SELECT usuario_id FROM usuario WHERE LOWER(email) = $1 AND usuario_id <> $2",
-          [emailNormalizado, current.usuario_id]
-        );
+      if (emailNormalizado !== currentPlain.usuario.email.toLowerCase()) {
+        const emailExists = await Usuario.findOne({
+          where: {
+            email: db.sequelize.where(
+              db.sequelize.fn('LOWER', db.sequelize.col('email')),
+              emailNormalizado
+            ),
+            usuario_id: { [Op.ne]: currentPlain.usuario_id }
+          },
+          transaction
+        });
 
-        if (emailResult.rowCount > 0) {
-          await client.query("ROLLBACK");
+        if (emailExists) {
+          await transaction.rollback();
           return res.status(409).json({ error: "El email ya está registrado" });
         }
 
-        userUpdates.push(`email = $${userIdx++}`);
-        userValues.push(emailNormalizado);
+        userUpdates.email = emailNormalizado;
       }
     }
 
     if (password) {
       if (password.length < 6) {
-        await client.query("ROLLBACK");
+        await transaction.rollback();
         return res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres" });
       }
       const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-      userUpdates.push(`password_hash = $${userIdx++}`);
-      userValues.push(passwordHash);
+      userUpdates.password_hash = passwordHash;
     }
 
-    if (userUpdates.length > 0) {
-      userValues.push(current.usuario_id);
-      await client.query(
-        `UPDATE usuario SET ${userUpdates.join(", ")} WHERE usuario_id = $${userIdx}`,
-        userValues
+    if (Object.keys(userUpdates).length > 0) {
+      await Usuario.update(
+        userUpdates,
+        {
+          where: { usuario_id: currentPlain.usuario_id },
+          transaction
+        }
       );
     }
 
-    const mappingUpdates = [];
-    const mappingValues = [];
-    let mapIdx = 1;
+    const mappingUpdates = {};
 
     if (telefono !== undefined) {
-      mappingUpdates.push(`telefono = $${mapIdx++}`);
-      mappingValues.push(telefono);
+      mappingUpdates.telefono = telefono;
     }
 
     if (activo !== undefined) {
-      mappingUpdates.push(`activo = $${mapIdx++}`);
-      mappingValues.push(Boolean(activo));
+      mappingUpdates.activo = Boolean(activo);
     }
 
     const providedSucursalId = sucursalIdCamel || sucursalIdSnake;
-    let targetTenantId = current.tenant_id;
-    let targetHotelId = current.hotel_id;
-    let targetSucursalId = current.sucursal_id;
+    let targetTenantId = currentPlain.tenant_id;
+    let targetHotelId = currentPlain.hotel_id;
+    let targetSucursalId = currentPlain.sucursal_id;
 
-    if (providedSucursalId && providedSucursalId !== current.sucursal_id) {
-      const sucursalResult = await client.query(
-        `SELECT sucursal_id, tenant_id, hotel_id
-         FROM sucursal
-         WHERE sucursal_id = $1`,
-        [providedSucursalId]
-      );
+    if (providedSucursalId && providedSucursalId !== currentPlain.sucursal_id) {
+      const sucursal = await Sucursal.findByPk(providedSucursalId, {
+        attributes: ['sucursal_id', 'tenant_id', 'hotel_id'],
+        transaction
+      });
 
-      if (sucursalResult.rowCount === 0) {
-        await client.query("ROLLBACK");
+      if (!sucursal) {
+        await transaction.rollback();
         return res.status(404).json({ error: "Sucursal no encontrada" });
       }
-
-      const sucursal = sucursalResult.rows[0];
 
       try {
         await ensureTenantPermission(
@@ -365,7 +408,7 @@ router.put("/:id", async (req, res) => {
           sucursal.tenant_id
         );
       } catch (err) {
-        await client.query("ROLLBACK");
+        await transaction.rollback();
         return res.status(err.status || 500).json({ error: err.message });
       }
 
@@ -373,72 +416,60 @@ router.put("/:id", async (req, res) => {
       targetTenantId = sucursal.tenant_id;
       targetHotelId = sucursal.hotel_id;
 
-      mappingUpdates.push(`sucursal_id = $${mapIdx++}`);
-      mappingValues.push(targetSucursalId);
-      mappingUpdates.push(`tenant_id = $${mapIdx++}`);
-      mappingValues.push(targetTenantId);
-      mappingUpdates.push(`hotel_id = $${mapIdx++}`);
-      mappingValues.push(targetHotelId);
+      mappingUpdates.sucursal_id = targetSucursalId;
+      mappingUpdates.tenant_id = targetTenantId;
+      mappingUpdates.hotel_id = targetHotelId;
     }
 
-    if (mappingUpdates.length > 0) {
-      mappingValues.push(id);
-      await client.query(
-        `UPDATE recepcionista_sucursal SET ${mappingUpdates.join(", ")} WHERE recepcionista_sucursal_id = $${mapIdx}`,
-        mappingValues
-      );
+    if (Object.keys(mappingUpdates).length > 0) {
+      await current.update(mappingUpdates, { transaction });
     }
 
-    if (providedSucursalId && providedSucursalId !== current.sucursal_id) {
-      await client.query(
-        `DELETE FROM tenant_usuario
-         WHERE tenant_id = $1
-           AND usuario_id = $2
-           AND rol = 'recepcionista'`,
-        [current.tenant_id, current.usuario_id]
-      );
+    if (providedSucursalId && providedSucursalId !== currentPlain.sucursal_id) {
+      await TenantUsuario.destroy({
+        where: {
+          tenant_id: currentPlain.tenant_id,
+          usuario_id: currentPlain.usuario_id,
+          rol: 'recepcionista'
+        },
+        transaction
+      });
 
-      await client.query(
-        `INSERT INTO tenant_usuario (tenant_id, usuario_id, rol)
-         VALUES ($1, $2, 'recepcionista')
-         ON CONFLICT DO NOTHING`,
-        [targetTenantId, current.usuario_id]
-      );
+      await TenantUsuario.create({
+        tenant_id: targetTenantId,
+        usuario_id: currentPlain.usuario_id,
+        rol: 'recepcionista'
+      }, { 
+        transaction,
+        ignoreDuplicates: true 
+      });
     }
 
-    await client.query("COMMIT");
+    await transaction.commit();
 
     const updated = await fetchRecepcionistaById(id);
     res.json(updated);
   } catch (err) {
-    await client.query("ROLLBACK");
+    await transaction.rollback();
     console.error("Error al actualizar recepcionista:", err);
     res.status(500).json({ error: err.message });
-  } finally {
-    client.release();
   }
 });
 
 router.delete("/:id", async (req, res) => {
   const { id } = req.params;
-  const client = await pool.connect();
+  const transaction = await db.sequelize.transaction();
 
   try {
-    await client.query("BEGIN");
+    const current = await RecepcionistaSucursal.findByPk(id, {
+      attributes: ['recepcionista_sucursal_id', 'usuario_id', 'tenant_id'],
+      transaction
+    });
 
-    const currentResult = await client.query(
-      `SELECT recepcionista_sucursal_id, usuario_id, tenant_id
-       FROM recepcionista_sucursal
-       WHERE recepcionista_sucursal_id = $1`,
-      [id]
-    );
-
-    if (currentResult.rowCount === 0) {
-      await client.query("ROLLBACK");
+    if (!current) {
+      await transaction.rollback();
       return res.status(404).json({ error: "Recepcionista no encontrado" });
     }
-
-    const current = currentResult.rows[0];
 
     try {
       await ensureTenantPermission(
@@ -448,44 +479,40 @@ router.delete("/:id", async (req, res) => {
         current.tenant_id
       );
     } catch (err) {
-      await client.query("ROLLBACK");
+      await transaction.rollback();
       return res.status(err.status || 500).json({ error: err.message });
     }
 
-    await client.query(
-      "DELETE FROM recepcionista_sucursal WHERE recepcionista_sucursal_id = $1",
-      [id]
-    );
+    await current.destroy({ transaction });
 
-    await client.query(
-      `DELETE FROM tenant_usuario
-       WHERE tenant_id = $1
-         AND usuario_id = $2
-         AND rol = 'recepcionista'`,
-      [current.tenant_id, current.usuario_id]
-    );
+    await TenantUsuario.destroy({
+      where: {
+        tenant_id: current.tenant_id,
+        usuario_id: current.usuario_id,
+        rol: 'recepcionista'
+      },
+      transaction
+    });
 
-    const memberships = await client.query(
-      "SELECT COUNT(*)::INTEGER AS total FROM tenant_usuario WHERE usuario_id = $1",
-      [current.usuario_id]
-    );
+    const membershipsCount = await TenantUsuario.count({
+      where: { usuario_id: current.usuario_id },
+      transaction
+    });
 
-    if (memberships.rows[0].total === 0) {
-      await client.query(
-        "DELETE FROM usuario WHERE usuario_id = $1",
-        [current.usuario_id]
-      );
+    if (membershipsCount === 0) {
+      await Usuario.destroy({
+        where: { usuario_id: current.usuario_id },
+        transaction
+      });
     }
 
-    await client.query("COMMIT");
+    await transaction.commit();
 
     res.json({ message: "Recepcionista eliminado" });
   } catch (err) {
-    await client.query("ROLLBACK");
+    await transaction.rollback();
     console.error("Error al eliminar recepcionista:", err);
     res.status(500).json({ error: err.message });
-  } finally {
-    client.release();
   }
 });
 

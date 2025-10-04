@@ -1,70 +1,14 @@
 import express from "express";
-import { pool } from "../models/db.js";
+import { Habitacion, Hotel, Sucursal, Reserva, Tenant } from "../models/index.js";
+import { fetchMembership, ensureHotelBelongs, ensureSucursalBelongs, fetchRecepcionistaSucursal } from "../models/helpers.js";
+import { Op } from "sequelize";
 
 const router = express.Router();
 
 const ESTADOS = ["disponible", "ocupada", "limpieza"];
 const TIPOS = ["simple", "doble", "suite"];
 
-async function fetchMembership({ tenant, usuario }) {
-  if (!tenant || !usuario) return null;
-  const membershipRes = await pool.query(
-    `SELECT rol
-     FROM tenant_usuario
-     WHERE tenant_id = $1 AND usuario_id = $2
-     LIMIT 1`,
-    [tenant, usuario]
-  );
-  return membershipRes.rows[0] || null;
-}
-
-async function ensureHotelBelongs({ hotel, tenant }) {
-  if (!hotel || !tenant) return null;
-  const hotelRes = await pool.query(
-    `SELECT hotel_id, tenant_id
-     FROM hotel
-     WHERE hotel_id = $1 AND tenant_id = $2
-     LIMIT 1`,
-    [hotel, tenant]
-  );
-  return hotelRes.rows[0] || null;
-}
-
-async function ensureSucursalBelongs({ sucursalId, hotelId, tenantId }) {
-  if (!sucursalId || !hotelId || !tenantId) return null;
-  const sucursalRes = await pool.query(
-    `SELECT sucursal_id, hotel_id, tenant_id
-     FROM sucursal
-     WHERE sucursal_id = $1 AND hotel_id = $2 AND tenant_id = $3
-     LIMIT 1`,
-    [sucursalId, hotelId, tenantId]
-  );
-  return sucursalRes.rows[0] || null;
-}
-
-async function fetchRecepcionistaSucursal({ usuarioId, tenantId, hotelId }) {
-  if (!usuarioId || !tenantId) return null;
-  const params = [usuarioId, tenantId];
-  let query = `
-    SELECT sucursal_id, hotel_id, tenant_id
-    FROM recepcionista_sucursal
-    WHERE usuario_id = $1
-      AND tenant_id = $2
-      AND (activo IS NULL OR activo = true)
-  `;
-
-  if (hotelId) {
-    params.push(hotelId);
-    query += ` AND hotel_id = $${params.length}`;
-  }
-
-  query += " ORDER BY created_at ASC NULLS LAST LIMIT 1";
-
-  const result = await pool.query(query, params);
-  return result.rows[0] || null;
-}
-
-// 🔹 Endpoint: obtener habitaciones del hotel del usuario logueado o por defecto
+// GET /api/habitaciones/del-usuario - Habitaciones del usuario logueado
 router.get("/del-usuario", async (req, res) => {
   const {
     tenantId,
@@ -128,21 +72,21 @@ router.get("/del-usuario", async (req, res) => {
       }
     }
 
-    const values = [hotelRow.hotel_id, tenant];
+    const where = {
+      hotel_id: hotelRow.hotel_id,
+      tenant_id: tenant
+    };
+
     if (sucursalRow) {
-      values.push(sucursalRow.sucursal_id);
+      where.sucursal_id = sucursalRow.sucursal_id;
     }
 
-    const habitacionesRes = await pool.query(
-      `SELECT habitacion_id, numero, tipo, estado, precio_noche, hotel_id, tenant_id, sucursal_id
-       FROM habitacion
-       WHERE hotel_id = $1 AND tenant_id = $2
-         ${sucursalRow ? "AND sucursal_id = $3" : ""}
-       ORDER BY numero ASC`,
-      values
-    );
+    const habitaciones = await Habitacion.findAll({
+      where,
+      order: [['numero', 'ASC']]
+    });
 
-    res.json(habitacionesRes.rows);
+    res.json(habitaciones);
   } catch (err) {
     console.error("Error al listar habitaciones:", err);
     res.status(500).json({ error: "Error al obtener habitaciones" });
@@ -157,42 +101,58 @@ router.get("/:hotelId", async (req, res) => {
     return res.status(400).json({ error: "Se requiere hotelId" });
   }
 
-  const values = [hotelId];
-  let idx = 2;
-  let availabilityClause = "";
   const sucursalFilter = sucursalId || sucursalIdSnake || null;
 
-  if (fecha_inicio && fecha_fin) {
-    availabilityClause = `
-      AND NOT EXISTS (
-        SELECT 1
-        FROM reserva r
-        WHERE r.habitacion_id = h.habitacion_id
-          AND r.estado != 'cancelada'
-          AND NOT ($${idx + 1} <= r.fecha_inicio OR $${idx} >= r.fecha_fin)
-      )`;
-    values.push(fecha_inicio, fecha_fin);
-    idx += 2;
-  }
-
-  let sucursalClause = "";
-  if (sucursalFilter) {
-    sucursalClause = ` AND h.sucursal_id = $${idx++}`;
-    values.push(sucursalFilter);
-  }
-
   try {
-    const result = await pool.query(
-      `SELECT habitacion_id, numero, tipo, estado, precio_noche, hotel_id, tenant_id, sucursal_id
-       FROM habitacion h
-       WHERE h.hotel_id = $1
-         AND h.estado = 'disponible'
-         ${availabilityClause}
-         ${sucursalClause}
-       ORDER BY numero ASC`,
-      values
-    );
-    res.json(result.rows);
+    const where = {
+      hotel_id: hotelId,
+      estado: 'disponible'
+    };
+
+    if (sucursalFilter) {
+      where.sucursal_id = sucursalFilter;
+    }
+
+    let habitaciones;
+
+    if (fecha_inicio && fecha_fin) {
+      // Buscar habitaciones que NO tengan reservas activas en el rango de fechas
+      habitaciones = await Habitacion.findAll({
+        where,
+        include: [{
+          model: Reserva,
+          as: 'reservas',
+          required: false,
+          where: {
+            estado: { [Op.ne]: 'cancelada' },
+            [Op.not]: {
+              [Op.or]: [
+                { fecha_fin: { [Op.lte]: fecha_inicio } },
+                { fecha_inicio: { [Op.gte]: fecha_fin } }
+              ]
+            }
+          }
+        }],
+        order: [['numero', 'ASC']]
+      });
+
+      // Filtrar solo las que NO tienen reservas conflictivas
+      habitaciones = habitaciones.filter(h => !h.reservas || h.reservas.length === 0);
+      
+      // Limpiar el campo reservas antes de enviar
+      habitaciones = habitaciones.map(h => {
+        const plain = h.get({ plain: true });
+        delete plain.reservas;
+        return plain;
+      });
+    } else {
+      habitaciones = await Habitacion.findAll({
+        where,
+        order: [['numero', 'ASC']]
+      });
+    }
+
+    res.json(habitaciones);
   } catch (err) {
     console.error("Error al listar habitaciones disponibles:", err);
     res.status(500).json({ error: "Error al obtener habitaciones disponibles" });
@@ -292,14 +252,17 @@ router.post("/", async (req, res) => {
       sucursalToUse = sucursalRow.sucursal_id;
     }
 
-    const insertResult = await pool.query(
-      `INSERT INTO habitacion (tenant_id, hotel_id, sucursal_id, numero, tipo, precio_noche, estado)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING habitacion_id, numero, tipo, estado, precio_noche, hotel_id, tenant_id, sucursal_id`,
-      [tenant, hotel, sucursalToUse, numeroVal, tipoVal, precioVal, estadoVal || "disponible"]
-    );
+    const nuevaHabitacion = await Habitacion.create({
+      tenant_id: tenant,
+      hotel_id: hotel,
+      sucursal_id: sucursalToUse,
+      numero: numeroVal,
+      tipo: tipoVal,
+      precio_noche: precioVal,
+      estado: estadoVal || "disponible"
+    });
 
-    res.status(201).json(insertResult.rows[0]);
+    res.status(201).json(nuevaHabitacion);
   } catch (err) {
     console.error("Error al crear habitación:", err);
     res.status(500).json({ error: "Error al crear habitación" });
@@ -346,19 +309,17 @@ router.put("/:habitacionId", async (req, res) => {
       return res.status(403).json({ error: "Rol sin permisos para modificar habitaciones" });
     }
 
-    const currentRoomRes = await pool.query(
-      `SELECT habitacion_id, sucursal_id
-       FROM habitacion
-       WHERE habitacion_id = $1 AND tenant_id = $2 AND hotel_id = $3
-       LIMIT 1`,
-      [habitacionId, tenant, hotel]
-    );
+    const currentRoom = await Habitacion.findOne({
+      where: {
+        habitacion_id: habitacionId,
+        tenant_id: tenant,
+        hotel_id: hotel
+      }
+    });
 
-    if (currentRoomRes.rowCount === 0) {
+    if (!currentRoom) {
       return res.status(404).json({ error: "Habitación no encontrada para el hotel indicado" });
     }
-
-    const currentRoom = currentRoomRes.rows[0];
 
     if (rol === "recepcionista") {
       const recepSucursal = await fetchRecepcionistaSucursal({
@@ -372,26 +333,24 @@ router.put("/:habitacionId", async (req, res) => {
       }
     }
 
-    const updates = [];
-    const values = [];
-    let idx = 1;
+    const updates = {};
 
     if (typeof numero !== "undefined") {
       const numeroVal = Number(numero);
       if (!Number.isInteger(numeroVal) || numeroVal <= 0) {
         return res.status(400).json({ error: "Número de habitación inválido" });
       }
-      updates.push(`numero = $${idx++}`);
-      values.push(numeroVal);
+      updates.numero = numeroVal;
     }
+
     if (typeof tipo !== "undefined") {
       const tipoVal = typeof tipo === "string" ? tipo.toLowerCase().trim() : "";
       if (!TIPOS.includes(tipoVal)) {
         return res.status(400).json({ error: "Tipo de habitación inválido" });
       }
-      updates.push(`tipo = $${idx++}`);
-      values.push(tipoVal);
+      updates.tipo = tipoVal;
     }
+
     const precioEntrada =
       typeof precio_noche !== "undefined" ? precio_noche : precioNoche;
     if (typeof precioEntrada !== "undefined") {
@@ -399,8 +358,7 @@ router.put("/:habitacionId", async (req, res) => {
       if (Number.isNaN(precio) || precio < 0) {
         return res.status(400).json({ error: "Precio de noche inválido" });
       }
-      updates.push(`precio_noche = $${idx++}`);
-      values.push(precio);
+      updates.precio_noche = precio;
     }
 
     if (typeof estado !== "undefined") {
@@ -408,8 +366,7 @@ router.put("/:habitacionId", async (req, res) => {
       if (!ESTADOS.includes(estadoVal)) {
         return res.status(400).json({ error: "Estado inválido" });
       }
-      updates.push(`estado = $${idx++}`);
-      values.push(estadoVal);
+      updates.estado = estadoVal;
     }
 
     if (sucursal) {
@@ -427,31 +384,16 @@ router.put("/:habitacionId", async (req, res) => {
         return res.status(403).json({ error: "No puede reasignar habitaciones a otra sucursal" });
       }
 
-      updates.push(`sucursal_id = $${idx++}`);
-      values.push(sucursalRow.sucursal_id);
+      updates.sucursal_id = sucursalRow.sucursal_id;
     }
 
-    if (updates.length === 0) {
+    if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: "No se enviaron campos para actualizar" });
     }
 
-    values.push(habitacionId, tenant, hotel);
+    await currentRoom.update(updates);
 
-    const updateResult = await pool.query(
-      `UPDATE habitacion
-       SET ${updates.join(", ")}
-       WHERE habitacion_id = $${idx++} AND tenant_id = $${idx++} AND hotel_id = $${idx}
-       RETURNING habitacion_id, numero, tipo, estado, precio_noche, hotel_id, tenant_id, sucursal_id`,
-      values
-    );
-
-    if (updateResult.rows.length === 0) {
-      return res
-        .status(404)
-        .json({ error: "Habitación no encontrada para el hotel indicado" });
-    }
-
-    res.json(updateResult.rows[0]);
+    res.json(currentRoom);
   } catch (err) {
     console.error("Error al actualizar habitación:", err);
     res.status(500).json({ error: "Error al actualizar habitación" });
@@ -488,15 +430,15 @@ router.delete("/:habitacionId", async (req, res) => {
       return res.status(403).json({ error: "Rol sin permisos para eliminar habitaciones" });
     }
 
-    const targetRoomRes = await pool.query(
-      `SELECT sucursal_id
-       FROM habitacion
-       WHERE habitacion_id = $1 AND tenant_id = $2 AND hotel_id = $3
-       LIMIT 1`,
-      [habitacionId, tenant, hotel]
-    );
+    const targetRoom = await Habitacion.findOne({
+      where: {
+        habitacion_id: habitacionId,
+        tenant_id: tenant,
+        hotel_id: hotel
+      }
+    });
 
-    if (targetRoomRes.rowCount === 0) {
+    if (!targetRoom) {
       return res.status(404).json({ error: "Habitación no encontrada para el hotel indicado" });
     }
 
@@ -507,23 +449,12 @@ router.delete("/:habitacionId", async (req, res) => {
         hotelId: hotel,
       });
 
-      if (!recepSucursal || recepSucursal.sucursal_id !== targetRoomRes.rows[0].sucursal_id) {
+      if (!recepSucursal || recepSucursal.sucursal_id !== targetRoom.sucursal_id) {
         return res.status(403).json({ error: "No puede eliminar habitaciones de otra sucursal" });
       }
     }
 
-    const deleteResult = await pool.query(
-      `DELETE FROM habitacion
-       WHERE habitacion_id = $1 AND tenant_id = $2 AND hotel_id = $3
-       RETURNING habitacion_id`,
-      [habitacionId, tenant, hotel]
-    );
-
-    if (deleteResult.rows.length === 0) {
-      return res
-        .status(404)
-        .json({ error: "Habitación no encontrada para el hotel indicado" });
-    }
+    await targetRoom.destroy();
 
     res.json({ message: "Habitación eliminada" });
   } catch (err) {

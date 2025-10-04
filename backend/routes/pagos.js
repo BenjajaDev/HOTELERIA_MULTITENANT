@@ -1,66 +1,25 @@
 // backend/routes/pagos.js
 import express from "express";
-import { pool } from "../models/db.js";
+import { 
+  fetchMembership, 
+  ensureHotelBelongs, 
+  ensureSucursalBelongs, 
+  fetchRecepcionistaSucursal 
+} from "../models/helpers.js";
+import { 
+  Pago, 
+  DetallePago, 
+  Reserva, 
+  Habitacion, 
+  Hotel, 
+  Tenant, 
+  Huesped, 
+  Usuario 
+} from "../models/index.js";
+import { Op } from "sequelize";
+import db from "../models/index.js";
 
 const router = express.Router();
-
-async function fetchMembership({ tenant, usuario }) {
-  if (!tenant || !usuario) return null;
-  const membershipRes = await pool.query(
-    `SELECT rol
-     FROM tenant_usuario
-     WHERE tenant_id = $1 AND usuario_id = $2
-     LIMIT 1`,
-    [tenant, usuario]
-  );
-  return membershipRes.rows[0] || null;
-}
-
-async function ensureHotelBelongs({ hotel, tenant }) {
-  if (!hotel || !tenant) return null;
-  const hotelRes = await pool.query(
-    `SELECT hotel_id, tenant_id
-     FROM hotel
-     WHERE hotel_id = $1 AND tenant_id = $2
-     LIMIT 1`,
-    [hotel, tenant]
-  );
-  return hotelRes.rows[0] || null;
-}
-
-async function ensureSucursalBelongs({ sucursalId, hotelId, tenantId }) {
-  if (!sucursalId || !hotelId || !tenantId) return null;
-  const sucursalRes = await pool.query(
-    `SELECT sucursal_id, hotel_id, tenant_id
-     FROM sucursal
-     WHERE sucursal_id = $1 AND hotel_id = $2 AND tenant_id = $3
-     LIMIT 1`,
-    [sucursalId, hotelId, tenantId]
-  );
-  return sucursalRes.rows[0] || null;
-}
-
-async function fetchRecepcionistaSucursal({ usuarioId, tenantId, hotelId }) {
-  if (!usuarioId || !tenantId) return null;
-  const params = [usuarioId, tenantId];
-  let query = `
-    SELECT sucursal_id, hotel_id, tenant_id
-    FROM recepcionista_sucursal
-    WHERE usuario_id = $1
-      AND tenant_id = $2
-      AND (activo IS NULL OR activo = true)
-  `;
-
-  if (hotelId) {
-    params.push(hotelId);
-    query += ` AND hotel_id = $${params.length}`;
-  }
-
-  query += " ORDER BY created_at ASC NULLS LAST LIMIT 1";
-
-  const result = await pool.query(query, params);
-  return result.rows[0] || null;
-}
 
 // Obtener detalles de un pago específico
 router.get("/:pago_id/detalle", async (req, res) => {
@@ -79,43 +38,77 @@ router.get("/:pago_id/detalle", async (req, res) => {
     const usuario = usuarioId || usuarioIdSnake || null;
     const sucursal = sucursalId || sucursalIdSnake || null;
 
-    const query = `
-      SELECT 
-        p.*,
-        dp.*,
-        r.reserva_id,
-        r.fecha_inicio,
-        r.fecha_fin,
-        r.total as reserva_total,
-        h.hotel_id,
-        h.numero as habitacion_numero,
-        h.tipo as habitacion_tipo,
-        h.sucursal_id,
-        hotel.nombre as hotel_nombre,
-        hotel.direccion as hotel_direccion,
-        hotel.telefono as hotel_telefono,
-        hotel.email as hotel_email,
-        u.nombre as huesped_nombre,
-        u.email as huesped_email,
-        t.nombre as tenant_nombre
-      FROM pago p
-      LEFT JOIN detalle_pago dp ON p.pago_id = dp.pago_id
-      JOIN reserva r ON p.reserva_id = r.reserva_id
-      JOIN habitacion h ON r.habitacion_id = h.habitacion_id
-      JOIN hotel ON h.hotel_id = hotel.hotel_id
-      JOIN tenant t ON p.tenant_id = t.tenant_id
-      LEFT JOIN huesped hu ON r.huesped_id = hu.huesped_id
-      LEFT JOIN usuario u ON hu.email = u.email
-      WHERE p.pago_id = $1
-    `;
+    const pagoRecord = await Pago.findOne({
+      where: { pago_id },
+      include: [
+        {
+          model: DetallePago,
+          as: 'detalle_pago',
+          required: false
+        },
+        {
+          model: Reserva,
+          as: 'reserva',
+          include: [
+            {
+              model: Habitacion,
+              as: 'habitacion',
+              include: [
+                {
+                  model: Hotel,
+                  as: 'hotel',
+                  attributes: ['hotel_id', 'nombre', 'direccion', 'telefono', 'email']
+                }
+              ]
+            },
+            {
+              model: Huesped,
+              as: 'huesped',
+              required: false
+            }
+          ]
+        },
+        {
+          model: Tenant,
+          as: 'tenant',
+          attributes: ['nombre']
+        }
+      ]
+    });
 
-    const result = await pool.query(query, [pago_id]);
-
-    if (result.rows.length === 0) {
+    if (!pagoRecord) {
       return res.status(404).json({ error: "Pago no encontrado" });
     }
 
-    const pago = result.rows[0];
+    const plain = pagoRecord.get({ plain: true });
+    
+    // Buscar usuario por email del huésped
+    let huespedUsuario = null;
+    if (plain.reserva?.huesped?.email) {
+      huespedUsuario = await Usuario.findOne({
+        where: { email: plain.reserva.huesped.email },
+        attributes: ['nombre', 'email']
+      });
+    }
+
+    const pago = {
+      ...plain,
+      reserva_id: plain.reserva?.reserva_id,
+      fecha_inicio: plain.reserva?.fecha_inicio,
+      fecha_fin: plain.reserva?.fecha_fin,
+      reserva_total: plain.reserva?.total,
+      hotel_id: plain.reserva?.habitacion?.hotel?.hotel_id,
+      habitacion_numero: plain.reserva?.habitacion?.numero,
+      habitacion_tipo: plain.reserva?.habitacion?.tipo,
+      sucursal_id: plain.reserva?.habitacion?.sucursal_id,
+      hotel_nombre: plain.reserva?.habitacion?.hotel?.nombre,
+      hotel_direccion: plain.reserva?.habitacion?.hotel?.direccion,
+      hotel_telefono: plain.reserva?.habitacion?.hotel?.telefono,
+      hotel_email: plain.reserva?.habitacion?.hotel?.email,
+      huesped_nombre: huespedUsuario?.nombre || plain.reserva?.huesped?.nombre,
+      huesped_email: plain.reserva?.huesped?.email,
+      tenant_nombre: plain.tenant?.nombre
+    };
 
     if (tenant && usuario) {
       const membership = await fetchMembership({ tenant, usuario });
@@ -176,47 +169,33 @@ router.post("/:pago_id/detalle", async (req, res) => {
     } = req.body;
 
     // Verificar que el pago existe
-    const pagoCheck = await pool.query(
-      "SELECT pago_id FROM pago WHERE pago_id = $1",
-      [pago_id]
-    );
+    const pagoCheck = await Pago.findByPk(pago_id);
 
-    if (pagoCheck.rows.length === 0) {
+    if (!pagoCheck) {
       return res.status(404).json({ error: "Pago no encontrado" });
     }
 
-    // Insertar o actualizar detalle de pago
-    const query = `
-      INSERT INTO detalle_pago (
-        pago_id, 
-        descripcion, 
-        fecha_pago, 
-        hora_confirmacion, 
-        referencia_transaccion, 
-        comprobante_url
-      ) VALUES ($1, $2, NOW(), NOW(), $3, $4)
-      ON CONFLICT (pago_id) DO UPDATE SET
-        descripcion = EXCLUDED.descripcion,
-        hora_confirmacion = NOW(),
-        referencia_transaccion = EXCLUDED.referencia_transaccion,
-        comprobante_url = EXCLUDED.comprobante_url
-      RETURNING *
-    `;
+    const now = new Date();
 
-    const result = await pool.query(query, [
+    // Insertar o actualizar detalle de pago
+    const [detalle, created] = await DetallePago.upsert({
       pago_id,
       descripcion,
+      fecha_pago: now,
+      hora_confirmacion: now,
       referencia_transaccion,
       comprobante_url
-    ]);
+    }, {
+      returning: true
+    });
 
     // Actualizar estado del pago a 'pagado'
-    await pool.query(
-      "UPDATE pago SET estado = 'pagado' WHERE pago_id = $1",
-      [pago_id]
+    await Pago.update(
+      { estado: 'pagado' },
+      { where: { pago_id } }
     );
 
-    res.json(result.rows[0]);
+    res.json(detalle);
   } catch (error) {
     console.error("Error al crear/actualizar detalle de pago:", error);
     res.status(500).json({ error: "Error interno del servidor" });
@@ -240,53 +219,93 @@ router.get("/:pago_id/boleta", async (req, res) => {
     const usuario = usuarioId || usuarioIdSnake || null;
     const sucursal = sucursalId || sucursalIdSnake || null;
     
-    const query = `
-      SELECT 
-        p.pago_id,
-        p.tenant_id,
-        p.monto,
-        p.metodo,
-        p.fecha as fecha_pago,
-        p.estado as estado_pago,
-        dp.descripcion,
-        dp.fecha_pago as fecha_confirmacion,
-        dp.referencia_transaccion,
-        r.reserva_id,
-        r.fecha_inicio,
-        r.fecha_fin,
-        r.total as reserva_total,
-        r.estado as estado_reserva,
-        h.hotel_id,
-        h.numero as habitacion_numero,
-        h.tipo as habitacion_tipo,
-        h.sucursal_id,
-        h.precio_noche,
-        hotel.nombre as hotel_nombre,
-        hotel.direccion as hotel_direccion,
-        hotel.telefono as hotel_telefono,
-        hotel.email as hotel_email,
-        u.nombre as huesped_nombre,
-        u.email as huesped_email,
-        t.nombre as tenant_nombre,
-        (r.fecha_fin - r.fecha_inicio) as cantidad_noches
-      FROM pago p
-      LEFT JOIN detalle_pago dp ON p.pago_id = dp.pago_id
-      JOIN reserva r ON p.reserva_id = r.reserva_id
-      JOIN habitacion h ON r.habitacion_id = h.habitacion_id
-      JOIN hotel ON h.hotel_id = hotel.hotel_id
-      JOIN tenant t ON p.tenant_id = t.tenant_id
-      LEFT JOIN huesped hu ON r.huesped_id = hu.huesped_id
-      LEFT JOIN usuario u ON hu.email = u.email
-      WHERE p.pago_id = $1
-    `;
+    const pagoRecord = await Pago.findOne({
+      where: { pago_id },
+      include: [
+        {
+          model: DetallePago,
+          as: 'detalle_pago',
+          required: false
+        },
+        {
+          model: Reserva,
+          as: 'reserva',
+          include: [
+            {
+              model: Habitacion,
+              as: 'habitacion',
+              include: [
+                {
+                  model: Hotel,
+                  as: 'hotel',
+                  attributes: ['hotel_id', 'nombre', 'direccion', 'telefono', 'email']
+                }
+              ]
+            },
+            {
+              model: Huesped,
+              as: 'huesped',
+              required: false
+            }
+          ]
+        },
+        {
+          model: Tenant,
+          as: 'tenant',
+          attributes: ['nombre']
+        }
+      ]
+    });
     
-    const result = await pool.query(query, [pago_id]);
-    
-    if (result.rows.length === 0) {
+    if (!pagoRecord) {
       return res.status(404).json({ error: "Pago no encontrado" });
     }
 
-    const data = result.rows[0];
+    const plain = pagoRecord.get({ plain: true });
+
+    // Buscar usuario por email del huésped
+    let huespedUsuario = null;
+    if (plain.reserva?.huesped?.email) {
+      huespedUsuario = await Usuario.findOne({
+        where: { email: plain.reserva.huesped.email },
+        attributes: ['nombre', 'email']
+      });
+    }
+
+    // Calcular cantidad de noches
+    const fechaInicio = new Date(plain.reserva.fecha_inicio);
+    const fechaFin = new Date(plain.reserva.fecha_fin);
+    const cantidadNoches = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24));
+
+    const data = {
+      pago_id: plain.pago_id,
+      tenant_id: plain.tenant_id,
+      monto: plain.monto,
+      metodo: plain.metodo,
+      fecha_pago: plain.fecha,
+      estado_pago: plain.estado,
+      descripcion: plain.detalle_pago?.descripcion,
+      fecha_confirmacion: plain.detalle_pago?.fecha_pago,
+      referencia_transaccion: plain.detalle_pago?.referencia_transaccion,
+      reserva_id: plain.reserva?.reserva_id,
+      fecha_inicio: plain.reserva?.fecha_inicio,
+      fecha_fin: plain.reserva?.fecha_fin,
+      reserva_total: plain.reserva?.total,
+      estado_reserva: plain.reserva?.estado,
+      hotel_id: plain.reserva?.habitacion?.hotel?.hotel_id,
+      habitacion_numero: plain.reserva?.habitacion?.numero,
+      habitacion_tipo: plain.reserva?.habitacion?.tipo,
+      sucursal_id: plain.reserva?.habitacion?.sucursal_id,
+      precio_noche: plain.reserva?.habitacion?.precio_noche,
+      hotel_nombre: plain.reserva?.habitacion?.hotel?.nombre,
+      hotel_direccion: plain.reserva?.habitacion?.hotel?.direccion,
+      hotel_telefono: plain.reserva?.habitacion?.hotel?.telefono,
+      hotel_email: plain.reserva?.habitacion?.hotel?.email,
+      huesped_nombre: huespedUsuario?.nombre || plain.reserva?.huesped?.nombre,
+      huesped_email: plain.reserva?.huesped?.email,
+      tenant_nombre: plain.tenant?.nombre,
+      cantidad_noches: cantidadNoches
+    };
 
     if (tenant && usuario) {
       const membership = await fetchMembership({ tenant, usuario });
@@ -402,31 +421,7 @@ router.get("/", async (req, res) => {
     const usuario = usuarioId || usuarioIdSnake || null;
     const sucursal = sucursalId || sucursalIdSnake || null;
 
-    let query = `
-      SELECT 
-        p.*,
-        dp.descripcion,
-        dp.referencia_transaccion,
-        r.reserva_id,
-        r.fecha_inicio,
-        r.fecha_fin,
-        h.hotel_id,
-        h.sucursal_id,
-        h.numero as habitacion_numero,
-        u.nombre as huesped_nombre,
-        hotel.nombre as hotel_nombre
-      FROM pago p
-      LEFT JOIN detalle_pago dp ON p.pago_id = dp.pago_id
-      JOIN reserva r ON p.reserva_id = r.reserva_id
-      JOIN habitacion h ON r.habitacion_id = h.habitacion_id
-      JOIN hotel ON h.hotel_id = hotel.hotel_id
-      LEFT JOIN huesped hu ON r.huesped_id = hu.huesped_id
-      LEFT JOIN usuario u ON hu.email = u.email
-      WHERE 1=1
-    `;
-
-    const params = [];
-    let idx = 1;
+    const where = {};
 
     let membership = null;
     if (tenant && usuario) {
@@ -435,16 +430,13 @@ router.get("/", async (req, res) => {
         return res.status(403).json({ error: "El usuario no pertenece al tenant indicado" });
       }
 
-      query += ` AND p.tenant_id = $${idx}`;
-      params.push(tenant);
-      idx += 1;
+      where.tenant_id = tenant;
     } else if (tenant) {
-      query += ` AND p.tenant_id = $${idx}`;
-      params.push(tenant);
-      idx += 1;
+      where.tenant_id = tenant;
     }
 
     let hotelRow = null;
+    let hotelFilter = null;
     if (hotelId) {
       if (tenant) {
         hotelRow = await ensureHotelBelongs({ tenant, hotel: hotelId });
@@ -452,10 +444,7 @@ router.get("/", async (req, res) => {
           return res.status(404).json({ error: "Hotel no encontrado para el tenant" });
         }
       }
-
-      query += ` AND hotel.hotel_id = $${idx}`;
-      params.push(hotelId);
-      idx += 1;
+      hotelFilter = hotelId;
     }
 
     let sucursalFilter = null;
@@ -486,9 +475,7 @@ router.get("/", async (req, res) => {
       sucursalFilter = validatedSucursal.sucursal_id;
 
       if (!hotelId) {
-        query += ` AND hotel.hotel_id = $${idx}`;
-        params.push(recepcionistaSucursal.hotel_id);
-        idx += 1;
+        hotelFilter = recepcionistaSucursal.hotel_id;
       }
     } else if (sucursal && hotelId && tenant) {
       const sucursalRow = await ensureSucursalBelongs({
@@ -506,28 +493,98 @@ router.get("/", async (req, res) => {
       sucursalFilter = sucursal;
     }
 
-    if (sucursalFilter) {
-      query += ` AND h.sucursal_id = $${idx}`;
-      params.push(sucursalFilter);
-      idx += 1;
-    }
-
     if (estadoPago) {
-      query += ` AND p.estado = $${idx}`;
-      params.push(estadoPago);
-      idx += 1;
+      where.estado = estadoPago;
     }
 
     if (metodo) {
-      query += ` AND p.metodo = $${idx}`;
-      params.push(metodo);
-      idx += 1;
+      where.metodo = metodo;
     }
 
-    query += " ORDER BY p.fecha DESC";
+    const include = [
+      {
+        model: DetallePago,
+        as: 'detalle_pago',
+        required: false,
+        attributes: ['descripcion', 'referencia_transaccion']
+      },
+      {
+        model: Reserva,
+        as: 'reserva',
+        attributes: ['reserva_id', 'fecha_inicio', 'fecha_fin'],
+        include: [
+          {
+            model: Habitacion,
+            as: 'habitacion',
+            attributes: ['hotel_id', 'sucursal_id', 'numero'],
+            where: {
+              ...(hotelFilter && { hotel_id: hotelFilter }),
+              ...(sucursalFilter && { sucursal_id: sucursalFilter })
+            },
+            include: [
+              {
+                model: Hotel,
+                as: 'hotel',
+                attributes: ['nombre']
+              }
+            ]
+          },
+          {
+            model: Huesped,
+            as: 'huesped',
+            required: false,
+            attributes: ['email', 'nombre']
+          }
+        ]
+      }
+    ];
 
-    const result = await pool.query(query, params);
-    res.json(result.rows);
+    const pagos = await Pago.findAll({
+      where,
+      include,
+      order: [['fecha', 'DESC']]
+    });
+
+    // Obtener nombres de usuarios para huéspedes
+    const emails = pagos
+      .map(p => p.reserva?.huesped?.email)
+      .filter(Boolean);
+
+    let usuariosMap = {};
+    if (emails.length > 0) {
+      const usuarios = await Usuario.findAll({
+        where: { email: { [Op.in]: emails } },
+        attributes: ['email', 'nombre']
+      });
+      usuariosMap = usuarios.reduce((acc, u) => {
+        acc[u.email] = u.nombre;
+        return acc;
+      }, {});
+    }
+
+    const formatted = pagos.map(p => {
+      const plain = p.get({ plain: true });
+      const huespedEmail = plain.reserva?.huesped?.email;
+      const huespedNombre = huespedEmail 
+        ? (usuariosMap[huespedEmail] || plain.reserva?.huesped?.nombre)
+        : plain.reserva?.huesped?.nombre;
+
+      return {
+        ...plain,
+        descripcion: plain.detalle_pago?.descripcion,
+        referencia_transaccion: plain.detalle_pago?.referencia_transaccion,
+        reserva_id: plain.reserva?.reserva_id,
+        fecha_inicio: plain.reserva?.fecha_inicio,
+        fecha_fin: plain.reserva?.fecha_fin,
+        hotel_id: plain.reserva?.habitacion?.hotel_id,
+        sucursal_id: plain.reserva?.habitacion?.sucursal_id,
+        habitacion_numero: plain.reserva?.habitacion?.numero,
+        huesped_nombre: huespedNombre,
+        hotel_nombre: plain.reserva?.habitacion?.hotel?.nombre
+      };
+    });
+
+    res.json(formatted);
   } catch (error) {
     console.error("Error al obtener pagos:", error);
     res.status(500).json({ error: "Error interno del servidor" });
