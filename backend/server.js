@@ -44,8 +44,26 @@ app.get("/", (req, res) => {
   res.send("API Hotel Manager funcionando 🚀");
 });
 
+async function waitForDatabase(retries = 10, delayMs = 3000) {
+  for (let attempt = 1; attempt <= retries; attempt += 1) {
+    try {
+      await db.sequelize.authenticate();
+      console.log('✅ Conexión con PostgreSQL establecida');
+      return;
+    } catch (err) {
+      console.error(`Intento ${attempt} de conexión a PostgreSQL fallido:`, err.message);
+      if (attempt === retries) {
+        throw err;
+      }
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+}
+
 async function start() {
   try {
+    await waitForDatabase();
+
     // Inicializar Sequelize (sincronización de modelos)
     await db.sequelize.sync({ alter: false }); // alter: false para no modificar tablas existentes
     console.log('✅ Modelos Sequelize sincronizados');
