@@ -43,7 +43,7 @@ router.get("/:pago_id/detalle", async (req, res) => {
       include: [
         {
           model: DetallePago,
-          as: 'detalle_pago',
+          as: 'detalle',
           required: false
         },
         {
@@ -105,7 +105,7 @@ router.get("/:pago_id/detalle", async (req, res) => {
       hotel_direccion: plain.reserva?.habitacion?.hotel?.direccion,
       hotel_telefono: plain.reserva?.habitacion?.hotel?.telefono,
       hotel_email: plain.reserva?.habitacion?.hotel?.email,
-      huesped_nombre: huespedUsuario?.nombre || plain.reserva?.huesped?.nombre,
+  huesped_nombre: huespedUsuario?.nombre || plain.reserva?.huesped?.nombre_completo,
       huesped_email: plain.reserva?.huesped?.email,
       tenant_nombre: plain.tenant?.nombre
     };
@@ -224,7 +224,7 @@ router.get("/:pago_id/boleta", async (req, res) => {
       include: [
         {
           model: DetallePago,
-          as: 'detalle_pago',
+          as: 'detalle',
           required: false
         },
         {
@@ -284,9 +284,9 @@ router.get("/:pago_id/boleta", async (req, res) => {
       metodo: plain.metodo,
       fecha_pago: plain.fecha,
       estado_pago: plain.estado,
-      descripcion: plain.detalle_pago?.descripcion,
-      fecha_confirmacion: plain.detalle_pago?.fecha_pago,
-      referencia_transaccion: plain.detalle_pago?.referencia_transaccion,
+      descripcion: plain.detalle?.descripcion,
+      fecha_confirmacion: plain.detalle?.fecha_pago,
+      referencia_transaccion: plain.detalle?.referencia_transaccion,
       reserva_id: plain.reserva?.reserva_id,
       fecha_inicio: plain.reserva?.fecha_inicio,
       fecha_fin: plain.reserva?.fecha_fin,
@@ -301,7 +301,7 @@ router.get("/:pago_id/boleta", async (req, res) => {
       hotel_direccion: plain.reserva?.habitacion?.hotel?.direccion,
       hotel_telefono: plain.reserva?.habitacion?.hotel?.telefono,
       hotel_email: plain.reserva?.habitacion?.hotel?.email,
-      huesped_nombre: huespedUsuario?.nombre || plain.reserva?.huesped?.nombre,
+  huesped_nombre: huespedUsuario?.nombre || plain.reserva?.huesped?.nombre_completo,
       huesped_email: plain.reserva?.huesped?.email,
       tenant_nombre: plain.tenant?.nombre,
       cantidad_noches: cantidadNoches
@@ -504,7 +504,7 @@ router.get("/", async (req, res) => {
     const include = [
       {
         model: DetallePago,
-        as: 'detalle_pago',
+        as: 'detalle',
         required: false,
         attributes: ['descripcion', 'referencia_transaccion']
       },
@@ -533,7 +533,7 @@ router.get("/", async (req, res) => {
             model: Huesped,
             as: 'huesped',
             required: false,
-            attributes: ['email', 'nombre']
+            attributes: ['email', 'nombre_completo']
           }
         ]
       }
@@ -566,13 +566,13 @@ router.get("/", async (req, res) => {
       const plain = p.get({ plain: true });
       const huespedEmail = plain.reserva?.huesped?.email;
       const huespedNombre = huespedEmail 
-        ? (usuariosMap[huespedEmail] || plain.reserva?.huesped?.nombre)
-        : plain.reserva?.huesped?.nombre;
+        ? (usuariosMap[huespedEmail] || plain.reserva?.huesped?.nombre_completo)
+        : plain.reserva?.huesped?.nombre_completo;
 
       return {
         ...plain,
-        descripcion: plain.detalle_pago?.descripcion,
-        referencia_transaccion: plain.detalle_pago?.referencia_transaccion,
+        descripcion: plain.detalle?.descripcion,
+        referencia_transaccion: plain.detalle?.referencia_transaccion,
         reserva_id: plain.reserva?.reserva_id,
         fecha_inicio: plain.reserva?.fecha_inicio,
         fecha_fin: plain.reserva?.fecha_fin,
