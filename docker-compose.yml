@@ -31,6 +31,13 @@ services:
       POSTGRES_HOST: db
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_SECURE: ${EMAIL_SECURE:-false}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+      EMAIL_FROM: '${EMAIL_FROM:-DockHotel <no-reply@dockhotel.local>}'
+      APP_BASE_URL: '${APP_BASE_URL:-http://localhost:3000}'
     depends_on:
       - db
       - redis

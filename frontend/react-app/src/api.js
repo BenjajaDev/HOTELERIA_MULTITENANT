@@ -20,6 +20,8 @@ async function request(path, opts = {}) {
 export const api = {
   login: (body) => request("/api/usuarios/login", { method: "POST", body: JSON.stringify(body) }),
   registerHuesped: (body) => request("/api/usuarios/register-huesped", { method: "POST", body: JSON.stringify(body) }),
+  verifyEmail: (token) => request(`/api/usuarios/verify-email?token=${encodeURIComponent(token)}`, { method: "GET" }),
+  resendVerification: (body) => request("/api/usuarios/resend-verification", { method: "POST", body: JSON.stringify(body) }),
   getCurrentUser: () => request("/api/usuarios/me", { method: "GET" }),
   getHoteles: () => request("/api/hoteles", { method: "GET" }),
   getHotel: (id) => request(`/api/hoteles/${id}`, { method: "GET" }),

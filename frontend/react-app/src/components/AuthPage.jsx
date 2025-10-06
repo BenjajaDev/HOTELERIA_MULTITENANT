@@ -18,6 +18,9 @@ export default function AuthPage({ onLogin }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [rememberMe, setRememberMe] = useState(false);
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendFeedback, setResendFeedback] = useState('');
 
   // Cargar hoteles al montar el componente
   useEffect(() => {
@@ -68,6 +71,8 @@ export default function AuthPage({ onLogin }) {
     try {
       if (isLogin) {
         // Login
+        setPendingVerificationEmail('');
+        setResendFeedback('');
         const res = await api.login({
           email: formData.email,
           password: formData.password
@@ -75,11 +80,14 @@ export default function AuthPage({ onLogin }) {
 
         if (res?.user) {
           setMessage({ type: 'success', text: res.message || '¡Bienvenido de nuevo!' });
+          setPendingVerificationEmail('');
+          setResendFeedback('');
           setTimeout(() => {
             onLogin(res.user);
           }, 1000);
         } else {
           setMessage({ type: 'error', text: res?.message || 'Error al iniciar sesión' });
+          setPendingVerificationEmail('');
         }
       } else {
         // Registro
@@ -113,18 +121,26 @@ export default function AuthPage({ onLogin }) {
           documento: rutLimpio
         });
 
-        setMessage({ type: 'success', text: res.message || '¡Cuenta creada exitosamente! Ya puedes iniciar sesión.' });
-        
-        // Cambiar a modo login después de 2 segundos
-        setTimeout(() => {
-          toggleMode();
-        }, 2000);
+        setMessage({ type: 'success', text: res.message || '¡Cuenta creada! Revisa tu correo para activarla.' });
+        setPendingVerificationEmail(formData.email.trim().toLowerCase());
       }
     } catch (err) {
-      setMessage({ 
-        type: 'error', 
-        text: err.error || err.message || 'Error en la operación' 
-      });
+      if (err?.needs_verification) {
+        setMessage({
+          type: 'warning',
+          text: err.error || 'Debes verificar tu correo electrónico antes de acceder.',
+        });
+        setPendingVerificationEmail(formData.email.trim().toLowerCase());
+        setResendFeedback('');
+      } else {
+        setMessage({
+          type: 'error',
+          text: err?.error || err?.message || 'Error en la operación',
+        });
+        setPendingVerificationEmail('');
+        setResendFeedback('');
+        setResendLoading(false);
+      }
     } finally {
       setLoading(false);
     }
@@ -143,6 +159,25 @@ export default function AuthPage({ onLogin }) {
     });
     setMessage({ type: '', text: '' });
     setRememberMe(false);
+    setPendingVerificationEmail('');
+    setResendFeedback('');
+    setResendLoading(false);
+  };
+
+  const handleResendVerification = async () => {
+    if (!pendingVerificationEmail) return;
+
+    setResendLoading(true);
+    setResendFeedback('');
+
+    try {
+      const res = await api.resendVerification({ email: pendingVerificationEmail });
+      setResendFeedback(res.message || 'Hemos reenviado el correo de verificación.');
+    } catch (err) {
+      setResendFeedback(err?.error || err?.message || 'No se pudo reenviar el correo.');
+    } finally {
+      setResendLoading(false);
+    }
   };
 
   return (
@@ -215,8 +250,27 @@ export default function AuthPage({ onLogin }) {
             </div>
 
             {message.text && (
-              <div className={`alert ${message.type === "success" ? "alert-success" : "alert-error"}`}>
+              <div className={`alert ${message.type === "success" ? "alert-success" : message.type === "warning" ? "alert-warning" : "alert-error"}`}>
                 {message.text}
+              </div>
+            )}
+
+            {pendingVerificationEmail && (
+              <div className="verification-hint">
+                <p>
+                  ¿No recibiste el correo en <strong>{pendingVerificationEmail}</strong>?
+                </p>
+                <button
+                  type="button"
+                  className="link-button"
+                  onClick={handleResendVerification}
+                  disabled={resendLoading}
+                >
+                  {resendLoading ? "Enviando..." : "Reenviar verificación"}
+                </button>
+                {resendFeedback && (
+                  <div className="verification-feedback">{resendFeedback}</div>
+                )}
               </div>
             )}
 

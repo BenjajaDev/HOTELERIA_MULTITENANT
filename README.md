@@ -8,6 +8,7 @@ Aplicación multi-tenant para gestión hotelera que centraliza la administració
 - **Gestión integral**: creación/edición de hoteles, habitaciones, reservas, huéspedes y pagos, además de generación de boletas imprimibles.
 - **Cache con Redis**: endpoints críticos (por ejemplo, listado de hoteles) aprovechan Redis para reducir carga sobre la base de datos.
 - **Auditoría**: triggers almacenan en `audit_log` los cambios sobre reservas y pagos.
+- **Alta segura de huéspedes**: creación de cuentas con contraseña y envío automático de correos de verificación antes de habilitar el acceso.
 - **Contenedores listos para producción**: `docker-compose` orquesta Postgres, Redis, backend y frontend (sirviendo el build estático con Nginx).
 
 ## Estructura del repositorio
@@ -26,8 +27,8 @@ Aplicación multi-tenant para gestión hotelera que centraliza la administració
 - [`docs/infraestructura.md`](docs/infraestructura.md) – Contenedores Docker, variables de entorno y recomendaciones de despliegue.
 
 ## Stack tecnológico
-- **Backend**: Node.js 18, Express, pg, Redis, bcrypt, uuid.
-- **Frontend**: React 19 + Vite, Bootstrap 5 vía CDN, React Router (pendiente de uso), componentes escritos en JSX moderno.
+- **Backend**: Node.js 18, Express, pg, Redis, bcrypt, uuid, nodemailer.
+- **Frontend**: React 19 + Vite, Bootstrap 5 vía CDN, React Router, componentes escritos en JSX moderno.
 - **Infraestructura**: PostgreSQL 15, Redis 7, Docker Compose, Nginx.
 
 ## Puesta en marcha
@@ -80,6 +81,8 @@ Aplicación multi-tenant para gestión hotelera que centraliza la administració
 - `GET|POST|PUT|DELETE /api/reservas` – gestión de reservas, cálculo automático de noches y totales, actualización de estado de pago.
 - `GET /api/pagos`, `GET|POST /api/pagos/:id/detalle`, `GET /api/pagos/:id/boleta` – seguimiento de pagos y generación de boleta imprimible con desglose de IVA.
 - `GET|PUT|DELETE /api/huespedes` – panel de huéspedes, historial de reservas y reglas para evitar eliminar clientes con reservas activas.
+- `POST /api/huespedes` (admin/gerente) y `POST /api/usuarios/register-huesped` (self-service) crean cuentas con contraseña y disparan verificación por correo.
+- `POST /api/usuarios/resend-verification` y `GET /api/usuarios/verify-email` completan el flujo de confirmación antes de permitir el inicio de sesión.
 
 Las rutas comparten utilidades como:
 - Uso de Redis para cache (hoteles) y para invalidar entradas tras cambios.

@@ -4,7 +4,7 @@
 - **Framework**: React 19 con JSX moderno.
 - **Bundler**: Vite (`frontend/react-app/vite.config.js`), lo que habilita hot module replacement y builds rápidos.
 - **Estilos**: Bootstrap 5 y Bootstrap Icons cargados vía CDN en `index.html`; estilos adicionales mínimos en `src/index.css`.
-- **Routing**: Se instaló `react-router-dom`, aunque los dashboards actuales funcionan sin rutas declaradas (todo se renderiza condicionalmente).
+- **Routing**: `react-router-dom` gestiona la navegación entre la app principal (`/`) y la pantalla de verificación de correo (`/verify-email`); los dashboards siguen renderizándose de forma condicional dentro de `App`.
 
 ## Estructura principal
 - `src/main.jsx` monta la aplicación sobre `#root` y aplica `StrictMode`.

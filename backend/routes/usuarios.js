@@ -3,6 +3,7 @@ import { pool } from "../models/db.js";
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
 import { Usuario, Tenant, TenantUsuario, Hotel } from "../models/index.js";
+import { sendVerificationEmail, isEmailConfigured } from "../utils/emailService.js";
 
 const router = express.Router();
 
@@ -23,14 +24,18 @@ router.post("/login", async (req, res) => {
     return res.status(400).json({ error: "Email y contraseña son requeridos" });
   }
 
+  const normalizedEmail = String(email).trim().toLowerCase();
+
   // Permitir tenantId/hotelId en camelCase o snake_case para compatibilidad
   const requestedTenantId = tenantIdFromBody || tenantIdSnake;
   const requestedHotelId = hotelId || hotelIdSnake;
 
   try {
     const userResult = await pool.query(
-      "SELECT usuario_id, email, password_hash, nombre FROM usuario WHERE email = $1",
-      [email]
+      `SELECT usuario_id, email, password_hash, nombre, email_verificado
+       FROM usuario
+       WHERE LOWER(email) = $1`,
+      [normalizedEmail]
     );
 
     if (userResult.rows.length === 0) {
@@ -42,6 +47,13 @@ router.post("/login", async (req, res) => {
 
     if (!passwordMatch) {
       return res.status(401).json({ error: "Contraseña incorrecta" });
+    }
+
+    if (!user.email_verificado) {
+      return res.status(403).json({
+        error: "Debes confirmar tu correo electrónico antes de acceder",
+        needs_verification: true,
+      });
     }
 
     const memberships = await pool.query(
@@ -275,6 +287,11 @@ router.post("/register-huesped", async (req, res) => {
   const documentoNormalizado = typeof documentoRaw === "string"
     ? documentoRaw.trim().toUpperCase()
     : "";
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+
+  if (!normalizedEmail) {
+    return res.status(400).json({ error: "El correo del huésped es requerido" });
+  }
 
   if (!providedTenantId && !providedHotelId) {
     return res.status(400).json({
@@ -294,28 +311,39 @@ router.post("/register-huesped", async (req, res) => {
     return res.status(400).json({ error: "El RUT debe tener el formato ########-# (usar K en mayúscula si aplica)" });
   }
 
+  if (!password || String(password).length < 8) {
+    return res.status(400).json({ error: "La contraseña debe tener al menos 8 caracteres" });
+  }
+
+  if (!isEmailConfigured()) {
+    return res.status(500).json({ error: "El servicio de correo no está configurado. Contacta al administrador para completar el registro." });
+  }
+
+  const client = await pool.connect();
   try {
-    // 1. Verificar si ya existe
-    const exists = await pool.query("SELECT * FROM usuario WHERE email = $1", [
-      email,
-    ]);
+    await client.query('BEGIN');
+
+    const exists = await client.query(
+      "SELECT 1 FROM usuario WHERE LOWER(email) = $1",
+      [normalizedEmail]
+    );
 
     if (exists.rows.length > 0) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ error: "El correo ya está registrado" });
     }
 
-    // 2. Hashear contraseña
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // 3. Crear usuario
     const usuario_id = uuidv4();
+    const verificationToken = uuidv4();
+    const verificationExpiresAt = new Date(Date.now() + 1000 * 60 * 60 * 48);
 
     let tenantIdToUse = providedTenantId;
     let hotelIdToUse = providedHotelId;
     let sucursalIdToUse = providedSucursalId;
 
     if (!tenantIdToUse && providedHotelId) {
-      const hotelLookup = await pool.query(
+      const hotelLookup = await client.query(
         `SELECT hotel_id, tenant_id
          FROM hotel
          WHERE hotel_id = $1`,
@@ -323,6 +351,7 @@ router.post("/register-huesped", async (req, res) => {
       );
 
       if (hotelLookup.rows.length === 0) {
+        await client.query('ROLLBACK');
         return res.status(404).json({ error: "Hotel no encontrado" });
       }
 
@@ -331,52 +360,56 @@ router.post("/register-huesped", async (req, res) => {
     }
 
     if (!tenantIdToUse) {
+      await client.query('ROLLBACK');
       return res
         .status(400)
         .json({ error: "No se pudo determinar el tenant para el registro" });
     }
 
     if (sucursalIdToUse) {
-      const sucursalLookup = await pool.query(
+      const sucursalLookup = await client.query(
         `SELECT sucursal_id, hotel_id, tenant_id
          FROM sucursal
-         WHERE sucursal_id = $1`
-        , [sucursalIdToUse]
+         WHERE sucursal_id = $1`,
+        [sucursalIdToUse]
       );
 
       if (sucursalLookup.rowCount === 0) {
+        await client.query('ROLLBACK');
         return res.status(404).json({ error: "Sucursal no encontrada" });
       }
 
       const sucursalRow = sucursalLookup.rows[0];
 
       if (sucursalRow.tenant_id !== tenantIdToUse) {
+        await client.query('ROLLBACK');
         return res.status(400).json({ error: "La sucursal no pertenece al tenant indicado" });
       }
 
       if (hotelIdToUse && sucursalRow.hotel_id !== hotelIdToUse) {
+        await client.query('ROLLBACK');
         return res.status(400).json({ error: "La sucursal no pertenece al hotel seleccionado" });
       }
 
       hotelIdToUse = sucursalRow.hotel_id;
       sucursalIdToUse = sucursalRow.sucursal_id;
     } else {
+      await client.query('ROLLBACK');
       return res.status(400).json({ error: "Debe seleccionar la sucursal del hotel" });
     }
 
-    await pool.query(
-      "INSERT INTO usuario (usuario_id, email, password_hash, nombre, created_at) VALUES ($1, $2, $3, $4, NOW())",
-      [usuario_id, email, hashedPassword, nombre]
+    await client.query(
+      `INSERT INTO usuario (usuario_id, email, password_hash, nombre, email_verificado, email_verification_token, email_verification_expires_at, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+      [usuario_id, normalizedEmail, hashedPassword, nombre, false, verificationToken, verificationExpiresAt]
     );
 
-    // 4. Asociar como huésped al tenant (hotel)
-    await pool.query(
+    await client.query(
       "INSERT INTO tenant_usuario (tenant_id, usuario_id, rol) VALUES ($1, $2, $3)",
       [tenantIdToUse, usuario_id, "huesped"]
     );
 
-    // 5. Registrar ficha básica en tabla huesped (usa mismo UUID del usuario)
-    await pool.query(
+    await client.query(
       `INSERT INTO huesped (huesped_id, tenant_id, sucursal_id, nombre_completo, email, telefono, documento, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
        ON CONFLICT (huesped_id) DO NOTHING`,
@@ -384,22 +417,147 @@ router.post("/register-huesped", async (req, res) => {
         usuario_id,
         tenantIdToUse,
         sucursalIdToUse,
-        nombre || email,
-        email,
+        nombre || normalizedEmail,
+        normalizedEmail,
         telefonoNormalizado,
         documentoNormalizado,
       ]
     );
 
+    await sendVerificationEmail({
+      to: normalizedEmail,
+      nombre: nombre || normalizedEmail,
+      token: verificationToken,
+    });
+
+    await client.query('COMMIT');
+
     res.status(201).json({
-      message: "Registro exitoso. Bienvenido como HUESPED 🎉",
+      message: "Registro exitoso. Revisa tu correo para activar tu cuenta.",
       usuario_id,
       sucursal_id: sucursalIdToUse,
       hotel_id: hotelIdToUse,
     });
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error(err);
     res.status(500).json({ error: "Error en el servidor" });
+  } finally {
+    client.release();
+  }
+});
+
+// -------------------------
+// VERIFICAR CORREO ELECTRÓNICO
+// -------------------------
+router.get("/verify-email", async (req, res) => {
+  const { token } = req.query;
+
+  if (!token || typeof token !== "string") {
+    return res.status(400).json({ error: "Token de verificación requerido" });
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT usuario_id, email, nombre, email_verificado, email_verification_expires_at
+       FROM usuario
+       WHERE email_verification_token = $1`,
+      [token]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "El enlace de verificación no es válido" });
+    }
+
+    const user = result.rows[0];
+
+    if (user.email_verificado) {
+      return res.json({ message: "Tu correo ya estaba verificado. Puedes iniciar sesión." });
+    }
+
+    const expiresAt = user.email_verification_expires_at
+      ? new Date(user.email_verification_expires_at)
+      : null;
+
+    if (expiresAt && expiresAt.getTime() < Date.now()) {
+      return res.status(400).json({
+        error: "El enlace de verificación ha expirado. Solicita uno nuevo.",
+        expired: true,
+      });
+    }
+
+    await pool.query(
+      `UPDATE usuario
+       SET email_verificado = TRUE,
+           email_verificado_en = NOW(),
+           email_verification_token = NULL,
+           email_verification_expires_at = NULL
+       WHERE usuario_id = $1`,
+      [user.usuario_id]
+    );
+
+    res.json({ message: "¡Tu correo fue verificado correctamente! Ya puedes iniciar sesión." });
+  } catch (err) {
+    console.error("Error al verificar correo:", err);
+    res.status(500).json({ error: "Error al verificar el correo" });
+  }
+});
+
+// -------------------------
+// REENVIAR VERIFICACIÓN DE CORREO
+// -------------------------
+router.post("/resend-verification", async (req, res) => {
+  const { email } = req.body;
+
+  if (!email || !String(email).trim()) {
+    return res.status(400).json({ error: "Debes indicar el correo electrónico" });
+  }
+
+  if (!isEmailConfigured()) {
+    return res.status(500).json({ error: "El servicio de correo no está configurado" });
+  }
+
+  const normalizedEmail = String(email).trim().toLowerCase();
+
+  try {
+    const result = await pool.query(
+      `SELECT usuario_id, email, nombre, email_verificado
+       FROM usuario
+       WHERE LOWER(email) = $1`,
+      [normalizedEmail]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "No encontramos una cuenta con ese correo" });
+    }
+
+    const user = result.rows[0];
+
+    if (user.email_verificado) {
+      return res.json({ message: "Este correo ya está verificado. Ya puedes iniciar sesión." });
+    }
+
+    const newToken = uuidv4();
+    const newExpiresAt = new Date(Date.now() + 1000 * 60 * 60 * 48);
+
+    await pool.query(
+      `UPDATE usuario
+       SET email_verification_token = $1,
+           email_verification_expires_at = $2
+       WHERE usuario_id = $3`,
+      [newToken, newExpiresAt, user.usuario_id]
+    );
+
+    await sendVerificationEmail({
+      to: user.email,
+      nombre: user.nombre || user.email,
+      token: newToken,
+    });
+
+    res.json({ message: "Hemos reenviado el correo de verificación. Revisa tu bandeja de entrada." });
+  } catch (err) {
+    console.error("Error al reenviar verificación:", err);
+    res.status(500).json({ error: "Error al reenviar el correo de verificación" });
   }
 });
 

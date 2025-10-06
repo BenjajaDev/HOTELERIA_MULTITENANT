@@ -9,6 +9,17 @@ El backend está construido sobre **Node.js 18** y **Express** (`backend/server.
 - `models/db.js` crea un pool de conexiones reutilizable hacia Postgres.
 - `models/redisClient.js` centraliza la conexión a Redis, permite reconectar automáticamente y cierra la sesión de forma ordenada al recibir señales SIGINT/SIGTERM.
 
+### Envío de correos y verificación de usuarios
+- Los huéspedes registrados (tanto por admins como por ellos mismos) permanecen **sin acceso** hasta confirmar su email mediante un token único.
+- `utils/emailService.js` usa `nodemailer` y las variables de entorno SMTP para enviar el enlace de verificación (`/verify-email?token=...`).
+- Variables relevantes (configuradas en `docker-compose.yml`):
+	- `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_SECURE`
+	- `EMAIL_USER`, `EMAIL_PASSWORD`, `EMAIL_FROM`
+	- `APP_BASE_URL` (URL pública del frontend que renderiza la pantalla de verificación)
+- Endpoints añadidos en `routes/usuarios.js`:
+	- `POST /api/usuarios/resend-verification` mantiene el correo en circulación si el usuario no lo recibió o expiró.
+	- `GET /api/usuarios/verify-email` consolida la verificación y permite iniciar sesión.
+
 ## Routers y responsabilidades
 | Router | Ubicación | Responsabilidad principal |
 | ------ | --------- | ------------------------- |

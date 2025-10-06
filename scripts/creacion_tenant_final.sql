@@ -56,83 +56,83 @@ sucursal_madero_bosque AS (
   RETURNING sucursal_id, hotel_id, tenant_id
 ),
 admin_stella AS (
-  INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('admin@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Administrador Hotel Stella')
+  INSERT INTO usuario (email, password_hash, nombre, email_verificado, email_verificado_en)
+  VALUES ('admin@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Administrador Hotel Stella', TRUE, NOW())
   RETURNING usuario_id
 ),
 admin_madero AS (
-  INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('admin2@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Administrador Hotel Madero')
+  INSERT INTO usuario (email, password_hash, nombre, email_verificado, email_verificado_en)
+  VALUES ('admin2@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Administrador Hotel Madero', TRUE, NOW())
   RETURNING usuario_id
 ),
 gerente_stella AS (
-  INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('gerente_stella@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Valentina Rojas')
+  INSERT INTO usuario (email, password_hash, nombre, email_verificado, email_verificado_en)
+  VALUES ('gerente_stella@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Valentina Rojas', TRUE, NOW())
   RETURNING usuario_id
 ),
 gerente_madero AS (
-  INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('gerente_madero@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Matias Fuentes')
+  INSERT INTO usuario (email, password_hash, nombre, email_verificado, email_verificado_en)
+  VALUES ('gerente_madero@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Matias Fuentes', TRUE, NOW())
   RETURNING usuario_id
 ),
 recep_stella_centro AS (
-  INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('recep_centro@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Alejandro Gonzalez')
+  INSERT INTO usuario (email, password_hash, nombre, email_verificado, email_verificado_en)
+  VALUES ('recep_centro@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Alejandro Gonzalez', TRUE, NOW())
   RETURNING usuario_id
 ),
 recep_stella_aeropuerto AS (
-  INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('recep_aeropuerto@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Daniela Perez')
+  INSERT INTO usuario (email, password_hash, nombre, email_verificado, email_verificado_en)
+  VALUES ('recep_aeropuerto@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Daniela Perez', TRUE, NOW())
   RETURNING usuario_id
 ),
 recep_madero_centro AS (
-  INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('recep_centro@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Benjamin Soto')
+  INSERT INTO usuario (email, password_hash, nombre, email_verificado, email_verificado_en)
+  VALUES ('recep_centro@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Benjamin Soto', TRUE, NOW())
   RETURNING usuario_id
 ),
 recep_madero_bosque AS (
-  INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('recep_bosque@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Laura Aguilera')
+  INSERT INTO usuario (email, password_hash, nombre, email_verificado, email_verificado_en)
+  VALUES ('recep_bosque@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Laura Aguilera', TRUE, NOW())
   RETURNING usuario_id
 ),
 huesped_stella_centro_1 AS (
-  INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('huesped1@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'David Goggins')
+  INSERT INTO usuario (email, password_hash, nombre, email_verificado, email_verificado_en)
+  VALUES ('huesped1@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'David Goggins', TRUE, NOW())
   RETURNING usuario_id
 ),
 huesped_stella_centro_2 AS (
-  INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('huesped2@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Maria Lopez')
+  INSERT INTO usuario (email, password_hash, nombre, email_verificado, email_verificado_en)
+  VALUES ('huesped2@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Maria Lopez', TRUE, NOW())
   RETURNING usuario_id
 ),
 huesped_stella_aeropuerto_1 AS (
-  INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('huesped3@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Carlos Perez')
+  INSERT INTO usuario (email, password_hash, nombre, email_verificado, email_verificado_en)
+  VALUES ('huesped3@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Carlos Perez', TRUE, NOW())
   RETURNING usuario_id
 ),
 huesped_stella_aeropuerto_2 AS (
-  INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('huesped4@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Andrea Castillo')
+  INSERT INTO usuario (email, password_hash, nombre, email_verificado, email_verificado_en)
+  VALUES ('huesped4@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Andrea Castillo', TRUE, NOW())
   RETURNING usuario_id
 ),
 huesped_madero_centro_1 AS (
-  INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('huesped1@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Lucario Martinez')
+  INSERT INTO usuario (email, password_hash, nombre, email_verificado, email_verificado_en)
+  VALUES ('huesped1@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Lucario Martinez', TRUE, NOW())
   RETURNING usuario_id
 ),
 huesped_madero_centro_2 AS (
-  INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('huesped2@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Valeria Gomez')
+  INSERT INTO usuario (email, password_hash, nombre, email_verificado, email_verificado_en)
+  VALUES ('huesped2@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Valeria Gomez', TRUE, NOW())
   RETURNING usuario_id
 ),
 huesped_madero_bosque_1 AS (
-  INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('huesped3@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Diego Hernandez')
+  INSERT INTO usuario (email, password_hash, nombre, email_verificado, email_verificado_en)
+  VALUES ('huesped3@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Diego Hernandez', TRUE, NOW())
   RETURNING usuario_id
 ),
 huesped_madero_bosque_2 AS (
-  INSERT INTO usuario (email, password_hash, nombre)
-  VALUES ('huesped4@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Fernanda Silva')
+  INSERT INTO usuario (email, password_hash, nombre, email_verificado, email_verificado_en)
+  VALUES ('huesped4@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Fernanda Silva', TRUE, NOW())
   RETURNING usuario_id
 ),
 habitaciones_stella_centro AS (

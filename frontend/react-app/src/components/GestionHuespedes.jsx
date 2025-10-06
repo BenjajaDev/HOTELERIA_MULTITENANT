@@ -19,6 +19,7 @@ export default function GestionHuespedes({ restrictTenantId = "", allowCreate = 
     email: "",
     telefono: "",
     documento: "",
+    password: "",
   });
   const [createMsg, setCreateMsg] = useState("");
 
@@ -128,6 +129,11 @@ export default function GestionHuespedes({ restrictTenantId = "", allowCreate = 
       return;
     }
 
+    if (!createForm.password || createForm.password.length < 8) {
+      setCreateMsg("La contraseña debe tener al menos 8 caracteres");
+      return;
+    }
+
     setCreateMsg("Creando...");
     try {
       const payload = {
@@ -135,6 +141,7 @@ export default function GestionHuespedes({ restrictTenantId = "", allowCreate = 
         email: createForm.email.trim(),
         telefono: createForm.telefono || undefined,
         documento: createForm.documento || undefined,
+        password: createForm.password,
         ...contextPayload,
       };
       if (tenantFilter && !payload.tenant_id && !payload.tenantId) {
@@ -143,10 +150,11 @@ export default function GestionHuespedes({ restrictTenantId = "", allowCreate = 
       if (!payload.hotelId && userContext?.hotelId) payload.hotelId = userContext.hotelId;
       if (!payload.hotel_id && userContext?.hotel_id) payload.hotel_id = userContext.hotel_id;
 
-      await api.createHuesped(payload);
+  const response = await api.createHuesped(payload);
       await loadHuespedes();
-      setCreateMsg("Huésped creado ✅");
-      setCreateForm({ nombre_completo: "", email: "", telefono: "", documento: "" });
+  const successMessage = response?.message || "Huésped creado y correo de verificación enviado";
+  setCreateMsg(`${successMessage} ✅`);
+      setCreateForm({ nombre_completo: "", email: "", telefono: "", documento: "", password: "" });
     } catch (err) {
       console.error("Error al crear huésped:", err);
       setCreateMsg(err.error || "No se pudo crear el huésped");
@@ -269,6 +277,20 @@ export default function GestionHuespedes({ restrictTenantId = "", allowCreate = 
                   value={createForm.documento}
                   onChange={e => setCreateForm(prev => ({ ...prev, documento: e.target.value }))}
                 />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Contraseña Temporal</label>
+                <input
+                  type="password"
+                  className="form-input"
+                  placeholder="Al menos 8 caracteres"
+                  value={createForm.password}
+                  onChange={e => setCreateForm(prev => ({ ...prev, password: e.target.value }))}
+                  required
+                />
+                <small style={{ display: 'block', marginTop: '6px', color: '#6b7280', fontSize: '12px' }}>
+                  El huésped deberá cambiarla después de verificar su correo.
+                </small>
               </div>
             </div>
             <div style={{ marginTop: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>

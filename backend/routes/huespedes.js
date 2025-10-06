@@ -1,7 +1,10 @@
 import express from 'express';
+import bcrypt from 'bcrypt';
+import { v4 as uuidv4 } from 'uuid';
 import { Huesped, Usuario, Tenant, TenantUsuario, Reserva, Habitacion, Hotel, Pago, Sucursal } from '../models/index.js';
 import { Op } from 'sequelize';
 import db from '../models/index.js';
+import { sendVerificationEmail, isEmailConfigured } from '../utils/emailService.js';
 
 const router = express.Router();
 
@@ -156,6 +159,9 @@ router.post('/', async (req, res) => {
     email,
     telefono,
     documento,
+    password,
+    sucursal_id: sucursalIdSnake,
+    sucursalId: sucursalIdCamel,
     hotel_id: hotelIdSnake,
     hotelId: hotelIdCamel,
     tenant_id: tenantIdSnake,
@@ -172,23 +178,45 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'El email es obligatorio' });
   }
 
+  if (!password || !String(password).trim()) {
+    return res.status(400).json({ error: 'La contraseña es obligatoria' });
+  }
+
+  if (String(password).length < 8) {
+    return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+  }
+
+  if (!isEmailConfigured()) {
+    return res.status(500).json({ error: 'El servicio de correo no está configurado. Contacta al administrador del sistema.' });
+  }
+
   const emailLower = email.trim().toLowerCase();
-  const telefonoNormalizado = telefono ? String(telefono).trim() : null;
+  const telefonoRaw = telefono ? String(telefono).trim() : '';
+  const telefonoNormalizado = telefonoRaw ? telefonoRaw.replace(/[^+\d]/g, '') : null;
+  if (telefonoNormalizado && telefonoNormalizado.length > 12) {
+    return res.status(400).json({ error: 'El teléfono debe tener como máximo 12 caracteres' });
+  }
+
   const documentoNormalizado = documento ? String(documento).trim() : null;
 
   const usuarioId = usuarioIdCamel || usuarioIdSnake || null;
   const providedTenantId = tenantIdCamel || tenantIdSnake || null;
   const hotelId = hotelIdCamel || hotelIdSnake || null;
+  const sucursalId = sucursalIdCamel || sucursalIdSnake || null;
 
   let targetTenantId = providedTenantId;
+
+  const transaction = await db.sequelize.transaction();
 
   try {
     if (!targetTenantId && hotelId) {
       const hotel = await Hotel.findByPk(hotelId, {
-        attributes: ['tenant_id']
+        attributes: ['tenant_id'],
+        transaction,
       });
 
       if (!hotel) {
+        await transaction.rollback();
         return res.status(404).json({ error: 'Hotel no encontrado' });
       }
 
@@ -196,10 +224,34 @@ router.post('/', async (req, res) => {
     }
 
     if (!targetTenantId) {
+      await transaction.rollback();
       return res.status(400).json({ error: 'Debe indicar el tenant o el hotel asociado' });
     }
 
     await ensureTenantPermission({ usuarioId }, targetTenantId);
+
+    let sucursalAsociada = null;
+    if (sucursalId) {
+      sucursalAsociada = await Sucursal.findByPk(sucursalId, {
+        attributes: ['sucursal_id', 'tenant_id', 'hotel_id'],
+        transaction,
+      });
+
+      if (!sucursalAsociada) {
+        await transaction.rollback();
+        return res.status(404).json({ error: 'Sucursal no encontrada' });
+      }
+
+      if (sucursalAsociada.tenant_id !== targetTenantId) {
+        await transaction.rollback();
+        return res.status(400).json({ error: 'La sucursal no pertenece al tenant indicado' });
+      }
+
+      if (hotelId && sucursalAsociada.hotel_id !== hotelId) {
+        await transaction.rollback();
+        return res.status(400).json({ error: 'La sucursal no pertenece al hotel seleccionado' });
+      }
+    }
 
     const emailHuesped = await Huesped.findOne({
       where: {
@@ -208,10 +260,12 @@ router.post('/', async (req, res) => {
           db.sequelize.fn('LOWER', db.sequelize.col('email')),
           emailLower
         )
-      }
+      },
+      transaction,
     });
 
     if (emailHuesped) {
+      await transaction.rollback();
       return res.status(409).json({ error: 'Ya existe un huésped con ese email en el hotel' });
     }
 
@@ -221,23 +275,62 @@ router.post('/', async (req, res) => {
           db.sequelize.fn('LOWER', db.sequelize.col('email')),
           emailLower
         )
-      }
+      },
+      transaction,
     });
 
     if (emailUsuario) {
+      await transaction.rollback();
       return res.status(409).json({ error: 'El email ya está en uso por otro usuario' });
     }
 
-    const nuevoHuesped = await Huesped.create({
+    const hashedPassword = await bcrypt.hash(String(password), 10);
+    const verificationToken = uuidv4();
+    const verificationExpiresAt = new Date(Date.now() + 1000 * 60 * 60 * 48); // 48 horas
+
+    const nuevoUsuario = await Usuario.create({
+      email: emailLower,
+      password_hash: hashedPassword,
+      nombre: nombre_completo.trim(),
+      email_verificado: false,
+      email_verification_token: verificationToken,
+      email_verification_expires_at: verificationExpiresAt,
+    }, { transaction });
+
+    await TenantUsuario.create({
       tenant_id: targetTenantId,
+      usuario_id: nuevoUsuario.usuario_id,
+      rol: 'huesped',
+    }, { transaction });
+
+    const nuevoHuesped = await Huesped.create({
+      huesped_id: nuevoUsuario.usuario_id,
+      tenant_id: targetTenantId,
+      sucursal_id: sucursalAsociada ? sucursalAsociada.sucursal_id : null,
       nombre_completo: nombre_completo.trim(),
       email: emailLower,
       telefono: telefonoNormalizado || null,
-      documento: documentoNormalizado || null
+      documento: documentoNormalizado || null,
+    }, { transaction });
+
+    await sendVerificationEmail({
+      to: nuevoUsuario.email,
+      nombre: nombre_completo.trim(),
+      token: verificationToken,
     });
 
-    res.status(201).json(nuevoHuesped);
+    await transaction.commit();
+
+    res.status(201).json({
+      message: 'Huésped creado exitosamente. Se envió un correo de verificación al usuario para activar su cuenta.',
+      huesped: nuevoHuesped.get({ plain: true }),
+      usuario: {
+        usuario_id: nuevoUsuario.usuario_id,
+        email: nuevoUsuario.email,
+      },
+    });
   } catch (error) {
+    await transaction.rollback();
     console.error('Error al crear huésped:', error);
     const status = error.status || 500;
     res.status(status).json({ error: error.message || 'Error interno del servidor' });

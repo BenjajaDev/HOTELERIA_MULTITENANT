@@ -61,6 +61,10 @@ CREATE TABLE IF NOT EXISTS usuario (
   email VARCHAR(200) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
   nombre VARCHAR(255),
+  email_verificado BOOLEAN DEFAULT FALSE,
+  email_verificado_en TIMESTAMP,
+  email_verification_token UUID,
+  email_verification_expires_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -171,10 +175,52 @@ CREATE TABLE IF NOT EXISTS reembolso (
 );
 
 
+-- Asegurar columnas de verificación de correo en usuario
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'usuario' AND column_name = 'email_verificado'
+  ) THEN
+    ALTER TABLE usuario ADD COLUMN email_verificado BOOLEAN DEFAULT FALSE;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'usuario' AND column_name = 'email_verificado_en'
+  ) THEN
+    ALTER TABLE usuario ADD COLUMN email_verificado_en TIMESTAMP;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'usuario' AND column_name = 'email_verification_token'
+  ) THEN
+    ALTER TABLE usuario ADD COLUMN email_verification_token UUID;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'usuario' AND column_name = 'email_verification_expires_at'
+  ) THEN
+    ALTER TABLE usuario ADD COLUMN email_verification_expires_at TIMESTAMP;
+  END IF;
+
+  -- Usuarios existentes quedan validados para no bloquear cuentas previas
+  UPDATE usuario
+  SET email_verificado = COALESCE(email_verificado, TRUE),
+      email_verificado_en = COALESCE(email_verificado_en, NOW()),
+      email_verification_token = NULL,
+      email_verification_expires_at = NULL
+  WHERE email_verificado IS NULL;
+END$$;
+
+
 -- -------------------------
 -- ÍNDICES (consultas frecuentes / FKs)
 -- -------------------------
 CREATE INDEX IF NOT EXISTS idx_usuario_email ON usuario(email);
+CREATE INDEX IF NOT EXISTS idx_usuario_verification_token ON usuario(email_verification_token);
 CREATE INDEX IF NOT EXISTS idx_tenant_usuario_tenant ON tenant_usuario(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_tenant_usuario_usuario ON tenant_usuario(usuario_id);
 

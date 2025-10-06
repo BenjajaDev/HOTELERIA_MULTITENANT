@@ -75,83 +75,83 @@ echo   FROM hotel_madero hm
 echo   RETURNING sucursal_id, hotel_id, tenant_id
 echo ^),
 echo admin_stella AS ^(
-echo   INSERT INTO usuario ^(email, password_hash, nombre^)
-echo   VALUES ^('admin@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Administrador Hotel Stella'^)
+echo   INSERT INTO usuario ^(email, password_hash, nombre, email_verificado, email_verificado_en^)
+echo   VALUES ^('admin@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Administrador Hotel Stella', TRUE, NOW^(^)^)
 echo   RETURNING usuario_id
 echo ^),
 echo admin_madero AS ^(
-echo   INSERT INTO usuario ^(email, password_hash, nombre^)
-echo   VALUES ^('admin2@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Administrador Hotel Madero'^)
+echo   INSERT INTO usuario ^(email, password_hash, nombre, email_verificado, email_verificado_en^)
+echo   VALUES ^('admin2@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Administrador Hotel Madero', TRUE, NOW^(^)^)
 echo   RETURNING usuario_id
 echo ^),
 echo gerente_stella AS ^(
-echo   INSERT INTO usuario ^(email, password_hash, nombre^)
-echo   VALUES ^('gerente_stella@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Valentina Rojas'^)
+echo   INSERT INTO usuario ^(email, password_hash, nombre, email_verificado, email_verificado_en^)
+echo   VALUES ^('gerente_stella@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Valentina Rojas', TRUE, NOW^(^)^)
 echo   RETURNING usuario_id
 echo ^),
 echo gerente_madero AS ^(
-echo   INSERT INTO usuario ^(email, password_hash, nombre^)
-echo   VALUES ^('gerente_madero@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Matias Fuentes'^)
+echo   INSERT INTO usuario ^(email, password_hash, nombre, email_verificado, email_verificado_en^)
+echo   VALUES ^('gerente_madero@hotel.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Matias Fuentes', TRUE, NOW^(^)^)
 echo   RETURNING usuario_id
 echo ^),
 echo recep_stella_centro AS ^(
-echo   INSERT INTO usuario ^(email, password_hash, nombre^)
-echo   VALUES ^('recep_centro@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Alejandro Gonzalez'^)
+echo   INSERT INTO usuario ^(email, password_hash, nombre, email_verificado, email_verificado_en^)
+echo   VALUES ^('recep_centro@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Alejandro Gonzalez', TRUE, NOW^(^)^)
 echo   RETURNING usuario_id
 echo ^),
 echo recep_stella_aeropuerto AS ^(
-echo   INSERT INTO usuario ^(email, password_hash, nombre^)
-echo   VALUES ^('recep_aeropuerto@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Daniela Perez'^)
+echo   INSERT INTO usuario ^(email, password_hash, nombre, email_verificado, email_verificado_en^)
+echo   VALUES ^('recep_aeropuerto@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Daniela Perez', TRUE, NOW^(^)^)
 echo   RETURNING usuario_id
 echo ^),
 echo recep_madero_centro AS ^(
-echo   INSERT INTO usuario ^(email, password_hash, nombre^)
-echo   VALUES ^('recep_centro@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Benjamin Soto'^)
+echo   INSERT INTO usuario ^(email, password_hash, nombre, email_verificado, email_verificado_en^)
+echo   VALUES ^('recep_centro@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Benjamin Soto', TRUE, NOW^(^)^)
 echo   RETURNING usuario_id
 echo ^),
 echo recep_madero_bosque AS ^(
-echo   INSERT INTO usuario ^(email, password_hash, nombre^)
-echo   VALUES ^('recep_bosque@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Laura Aguilera'^)
+echo   INSERT INTO usuario ^(email, password_hash, nombre, email_verificado, email_verificado_en^)
+echo   VALUES ^('recep_bosque@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Laura Aguilera', TRUE, NOW^(^)^)
 echo   RETURNING usuario_id
 echo ^),
 echo huesped_stella_centro_1 AS ^(
-echo   INSERT INTO usuario ^(email, password_hash, nombre^)
-echo   VALUES ^('huesped1@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'David Goggins'^)
+echo   INSERT INTO usuario ^(email, password_hash, nombre, email_verificado, email_verificado_en^)
+echo   VALUES ^('huesped1@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'David Goggins', TRUE, NOW^(^)^)
 echo   RETURNING usuario_id
 echo ^),
 echo huesped_stella_centro_2 AS ^(
-echo   INSERT INTO usuario ^(email, password_hash, nombre^)
-echo   VALUES ^('huesped2@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Maria Lopez'^)
+echo   INSERT INTO usuario ^(email, password_hash, nombre, email_verificado, email_verificado_en^)
+echo   VALUES ^('huesped2@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Maria Lopez', TRUE, NOW^(^)^)
 echo   RETURNING usuario_id
 echo ^),
 echo huesped_stella_aeropuerto_1 AS ^(
-echo   INSERT INTO usuario ^(email, password_hash, nombre^)
-echo   VALUES ^('huesped3@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Carlos Perez'^)
+echo   INSERT INTO usuario ^(email, password_hash, nombre, email_verificado, email_verificado_en^)
+echo   VALUES ^('huesped3@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Carlos Perez', TRUE, NOW^(^)^)
 echo   RETURNING usuario_id
 echo ^),
 echo huesped_stella_aeropuerto_2 AS ^(
-echo   INSERT INTO usuario ^(email, password_hash, nombre^)
-echo   VALUES ^('huesped4@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Andrea Castillo'^)
+echo   INSERT INTO usuario ^(email, password_hash, nombre, email_verificado, email_verificado_en^)
+echo   VALUES ^('huesped4@stella.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Andrea Castillo', TRUE, NOW^(^)^)
 echo   RETURNING usuario_id
 echo ^),
 echo huesped_madero_centro_1 AS ^(
-echo   INSERT INTO usuario ^(email, password_hash, nombre^)
-echo   VALUES ^('huesped1@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Lucario Martinez'^)
+echo   INSERT INTO usuario ^(email, password_hash, nombre, email_verificado, email_verificado_en^)
+echo   VALUES ^('huesped1@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Lucario Martinez', TRUE, NOW^(^)^)
 echo   RETURNING usuario_id
 echo ^),
 echo huesped_madero_centro_2 AS ^(
-echo   INSERT INTO usuario ^(email, password_hash, nombre^)
-echo   VALUES ^('huesped2@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Valeria Gomez'^)
+echo   INSERT INTO usuario ^(email, password_hash, nombre, email_verificado, email_verificado_en^)
+echo   VALUES ^('huesped2@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Valeria Gomez', TRUE, NOW^(^)^)
 echo   RETURNING usuario_id
 echo ^),
 echo huesped_madero_bosque_1 AS ^(
-echo   INSERT INTO usuario ^(email, password_hash, nombre^)
-echo   VALUES ^('huesped3@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Diego Hernandez'^)
+echo   INSERT INTO usuario ^(email, password_hash, nombre, email_verificado, email_verificado_en^)
+echo   VALUES ^('huesped3@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Diego Hernandez', TRUE, NOW^(^)^)
 echo   RETURNING usuario_id
 echo ^),
 echo huesped_madero_bosque_2 AS ^(
-echo   INSERT INTO usuario ^(email, password_hash, nombre^)
-echo   VALUES ^('huesped4@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Fernanda Silva'^)
+echo   INSERT INTO usuario ^(email, password_hash, nombre, email_verificado, email_verificado_en^)
+echo   VALUES ^('huesped4@madero.com', '$2b$10$Y2.3XqaGb3bO2CG.EZPR9.8maAVCDSMcze5wyFtSQNHs.Qzx.3sA2', 'Fernanda Silva', TRUE, NOW^(^)^)
 echo   RETURNING usuario_id
 echo ^),
 echo habitaciones_stella_centro AS ^(
