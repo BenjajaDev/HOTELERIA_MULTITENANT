@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import DashboardLayout from "./DashboardLayout";
+import GuestProfile from "./GuestProfile";
 import "./DashboardContent.css";
 
 const GATEWAY_INITIAL_STATE = {
@@ -14,7 +15,7 @@ const GATEWAY_INITIAL_STATE = {
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
-export default function GuestDashboard({ user, onLogout }) {
+export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
   const [hotel, setHotel] = useState(null);
   const [loadingHotel, setLoadingHotel] = useState(false);
   const [habitaciones, setHabitaciones] = useState([]);
@@ -36,6 +37,17 @@ export default function GuestDashboard({ user, onLogout }) {
   const [loadingReservas, setLoadingReservas] = useState(false);
   const [reservasError, setReservasError] = useState("");
   const [cancelingId, setCancelingId] = useState(null);
+  const [activeTab, setActiveTab] = useState("reservar");
+
+  const handleProfileUpdated = useCallback((data) => {
+    if (typeof onProfileUpdate === "function" && data) {
+      onProfileUpdate({
+        ...data,
+        usuario_id: data.usuario_id || user?.usuario_id,
+        user_id: data.usuario_id || user?.user_id,
+      });
+    }
+  }, [onProfileUpdate, user?.usuario_id, user?.user_id]);
 
   const estadoBadgeStyles = useMemo(() => ({
     confirmada: { backgroundColor: "#dcfce7", color: "#166534" },
@@ -365,6 +377,11 @@ export default function GuestDashboard({ user, onLogout }) {
       id: 'reservar',
       label: 'Reservar Habitación',
       icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke-width="2"/><path d="M9 3v18M3 9h18M3 15h6M15 9h6" stroke-width="2"/></svg>'
+    },
+    {
+      id: 'perfil',
+      label: 'Mi Perfil',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 21v-1a7 7 0 017-7h4a7 7 0 017 7v1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     }
   ];
 
@@ -373,31 +390,37 @@ export default function GuestDashboard({ user, onLogout }) {
       user={user}
       onLogout={onLogout}
       menuItems={menuItems}
-      activeTab="reservar"
-      onTabChange={() => {}}
+      activeTab={activeTab}
+      onTabChange={(tab) => {
+        setActiveTab(tab);
+        if (tab !== 'reservar') {
+          setMsg("");
+        }
+      }}
     >
-      <div style={{ padding: "24px" }}>
-        {msg && (
-          <div className={`alert ${msg.includes("✅") || msg.includes("confirmada") ? "alert-success" : "alert-info"}`} style={{ marginBottom: "20px" }}>
-            {msg}
-          </div>
-        )}
+      {activeTab === 'reservar' ? (
+        <div style={{ padding: "24px" }}>
+          {msg && (
+            <div className={`alert ${msg.includes("✅") || msg.includes("confirmada") ? "alert-success" : "alert-info"}`} style={{ marginBottom: "20px" }}>
+              {msg}
+            </div>
+          )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "400px 1fr", gap: "24px", alignItems: "start" }}>
-          <div style={{ position: "sticky", top: "24px", display: "flex", flexDirection: "column", gap: "24px" }}>
-            <div className="dashboard-card">
-              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
-                <svg width="32" height="32" fill="none" stroke="#3b82f6" strokeWidth="2" viewBox="0 0 24 24">
-                  <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                <div>
-                  <h3 style={{ fontSize: "18px", fontWeight: "600", color: "#1e293b", margin: 0 }}>
-                    Tu Hotel
-                  </h3>
+          <div style={{ display: "grid", gridTemplateColumns: "400px 1fr", gap: "24px", alignItems: "start" }}>
+            <div style={{ position: "sticky", top: "24px", display: "flex", flexDirection: "column", gap: "24px" }}>
+              <div className="dashboard-card">
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+                  <svg width="32" height="32" fill="none" stroke="#3b82f6" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  <div>
+                    <h3 style={{ fontSize: "18px", fontWeight: "600", color: "#1e293b", margin: 0 }}>
+                      Tu Hotel
+                    </h3>
+                  </div>
                 </div>
-              </div>
 
-              {loadingHotel ? (
+                {loadingHotel ? (
                 <div className="text-center py-4">
                   <div className="spinner-border spinner-border-sm" role="status"></div>
                   <p className="text-muted mt-2" style={{ fontSize: "13px" }}>Cargando...</p>
@@ -937,6 +960,11 @@ export default function GuestDashboard({ user, onLogout }) {
           </div>
         )}
       </div>
+      ) : (
+        <div style={{ padding: "24px" }}>
+          <GuestProfile user={user} onProfileUpdate={handleProfileUpdated} />
+        </div>
+      )}
     </DashboardLayout>
   );
 }

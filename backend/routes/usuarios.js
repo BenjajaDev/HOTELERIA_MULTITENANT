@@ -2,7 +2,7 @@ import express from "express";
 import { pool } from "../models/db.js";
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
-import { Usuario, Tenant, TenantUsuario, Hotel } from "../models/index.js";
+import db, { Usuario, Tenant, TenantUsuario, Hotel, Huesped } from "../models/index.js";
 import { sendVerificationEmail, isEmailConfigured } from "../utils/emailService.js";
 
 const router = express.Router();
@@ -654,6 +654,154 @@ router.delete("/huespedes/:id", async (req, res) => {
     res.status(500).json({ error: 'Error interno del servidor' });
   } finally {
     client.release();
+  }
+});
+
+// -------------------------
+// ACTUALIZAR PERFIL DE HUÉSPED (autogestión)
+// -------------------------
+router.put('/:id/perfil', async (req, res) => {
+  const { id } = req.params;
+  const {
+    nombre,
+    telefono,
+    documento,
+    passwordActual,
+    nuevoPassword,
+    usuarioId,
+    usuario_id,
+    user_id,
+    tenantId,
+    tenant_id,
+  } = req.body || {};
+
+  const requesterId = usuarioId || usuario_id || user_id || null;
+  if (!requesterId || requesterId !== id) {
+    return res.status(403).json({ error: 'No puedes modificar este perfil' });
+  }
+
+  const nombreNormalizado = typeof nombre === 'string' ? nombre.trim() : '';
+  const documentoNormalizado = typeof documento === 'string'
+    ? documento.trim()
+    : null;
+
+  let telefonoNormalizado;
+  if (typeof telefono !== 'undefined') {
+    const raw = typeof telefono === 'string' ? telefono.trim() : String(telefono || '').trim();
+    const cleaned = raw.replace(/[\s-]/g, '').replace(/[^+\d]/g, '');
+    if (cleaned && cleaned.length > 12) {
+      return res.status(400).json({ error: 'El teléfono debe tener como máximo 12 caracteres' });
+    }
+    telefonoNormalizado = cleaned || null;
+  }
+
+  if (nuevoPassword && String(nuevoPassword).length < 8) {
+    return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 8 caracteres' });
+  }
+
+  const transaction = await db.sequelize.transaction();
+
+  try {
+    const usuario = await Usuario.findByPk(id, { transaction });
+    if (!usuario) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const membership = await TenantUsuario.findOne({
+      where: { usuario_id: id, rol: 'huesped' },
+      attributes: ['tenant_id'],
+      transaction,
+    });
+
+    if (!membership) {
+      await transaction.rollback();
+      return res.status(403).json({ error: 'Solo los huéspedes pueden actualizar este perfil' });
+    }
+
+    const requestedTenant = tenantId || tenant_id || null;
+    if (requestedTenant && requestedTenant !== membership.tenant_id) {
+      await transaction.rollback();
+      return res.status(403).json({ error: 'No puedes modificar datos de otro hotel' });
+    }
+
+    const updatesUsuario = {};
+
+    if (nombreNormalizado) {
+      updatesUsuario.nombre = nombreNormalizado;
+    }
+
+    if (nuevoPassword) {
+      if (!passwordActual || !String(passwordActual).trim()) {
+        await transaction.rollback();
+        return res.status(400).json({ error: 'Debes indicar tu contraseña actual para cambiarla' });
+      }
+
+      const passwordMatch = await bcrypt.compare(String(passwordActual), usuario.password_hash);
+      if (!passwordMatch) {
+        await transaction.rollback();
+        return res.status(400).json({ error: 'La contraseña actual no es correcta' });
+      }
+
+      updatesUsuario.password_hash = await bcrypt.hash(String(nuevoPassword), 10);
+    }
+
+    if (Object.keys(updatesUsuario).length > 0) {
+      await usuario.update(updatesUsuario, { transaction });
+    }
+
+    let huesped = await Huesped.findByPk(id, { transaction });
+
+    const updatesHuesped = {};
+    if (typeof telefonoNormalizado !== 'undefined') {
+      updatesHuesped.telefono = telefonoNormalizado;
+    }
+    if (documentoNormalizado !== null) {
+      updatesHuesped.documento = documentoNormalizado || null;
+    }
+    if (nombreNormalizado) {
+      updatesHuesped.nombre_completo = nombreNormalizado;
+    }
+
+    if (!huesped) {
+      huesped = await Huesped.create({
+        huesped_id: id,
+        tenant_id: membership.tenant_id,
+        sucursal_id: null,
+        nombre_completo: nombreNormalizado || usuario.nombre || usuario.email,
+        email: usuario.email,
+        telefono: typeof telefonoNormalizado === 'undefined' ? null : telefonoNormalizado,
+        documento: documentoNormalizado || null,
+        created_at: new Date(),
+      }, { transaction });
+    } else if (Object.keys(updatesHuesped).length > 0) {
+      await huesped.update(updatesHuesped, { transaction });
+    }
+
+    await transaction.commit();
+
+    await huesped.reload({ transaction: null });
+    await usuario.reload({ transaction: null, attributes: ['usuario_id', 'email', 'nombre'] });
+
+    res.json({
+      message: 'Perfil actualizado correctamente',
+      usuario: {
+        usuario_id: usuario.usuario_id,
+        email: usuario.email,
+        nombre: usuario.nombre,
+      },
+      huesped: {
+        huesped_id: huesped.huesped_id,
+        tenant_id: huesped.tenant_id,
+        nombre_completo: huesped.nombre_completo,
+        telefono: huesped.telefono,
+        documento: huesped.documento,
+      }
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Error al actualizar perfil de huésped:', error);
+    res.status(500).json({ error: 'Error al actualizar el perfil' });
   }
 });
 

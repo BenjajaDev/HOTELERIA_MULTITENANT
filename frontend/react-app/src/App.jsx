@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import AuthPage from "./components/AuthPage";
 import AdminDashboard from "./components/AdminDashboard";
 import ReceptionistDashboard from "./components/ReceptionistDashboard";
@@ -34,6 +34,15 @@ function App() {
 
   const logout = () => setUser(null);
 
+  const handleGuestProfileUpdate = useCallback((updates) => {
+    if (!updates) return;
+    setUser((prev) => {
+      if (!prev) return prev;
+      const merged = { ...prev, ...updates };
+      return normalizeUser(merged);
+    });
+  }, []);
+
   if (!user) {
     return <AuthPage onLogin={(data) => setUser(normalizeUser(data))} />;
   }
@@ -65,7 +74,13 @@ function App() {
       {user.rol === "admin" && <AdminDashboard user={user} onLogout={logout} />}
       {user.rol === "recepcionista" && <ReceptionistDashboard user={user} onLogout={logout} />}
       {user.rol === "gerente" && <GerenteDashboard user={user} onLogout={logout} />}
-      {user.rol === "huesped" && <GuestDashboard user={user} onLogout={logout} />}
+      {user.rol === "huesped" && (
+        <GuestDashboard
+          user={user}
+          onLogout={logout}
+          onProfileUpdate={handleGuestProfileUpdate}
+        />
+      )}
     </>
   );
 }

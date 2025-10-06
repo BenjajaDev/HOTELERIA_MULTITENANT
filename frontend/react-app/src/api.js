@@ -159,6 +159,11 @@ export const api = {
     body: Object.keys(body).length ? JSON.stringify(body) : undefined,
   }),
 
+  updateGuestProfile: (usuarioId, body) => request(`/api/usuarios/${usuarioId}/perfil`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  }),
+
   searchHuespedes: (term, params = {}) => {
     const search = new URLSearchParams();
     if (params.tenant_id) search.set("tenant_id", params.tenant_id);
