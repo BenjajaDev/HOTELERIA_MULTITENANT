@@ -40,6 +40,7 @@ export const api = {
   },
   createReserva: (body) => request("/api/reservas", { method: "POST", body: JSON.stringify(body) }),
   updateReserva: (id, body) => request(`/api/reservas/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+  cancelReserva: (id, body) => request(`/api/reservas/${id}/cancelar`, { method: "POST", body: JSON.stringify(body) }),
 
   // 🔹 Habitaciones por hotelId
   getHabitaciones: async (hotelId, params = {}) => {

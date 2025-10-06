@@ -40,6 +40,10 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'estado_pago_enum') THEN
     CREATE TYPE estado_pago_enum AS ENUM ('pagado','pendiente');
   END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'estado_reembolso_enum') THEN
+    CREATE TYPE estado_reembolso_enum AS ENUM ('pendiente','procesado','no_aplica');
+  END IF;
 END$$;
 
 
@@ -153,6 +157,19 @@ CREATE TABLE IF NOT EXISTS detalle_pago (
   comprobante_url VARCHAR(255)
 );
 
+CREATE TABLE IF NOT EXISTS reembolso (
+  reembolso_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tenant_id UUID REFERENCES tenant(tenant_id) ON DELETE CASCADE,
+  reserva_id UUID REFERENCES reserva(reserva_id) ON DELETE CASCADE,
+  pago_id UUID REFERENCES pago(pago_id) ON DELETE CASCADE,
+  monto INT,
+  metodo metodo_pago_enum,
+  estado estado_reembolso_enum DEFAULT 'procesado',
+  motivo TEXT,
+  detalle TEXT,
+  creado_en TIMESTAMP DEFAULT NOW()
+);
+
 
 -- -------------------------
 -- ÍNDICES (consultas frecuentes / FKs)
@@ -189,6 +206,9 @@ CREATE INDEX IF NOT EXISTS idx_reserva_huesped ON reserva(huesped_id);
 
 CREATE INDEX IF NOT EXISTS idx_pago_tenant ON pago(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_pago_reserva ON pago(reserva_id);
+
+CREATE INDEX IF NOT EXISTS idx_reembolso_tenant ON reembolso(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_reembolso_reserva ON reembolso(reserva_id);
 
 
 -- Hotel
@@ -296,6 +316,19 @@ BEGIN
           SELECT pago_id FROM pago WHERE tenant_id = current_setting('app.current_tenant')::uuid
         )
       );
+  END IF;
+END$$;
+
+-- Reembolso
+ALTER TABLE reembolso ENABLE ROW LEVEL SECURITY;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='reembolso' AND policyname='tenant_isolation_reembolso'
+  ) THEN
+    CREATE POLICY tenant_isolation_reembolso
+      ON reembolso
+      USING (tenant_id = current_setting('app.current_tenant')::uuid);
   END IF;
 END$$;
 

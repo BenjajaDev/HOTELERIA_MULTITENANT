@@ -14,7 +14,7 @@ El backend está construido sobre **Node.js 18** y **Express** (`backend/server.
 | ------ | --------- | ------------------------- |
 | Hoteles | `routes/hoteles.js` | CRUD completo, creación automática de tenants, cache en Redis, invalidación selectiva. |
 | Usuarios | `routes/usuarios.js` | Autenticación con bcrypt, registro de huéspedes, asignación de roles (`tenant_usuario`), gestión de huéspedes administrativos. |
-| Reservas | `routes/reservas.js` | Control de disponibilidad, cálculo de noches, integración con pagos y detalle de pago, transacciones complejas. |
+| Reservas | `routes/reservas.js` | Control de disponibilidad, cálculo de noches, integración con pagos y detalle de pago, cancelaciones con reembolso ficticio, transacciones complejas. |
 | Pagos | `routes/pagos.js` | Consulta y actualización de `detalle_pago`, generación de boletas imprimibles y filtros por hotel/estado/método. |
 | Habitaciones | `routes/gestion_habitaciones.js` | Inventory management por hotel, validación de rol (`admin` o `recepcionista`), verificación de solapamientos. |
 | Huéspedes | `routes/huespedes.js` | Panel combinado entre fichas (`huesped`) y usuarios con rol de huésped, histórico de reservas, edición controlada. |
@@ -37,6 +37,13 @@ Cada router declara utilidades para encapsular SQL repetitivo (`fetchHotelById`,
 - **Habitaciones**: número entero positivo, etiquetas permitidas (`simple`, `doble`, `suite`), estado válido y precio mayor o igual a cero.
 - **Reservas**: fechas en orden cronológico, cálculo de noches mínimo de 1, verificación de disponibilidad para evitar solapamientos, métodos de pago soportados.
 - **Pagos**: sincronización de montos con la reserva, normalización de referencias y persistencia de detalles ficticios para comprobar flujos.
+
+### Cancelaciones y reembolsos ficticios
+- Endpoint: `POST /api/reservas/:id/cancelar`
+	- Requiere `tenantId` y `usuarioId` (o sus variantes en snake_case) en el cuerpo para validar la pertenencia del huésped o staff.
+	- Cambia el estado de la reserva a `cancelada` (impidiendo que un huésped cancele reservas pasadas) y genera un registro en la tabla `reembolso`.
+	- Si el pago original estaba marcado como pagado, se registra un reembolso ficticio asociado al `pago_id`; en pagos en efectivo pendientes se marca como `no_aplica`.
+	- El detalle del pago se actualiza con una nota informativa, lo que permite mostrar el flujo completo en el dashboard del huésped.
 
 ## Manejo de errores
 - Todas las rutas capturan excepciones y responden JSON (`{ error: mensaje }`) con códigos 4xx/5xx apropiados.

@@ -1,5 +1,5 @@
 import express from "express";
-import { Reserva, Habitacion, Hotel, Huesped, Pago, DetallePago, Usuario } from "../models/index.js";
+import { Reserva, Habitacion, Hotel, Huesped, Pago, DetallePago, Usuario, Reembolso } from "../models/index.js";
 import { fetchMembership, ensureHotelBelongs, ensureSucursalBelongs, fetchRecepcionistaSucursal } from "../models/helpers.js";
 import { Op } from "sequelize";
 import db from "../models/index.js";
@@ -31,6 +31,23 @@ async function fetchReservaById(reservaId) {
       {
         model: Pago,
         as: 'pagos',
+        required: false,
+        include: [
+          {
+            model: DetallePago,
+            as: 'detalle',
+            required: false
+          },
+          {
+            model: Reembolso,
+            as: 'reembolsos',
+            required: false
+          }
+        ]
+      },
+      {
+        model: Reembolso,
+        as: 'reembolsos',
         required: false
       }
     ]
@@ -44,6 +61,45 @@ async function fetchReservaById(reservaId) {
   const noches = Math.max(1, Math.ceil((endDate - startDate) / MS_PER_DAY));
 
   const pago = plain.pagos && plain.pagos.length > 0 ? plain.pagos[0] : null;
+  const pagos = Array.isArray(plain.pagos)
+    ? plain.pagos.map(p => ({
+        pago_id: p.pago_id,
+        monto: p.monto,
+        metodo: p.metodo,
+        estado: p.estado,
+        fecha: p.fecha,
+        detalle: p.detalle?.descripcion || null,
+        reembolsos: Array.isArray(p.reembolsos)
+          ? p.reembolsos.map(r => ({
+              reembolso_id: r.reembolso_id,
+              monto: r.monto,
+              metodo: r.metodo,
+              estado: r.estado,
+              motivo: r.motivo,
+              detalle: r.detalle,
+              creado_en: r.creado_en,
+              pago_id: r.pago_id
+            }))
+          : []
+      }))
+    : [];
+
+  const reembolsosNivelReserva = Array.isArray(plain.reembolsos)
+    ? plain.reembolsos.map(r => ({
+        reembolso_id: r.reembolso_id,
+        monto: r.monto,
+        metodo: r.metodo,
+        estado: r.estado,
+        motivo: r.motivo,
+        detalle: r.detalle,
+        creado_en: r.creado_en,
+        pago_id: r.pago_id
+      }))
+    : [];
+
+  const reembolsos = reembolsosNivelReserva.length > 0
+    ? reembolsosNivelReserva
+    : pagos.flatMap(p => p.reembolsos || []);
 
   return {
     reserva_id: plain.reserva_id,
@@ -67,7 +123,10 @@ async function fetchReservaById(reservaId) {
     pago_monto: pago?.monto,
     pago_metodo: pago?.metodo,
     pago_estado: pago?.estado,
-    pago_fecha: pago?.fecha
+    pago_fecha: pago?.fecha,
+    pago_detalle: pago?.detalle?.descripcion || null,
+    pagos,
+    reembolsos
   };
 }
 
@@ -85,6 +144,22 @@ function buildPaymentDescription(metodo, detalles = {}) {
   return "Pago en efectivo a cancelar en recepción";
 }
 
+const refundMoneyFormatter = new Intl.NumberFormat('es-CL', {
+  style: 'currency',
+  currency: 'CLP'
+});
+
+function buildRefundDescription({ metodo, monto }) {
+  const montoFormateado = refundMoneyFormatter.format(monto ?? 0);
+  if (metodo === 'tarjeta') {
+    return `Reembolso ficticio de ${montoFormateado} a la tarjeta utilizada. Se verá reflejado en 3 a 5 días hábiles.`;
+  }
+  if (metodo === 'transferencia') {
+    return `Reembolso ficticio de ${montoFormateado} vía transferencia bancaria al titular registrado.`;
+  }
+  return `No se registró cargo previo. Reembolso ficticio no aplicable para pagos en efectivo.`;
+}
+
 router.get("/", async (req, res) => {
   const {
     hotelId,
@@ -97,11 +172,17 @@ router.get("/", async (req, res) => {
     estado,
     metodo_pago: metodoPago,
     estado_pago: estadoPago,
+    huespedId,
+    huesped_id: huespedIdSnake,
+    filtrar_por_huesped: filtrarPorHuespedSnake,
+    filtrarPorHuesped: filtrarPorHuespedCamel
   } = req.query;
 
   const tenant = tenantId || tenantIdSnake || null;
   const usuario = usuarioId || usuarioIdSnake || null;
   const sucursal = sucursalId || sucursalIdSnake || null;
+  const explicitHuespedId = huespedId || huespedIdSnake || null;
+  const forceFilterByHuesped = String(filtrarPorHuespedCamel ?? filtrarPorHuespedSnake ?? "false").toLowerCase() === "true";
 
   try {
     const habitacionWhere = {};
@@ -183,6 +264,14 @@ router.get("/", async (req, res) => {
       habitacionWhere.sucursal_id = sucursalFilterValue;
     }
 
+    if (explicitHuespedId) {
+      reservaWhere.huesped_id = explicitHuespedId;
+    } else if (usuario && membership?.rol === 'huesped') {
+      reservaWhere.huesped_id = usuario;
+    } else if (usuario && forceFilterByHuesped) {
+      reservaWhere.huesped_id = usuario;
+    }
+
     if (estado) {
       reservaWhere.estado = estado;
     }
@@ -217,6 +306,23 @@ router.get("/", async (req, res) => {
           model: Pago,
           as: 'pagos',
           where: Object.keys(pagoWhere).length > 0 ? pagoWhere : undefined,
+          required: false,
+          include: [
+            {
+              model: DetallePago,
+              as: 'detalle',
+              required: false
+            },
+            {
+              model: Reembolso,
+              as: 'reembolsos',
+              required: false
+            }
+          ]
+        },
+        {
+          model: Reembolso,
+          as: 'reembolsos',
           required: false
         }
       ],
@@ -230,6 +336,45 @@ router.get("/", async (req, res) => {
       const noches = Math.max(1, Math.ceil((endDate - startDate) / MS_PER_DAY));
 
       const pago = plain.pagos && plain.pagos.length > 0 ? plain.pagos[0] : null;
+      const pagos = Array.isArray(plain.pagos)
+        ? plain.pagos.map(p => ({
+            pago_id: p.pago_id,
+            monto: p.monto,
+            metodo: p.metodo,
+            estado: p.estado,
+            fecha: p.fecha,
+            detalle: p.detalle?.descripcion || null,
+            reembolsos: Array.isArray(p.reembolsos)
+              ? p.reembolsos.map(r => ({
+                  reembolso_id: r.reembolso_id,
+                  monto: r.monto,
+                  metodo: r.metodo,
+                  estado: r.estado,
+                  motivo: r.motivo,
+                  detalle: r.detalle,
+                  creado_en: r.creado_en,
+                  pago_id: r.pago_id
+                }))
+              : []
+          }))
+        : [];
+
+      const reembolsosNivelReserva = Array.isArray(plain.reembolsos)
+        ? plain.reembolsos.map(r => ({
+            reembolso_id: r.reembolso_id,
+            monto: r.monto,
+            metodo: r.metodo,
+            estado: r.estado,
+            motivo: r.motivo,
+            detalle: r.detalle,
+            creado_en: r.creado_en,
+            pago_id: r.pago_id
+          }))
+        : [];
+
+      const reembolsos = reembolsosNivelReserva.length > 0
+        ? reembolsosNivelReserva
+        : pagos.flatMap(p => p.reembolsos || []);
 
       return {
         reserva_id: plain.reserva_id,
@@ -253,7 +398,10 @@ router.get("/", async (req, res) => {
         pago_monto: pago?.monto,
         pago_metodo: pago?.metodo,
         pago_estado: pago?.estado,
-        pago_fecha: pago?.fecha
+        pago_fecha: pago?.fecha,
+        pago_detalle: pago?.detalle?.descripcion || null,
+        pagos,
+        reembolsos
       };
     });
 
@@ -408,6 +556,146 @@ router.post("/", async (req, res) => {
   } catch (err) {
     await transaction.rollback();
     console.error("Error al crear reserva:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/:id/cancelar", async (req, res) => {
+  const { id } = req.params;
+  const {
+    tenant_id: tenantIdSnake,
+    tenantId: tenantIdCamel,
+    usuario_id: usuarioIdSnake,
+    usuarioId: usuarioIdCamel,
+    motivo,
+    motivo_cancelacion: motivoAlt
+  } = req.body || {};
+
+  const tenantId = tenantIdCamel || tenantIdSnake;
+  const usuarioId = usuarioIdCamel || usuarioIdSnake;
+  const motivoFinal = motivo || motivoAlt || 'Cancelación solicitada por el huésped';
+
+  if (!tenantId || !usuarioId) {
+    return res.status(400).json({ error: "Debe indicar el tenant y el usuario que solicita la cancelación" });
+  }
+
+  try {
+    const membership = await fetchMembership({ tenant: tenantId, usuario: usuarioId });
+
+    if (!membership) {
+      return res.status(403).json({ error: "El usuario no pertenece al tenant indicado" });
+    }
+
+    const reserva = await Reserva.findOne({
+      where: { reserva_id: id, tenant_id: tenantId },
+      include: [
+        {
+          model: Pago,
+          as: 'pagos',
+          required: false,
+          include: [
+            {
+              model: DetallePago,
+              as: 'detalle',
+              required: false
+            },
+            {
+              model: Reembolso,
+              as: 'reembolsos',
+              required: false
+            }
+          ]
+        }
+      ]
+    });
+
+    if (!reserva) {
+      return res.status(404).json({ error: "Reserva no encontrada" });
+    }
+
+    if (membership.rol === 'huesped' && reserva.huesped_id !== usuarioId) {
+      return res.status(403).json({ error: "No puedes cancelar reservas de otro huésped" });
+    }
+
+    if (reserva.estado === 'cancelada') {
+      return res.status(400).json({ error: "La reserva ya se encuentra cancelada" });
+    }
+
+    const hoyIso = new Date().toISOString().slice(0, 10);
+    const inicioIso = typeof reserva.fecha_inicio === 'string'
+      ? reserva.fecha_inicio
+      : reserva.fecha_inicio?.toISOString?.().slice(0, 10);
+
+    if (membership.rol === 'huesped' && inicioIso && inicioIso <= hoyIso) {
+      return res.status(400).json({ error: "No es posible cancelar una reserva que ya comenzó" });
+    }
+
+    const transaction = await db.sequelize.transaction();
+
+    try {
+      await reserva.update({ estado: 'cancelada' }, { transaction });
+
+      const pagos = await Pago.findAll({
+        where: { reserva_id: id },
+        include: [
+          { model: DetallePago, as: 'detalle', required: false },
+          { model: Reembolso, as: 'reembolsos', required: false }
+        ],
+        transaction
+      });
+
+      const nuevosReembolsos = [];
+
+      for (const pago of pagos) {
+        if (Array.isArray(pago.reembolsos) && pago.reembolsos.length > 0) {
+          nuevosReembolsos.push(...pago.reembolsos.map(r => r.get({ plain: true })));
+          continue;
+        }
+
+        let estadoReembolso = 'procesado';
+        let montoReembolso = pago.monto || 0;
+        let detalleReembolso = buildRefundDescription({ metodo: pago.metodo, monto: pago.monto || 0 });
+
+        if (pago.metodo === 'efectivo' && pago.estado !== 'pagado') {
+          estadoReembolso = 'no_aplica';
+          montoReembolso = 0;
+        }
+
+        const reembolso = await Reembolso.create({
+          tenant_id: tenantId,
+          reserva_id: reserva.reserva_id,
+          pago_id: pago.pago_id,
+          monto: montoReembolso,
+          metodo: pago.metodo,
+          estado: estadoReembolso,
+          motivo: motivoFinal,
+          detalle: detalleReembolso
+        }, { transaction });
+
+        nuevosReembolsos.push(reembolso.get({ plain: true }));
+
+        if (pago.detalle) {
+          const originalDescripcion = pago.detalle.descripcion || '';
+          const marcaTiempo = new Date().toISOString();
+          const nuevaDescripcion = `${originalDescripcion ? `${originalDescripcion}\n` : ''}Reembolso ficticio generado el ${marcaTiempo}`;
+          await pago.detalle.update({ descripcion: nuevaDescripcion }, { transaction });
+        }
+      }
+
+      await transaction.commit();
+
+      const detalle = await fetchReservaById(id);
+      return res.json({
+        message: "Reserva cancelada y reembolso ficticio generado",
+        reserva: detalle,
+        reembolsos: nuevosReembolsos
+      });
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
+  } catch (err) {
+    console.error("Error al cancelar reserva:", err);
     res.status(500).json({ error: err.message });
   }
 });

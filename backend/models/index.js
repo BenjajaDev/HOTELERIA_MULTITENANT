@@ -10,6 +10,7 @@ import Huesped from './Huesped.js';
 import Reserva from './Reserva.js';
 import Pago from './Pago.js';
 import DetallePago from './DetallePago.js';
+import Reembolso from './Reembolso.js';
 
 // ===================================
 // RELACIONES ENTRE MODELOS
@@ -95,6 +96,15 @@ Reserva.hasMany(Pago, { foreignKey: 'reserva_id', as: 'pagos' });
 DetallePago.belongsTo(Pago, { foreignKey: 'pago_id', as: 'pago' });
 Pago.hasOne(DetallePago, { foreignKey: 'pago_id', as: 'detalle' });
 
+// Reembolso ↔ relaciones
+Reembolso.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+Reembolso.belongsTo(Reserva, { foreignKey: 'reserva_id', as: 'reserva' });
+Reembolso.belongsTo(Pago, { foreignKey: 'pago_id', as: 'pago' });
+
+Tenant.hasMany(Reembolso, { foreignKey: 'tenant_id', as: 'reembolsos' });
+Reserva.hasMany(Reembolso, { foreignKey: 'reserva_id', as: 'reembolsos' });
+Pago.hasMany(Reembolso, { foreignKey: 'pago_id', as: 'reembolsos' });
+
 // ===================================
 // EXPORTAR MODELOS Y SEQUELIZE
 // ===================================
@@ -111,7 +121,8 @@ const db = {
   Huesped,
   Reserva,
   Pago,
-  DetallePago
+  DetallePago,
+  Reembolso
 };
 
 export default db;
@@ -127,5 +138,6 @@ export {
   Huesped,
   Reserva,
   Pago,
-  DetallePago
+  DetallePago,
+  Reembolso
 };

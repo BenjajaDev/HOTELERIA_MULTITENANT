@@ -32,6 +32,44 @@ export default function GuestDashboard({ user, onLogout }) {
   const [showGateway, setShowGateway] = useState(false);
   const [gatewayData, setGatewayData] = useState(GATEWAY_INITIAL_STATE);
   const [gatewayMsg, setGatewayMsg] = useState("");
+  const [reservas, setReservas] = useState([]);
+  const [loadingReservas, setLoadingReservas] = useState(false);
+  const [reservasError, setReservasError] = useState("");
+  const [cancelingId, setCancelingId] = useState(null);
+
+  const estadoBadgeStyles = useMemo(() => ({
+    confirmada: { backgroundColor: "#dcfce7", color: "#166534" },
+    pendiente: { backgroundColor: "#fef3c7", color: "#92400e" },
+    cancelada: { backgroundColor: "#fee2e2", color: "#991b1b" },
+  }), []);
+
+  const formatDate = useCallback((value) => {
+    if (!value) return "—";
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+    return date.toLocaleDateString("es-CL", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  }, []);
+
+  const formatDateTime = useCallback((value) => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return null;
+    }
+    return date.toLocaleString("es-CL", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }, []);
 
   const currencyFormatter = useMemo(
     () => new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }),
@@ -65,6 +103,32 @@ export default function GuestDashboard({ user, onLogout }) {
     []
   );
 
+    const loadReservas = useCallback(async () => {
+      const tenantId = user?.tenant_id;
+      const huespedId = user?.user_id || user?.usuario_id;
+
+      if (!tenantId || !huespedId) {
+        setReservas([]);
+        setReservasError("");
+        return;
+      }
+
+      try {
+        setLoadingReservas(true);
+        setReservasError("");
+        const data = await api.getReservas({
+          tenantId,
+          usuarioId: huespedId,
+        });
+        setReservas(Array.isArray(data) ? data : []);
+      } catch (err) {
+        setReservas([]);
+        setReservasError(err?.error || err?.message || "No se pudieron cargar tus reservas");
+      } finally {
+        setLoadingReservas(false);
+      }
+    }, [user?.tenant_id, user?.user_id, user?.usuario_id]);
+
   const loadHotel = useCallback(async () => {
     if (!user?.hotel_id) {
       setHotel(null);
@@ -95,6 +159,10 @@ export default function GuestDashboard({ user, onLogout }) {
   useEffect(() => {
     loadHotel();
   }, [loadHotel]);
+
+  useEffect(() => {
+    loadReservas();
+  }, [loadReservas]);
 
   useEffect(() => {
     if (!hotel) {
@@ -186,6 +254,7 @@ export default function GuestDashboard({ user, onLogout }) {
       });
       setTotal(0);
       await fetchHabitaciones({ hotelId: hotel.hotel_id, sucursalId: user?.sucursal_id || null });
+      await loadReservas();
     } catch (err) {
       const message = err?.error || err?.message || JSON.stringify(err);
       if (form.metodo_pago !== "efectivo" && showGateway) {
@@ -260,6 +329,37 @@ export default function GuestDashboard({ user, onLogout }) {
     }
   };
 
+  const cancelReserva = async (reservaId) => {
+    if (!reservaId) return;
+    setCancelingId(reservaId);
+    setMsg("");
+
+    try {
+      const payload = {
+        tenantId: hotel?.tenant_id || user?.tenant_id,
+        usuarioId: user?.user_id || user?.usuario_id,
+      };
+      const response = await api.cancelReserva(reservaId, payload);
+      if (response?.message) {
+        setMsg(response.message);
+      }
+      await loadReservas();
+      if (hotel) {
+        await fetchHabitaciones({
+          hotelId: hotel.hotel_id,
+          fechaInicio: form.fecha_inicio,
+          fechaFin: form.fecha_fin,
+          sucursalId: user?.sucursal_id || null,
+        });
+      }
+    } catch (err) {
+      const message = err?.error || err?.message || JSON.stringify(err);
+      setMsg(message);
+    } finally {
+      setCancelingId(null);
+    }
+  };
+
   const menuItems = [
     {
       id: 'reservar',
@@ -284,75 +384,228 @@ export default function GuestDashboard({ user, onLogout }) {
         )}
 
         <div style={{ display: "grid", gridTemplateColumns: "400px 1fr", gap: "24px", alignItems: "start" }}>
-          {/* Card del Hotel */}
-          <div className="dashboard-card" style={{ position: "sticky", top: "24px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
-              <svg width="32" height="32" fill="none" stroke="#3b82f6" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-              <div>
-                <h3 style={{ fontSize: "18px", fontWeight: "600", color: "#1e293b", margin: 0 }}>
-                  Tu Hotel
-                </h3>
+          <div style={{ position: "sticky", top: "24px", display: "flex", flexDirection: "column", gap: "24px" }}>
+            <div className="dashboard-card">
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+                <svg width="32" height="32" fill="none" stroke="#3b82f6" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                <div>
+                  <h3 style={{ fontSize: "18px", fontWeight: "600", color: "#1e293b", margin: 0 }}>
+                    Tu Hotel
+                  </h3>
+                </div>
               </div>
+
+              {loadingHotel ? (
+                <div className="text-center py-4">
+                  <div className="spinner-border spinner-border-sm" role="status"></div>
+                  <p className="text-muted mt-2" style={{ fontSize: "13px" }}>Cargando...</p>
+                </div>
+              ) : hotel ? (
+                <div>
+                  <div style={{ padding: "16px", backgroundColor: "#f8fafc", borderRadius: "8px", marginBottom: "16px" }}>
+                    <div style={{ fontSize: "16px", fontWeight: "600", color: "#1e293b", marginBottom: "12px" }}>
+                      {hotel.nombre}
+                    </div>
+                    
+                    <div style={{ display: "flex", alignItems: "start", gap: "8px", marginBottom: "8px" }}>
+                      <svg width="16" height="16" fill="none" stroke="#64748b" strokeWidth="2" viewBox="0 0 24 24" style={{ marginTop: "2px", flexShrink: 0 }}>
+                        <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span style={{ fontSize: "13px", color: "#64748b" }}>{hotel.direccion}</span>
+                    </div>
+
+                    {hotel.telefono && (
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                        <svg width="16" height="16" fill="none" stroke="#64748b" strokeWidth="2" viewBox="0 0 24 24">
+                          <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        <span style={{ fontSize: "13px", color: "#64748b" }}>{hotel.telefono}</span>
+                      </div>
+                    )}
+
+                    {hotel.email && (
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <svg width="16" height="16" fill="none" stroke="#64748b" strokeWidth="2" viewBox="0 0 24 24">
+                          <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        <span style={{ fontSize: "13px", color: "#64748b" }}>{hotel.email}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ padding: "12px", backgroundColor: "#eff6ff", borderLeft: "3px solid #3b82f6", borderRadius: "8px" }}>
+                    <div style={{ fontSize: "13px", color: "#1e40af", lineHeight: "1.5" }}>
+                      💡 Podrás reservar solo habitaciones de este hotel
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="empty-state" style={{ padding: "32px 16px" }}>
+                  <svg width="48" height="48" fill="none" stroke="#cbd5e1" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p style={{ fontSize: "13px" }}>No se pudo cargar el hotel</p>
+                </div>
+              )}
             </div>
 
-            {loadingHotel ? (
-              <div className="text-center py-4">
-                <div className="spinner-border spinner-border-sm" role="status"></div>
-                <p className="text-muted mt-2" style={{ fontSize: "13px" }}>Cargando...</p>
-              </div>
-            ) : hotel ? (
-              <div>
-                <div style={{ padding: "16px", backgroundColor: "#f8fafc", borderRadius: "8px", marginBottom: "16px" }}>
-                  <div style={{ fontSize: "16px", fontWeight: "600", color: "#1e293b", marginBottom: "12px" }}>
-                    {hotel.nombre}
-                  </div>
-                  
-                  <div style={{ display: "flex", alignItems: "start", gap: "8px", marginBottom: "8px" }}>
-                    <svg width="16" height="16" fill="none" stroke="#64748b" strokeWidth="2" viewBox="0 0 24 24" style={{ marginTop: "2px", flexShrink: 0 }}>
-                      <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span style={{ fontSize: "13px", color: "#64748b" }}>{hotel.direccion}</span>
-                  </div>
-
-                  {hotel.telefono && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                      <svg width="16" height="16" fill="none" stroke="#64748b" strokeWidth="2" viewBox="0 0 24 24">
-                        <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                      </svg>
-                      <span style={{ fontSize: "13px", color: "#64748b" }}>{hotel.telefono}</span>
-                    </div>
-                  )}
-
-                  {hotel.email && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <svg width="16" height="16" fill="none" stroke="#64748b" strokeWidth="2" viewBox="0 0 24 24">
-                        <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                      <span style={{ fontSize: "13px", color: "#64748b" }}>{hotel.email}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ padding: "12px", backgroundColor: "#eff6ff", borderLeft: "3px solid #3b82f6", borderRadius: "8px" }}>
-                  <div style={{ fontSize: "13px", color: "#1e40af", lineHeight: "1.5" }}>
-                    💡 Podrás reservar solo habitaciones de este hotel
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="empty-state" style={{ padding: "32px 16px" }}>
-                <svg width="48" height="48" fill="none" stroke="#cbd5e1" strokeWidth="2" viewBox="0 0 24 24">
-                  <path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <div className="dashboard-card">
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+                <svg width="32" height="32" fill="none" stroke="#6366f1" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <p style={{ fontSize: "13px" }}>No se pudo cargar el hotel</p>
+                <div>
+                  <h3 style={{ fontSize: "18px", fontWeight: "600", color: "#1e293b", margin: 0 }}>
+                    Mis Reservas
+                  </h3>
+                  <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>
+                    Consulta o cancela tus reservas activas
+                  </p>
+                </div>
               </div>
-            )}
+
+              {reservasError && (
+                <div style={{
+                  marginBottom: "12px",
+                  padding: "12px",
+                  backgroundColor: "#fee2e2",
+                  border: "1px solid #fca5a5",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  color: "#991b1b"
+                }}>
+                  {reservasError}
+                </div>
+              )}
+
+              {loadingReservas ? (
+                <div className="text-center py-4">
+                  <div className="spinner-border spinner-border-sm" role="status"></div>
+                  <p className="text-muted mt-2" style={{ fontSize: "13px" }}>Cargando tus reservas...</p>
+                </div>
+              ) : reservas.length === 0 ? (
+                <div className="empty-state" style={{ padding: "24px 12px" }}>
+                  <svg width="40" height="40" fill="none" stroke="#cbd5e1" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M3 5h18M8 21h8m-4-4v4m0-4a6 6 0 100-12 6 6 0 000 12z" />
+                  </svg>
+                  <p style={{ fontSize: "13px", color: "#64748b" }}>Aún no tienes reservas registradas</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  {reservas.map((reserva) => {
+                    const startDate = new Date(`${reserva.fecha_inicio}T00:00:00`);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    startDate.setHours(0, 0, 0, 0);
+                    const canCancel = reserva.estado !== 'cancelada' && startDate > today;
+                    const buttonDisabled = !canCancel || cancelingId === reserva.reserva_id;
+                    const estadoEstilo = estadoBadgeStyles[reserva.estado] || { backgroundColor: "#e2e8f0", color: "#334155" };
+                    const allRefunds = Array.isArray(reserva.reembolsos) ? reserva.reembolsos : [];
+                    const sortedRefunds = allRefunds.slice().sort((a, b) => {
+                      const fechaA = a?.creado_en ? new Date(a.creado_en).getTime() : 0;
+                      const fechaB = b?.creado_en ? new Date(b.creado_en).getTime() : 0;
+                      return fechaB - fechaA;
+                    });
+                    const refund = sortedRefunds[0] || null;
+                    let refundStyles = { backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", color: "#475569" };
+                    if (refund?.estado === 'procesado') {
+                      refundStyles = { backgroundColor: "#ecfdf5", border: "1px solid #d1fae5", color: "#047857" };
+                    } else if (refund?.estado === 'pendiente') {
+                      refundStyles = { backgroundColor: "#fef9c3", border: "1px solid #fde68a", color: "#92400e" };
+                    }
+
+                    return (
+                      <div
+                        key={reserva.reserva_id}
+                        style={{
+                          border: "1px solid #e2e8f0",
+                          borderRadius: "12px",
+                          padding: "14px",
+                          background: "#f8fafc"
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
+                          <div>
+                            <div style={{ fontSize: "14px", fontWeight: "600", color: "#111827" }}>
+                              Habitación {reserva.habitacion_numero || "—"}
+                            </div>
+                            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px" }}>
+                              {formatDate(reserva.fecha_inicio)} → {formatDate(reserva.fecha_fin)}
+                            </div>
+                          </div>
+                          <span
+                            style={{
+                              padding: "4px 10px",
+                              borderRadius: "999px",
+                              fontSize: "11px",
+                              fontWeight: "600",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.02em",
+                              backgroundColor: estadoEstilo.backgroundColor,
+                              color: estadoEstilo.color
+                            }}
+                          >
+                            {reserva.estado || "desconocido"}
+                          </span>
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", marginTop: "12px" }}>
+                          <div style={{ fontSize: "13px", color: "#1f2937" }}>
+                            Total: <span style={{ fontWeight: "600" }}>{formatMoney(reserva.total)}</span>
+                          </div>
+                          <button
+                            className="btn-secondary-custom"
+                            style={{ opacity: buttonDisabled ? 0.6 : 1 }}
+                            type="button"
+                            disabled={buttonDisabled}
+                            onClick={() => cancelReserva(reserva.reserva_id)}
+                          >
+                            {cancelingId === reserva.reserva_id ? (
+                              <>
+                                <span className="spinner-border spinner-border-sm" style={{ marginRight: "6px" }}></span>
+                                Cancelando...
+                              </>
+                            ) : (
+                              "Cancelar"
+                            )}
+                          </button>
+                        </div>
+
+                        {refund && (
+                          <div style={{
+                            marginTop: "10px",
+                            padding: "10px 12px",
+                            borderRadius: "8px",
+                            fontSize: "12px",
+                            ...refundStyles
+                          }}>
+                            <div style={{ fontWeight: "600", marginBottom: "4px" }}>
+                              Reembolso: {refund.estado === 'no_aplica' ? 'No aplica' : refund.estado}
+                            </div>
+                            {refund.monto != null && refund.estado !== 'no_aplica' && (
+                              <div>Monto: {formatMoney(refund.monto)}</div>
+                            )}
+                            {refund.detalle && (
+                              <div style={{ marginTop: "2px" }}>{refund.detalle}</div>
+                            )}
+                            {refund.creado_en && (
+                              <div style={{ marginTop: "4px", color: "#0f766e" }}>
+                                {formatDateTime(refund.creado_en)}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Formulario de Reserva */}
           <div className="dashboard-card">
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
               <svg width="32" height="32" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24">
