@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import LogoutModal from './LogoutModal';
 import './DashboardLayout.css';
 
 export default function DashboardLayout({ 
@@ -11,9 +12,23 @@ export default function DashboardLayout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const toggleCollapse = () => setIsCollapsed(!isCollapsed);
+
+  const handleLogoutClick = () => {
+    setShowLogoutModal(true);
+  };
+
+  const handleLogoutConfirm = () => {
+    setShowLogoutModal(false);
+    onLogout();
+  };
+
+  const handleLogoutCancel = () => {
+    setShowLogoutModal(false);
+  };
 
   return (
     <div className="dashboard-layout">
@@ -72,7 +87,7 @@ export default function DashboardLayout({
               </div>
             )}
           </div>
-          <button className="logout-button" onClick={onLogout} title={isCollapsed ? 'Cerrar sesión' : ''}>
+          <button className="logout-button" onClick={handleLogoutClick} title={isCollapsed ? 'Cerrar sesión' : ''}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
@@ -123,6 +138,14 @@ export default function DashboardLayout({
       {sidebarOpen && (
         <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
       )}
+
+      {/* Modal de confirmación de logout */}
+      <LogoutModal
+        isOpen={showLogoutModal}
+        onConfirm={handleLogoutConfirm}
+        onCancel={handleLogoutCancel}
+        userName={user?.nombre || user?.email}
+      />
     </div>
   );
 }
