@@ -389,3 +389,117 @@
 .sidebar-nav::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
 }
+
+/* Botón de colapso */
+.collapse-toggle {
+  position: absolute;
+  top: 50%;
+  right: -15px;
+  transform: translateY(-50%);
+  background: white;
+  border: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 101;
+  transition: all 0.3s ease;
+}
+
+@media (max-width: 1023px) {
+  .collapse-toggle {
+    display: none;
+  }
+}
+
+.collapse-toggle:hover {
+  background: #f3f4f6;
+  transform: translateY(-50%) scale(1.1);
+}
+
+.collapse-arrow {
+  color: #2563eb;
+  font-size: 14px;
+  transition: transform 0.3s ease;
+}
+
+.collapse-arrow.collapsed {
+  transform: rotate(180deg);
+}
+
+/* Estados colapsado */
+.dashboard-sidebar.sidebar-collapsed {
+  width: 80px;
+}
+
+.dashboard-sidebar.sidebar-collapsed .logo-text,
+.dashboard-sidebar.sidebar-collapsed .nav-label,
+.dashboard-sidebar.sidebar-collapsed .user-details {
+  display: none;
+}
+
+.dashboard-sidebar.sidebar-collapsed .sidebar-header {
+  padding: 24px 12px;
+}
+
+.dashboard-sidebar.sidebar-collapsed .logo-container {
+  justify-content: center;
+}
+
+.dashboard-sidebar.sidebar-collapsed .nav-item {
+  justify-content: center;
+  padding: 12px;
+}
+
+.dashboard-sidebar.sidebar-collapsed .user-info {
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.dashboard-sidebar.sidebar-collapsed .logout-button {
+  justify-content: center;
+  padding: 10px;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-main.main-collapsed {
+    margin-left: 80px;
+  }
+}
+
+/* Tooltips para elementos colapsados */
+.sidebar-collapsed .nav-item[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  white-space: nowrap;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.sidebar-collapsed .logout-button[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  white-space: nowrap;
+  z-index: 1000;
+  pointer-events: none;
+}

@@ -10,13 +10,22 @@ export default function DashboardLayout({
   onTabChange 
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  const toggleCollapse = () => setIsCollapsed(!isCollapsed);
 
   return (
     <div className="dashboard-layout">
       {/* Sidebar */}
-      <aside className={`dashboard-sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
+      <aside className={`dashboard-sidebar ${sidebarOpen ? 'sidebar-open' : ''} ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
+        {/* Botón de colapso */}
+        <button className="collapse-toggle" onClick={toggleCollapse}>
+          <span className={`collapse-arrow ${isCollapsed ? 'collapsed' : ''}`}>
+            ◀
+          </span>
+        </button>
+
         <div className="sidebar-header">
           <div className="logo-container">
             <div className="logo-icon">
@@ -25,10 +34,12 @@ export default function DashboardLayout({
                 <polyline points="9 22 9 12 15 12 15 22" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-            <div className="logo-text">
-              <h1>DockHotel</h1>
-              <p>Manager</p>
-            </div>
+            {!isCollapsed && (
+              <div className="logo-text">
+                <h1>DockHotel</h1>
+                <p>Manager</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -41,9 +52,10 @@ export default function DashboardLayout({
                 onTabChange(item.id);
                 if (window.innerWidth < 1024) setSidebarOpen(false);
               }}
+              title={isCollapsed ? item.label : ''}
             >
               <span className="nav-icon" dangerouslySetInnerHTML={{ __html: item.icon }} />
-              <span className="nav-label">{item.label}</span>
+              {!isCollapsed && <span className="nav-label">{item.label}</span>}
             </button>
           ))}
         </nav>
@@ -53,22 +65,24 @@ export default function DashboardLayout({
             <div className="user-avatar">
               {user?.nombre?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
             </div>
-            <div className="user-details">
-              <p className="user-name">{user?.nombre || user?.email || 'Usuario'}</p>
-              <p className="user-role">{user?.rol?.toUpperCase() || 'Usuario'}</p>
-            </div>
+            {!isCollapsed && (
+              <div className="user-details">
+                <p className="user-name">{user?.nombre || user?.email || 'Usuario'}</p>
+                <p className="user-role">{user?.rol?.toUpperCase() || 'Usuario'}</p>
+              </div>
+            )}
           </div>
-          <button className="logout-button" onClick={onLogout}>
+          <button className="logout-button" onClick={onLogout} title={isCollapsed ? 'Cerrar sesión' : ''}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            Cerrar sesión
+            {!isCollapsed && 'Cerrar sesión'}
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <div className="dashboard-main">
+      <div className={`dashboard-main ${isCollapsed ? 'main-collapsed' : ''}`}>
         {/* Top Bar */}
         <header className="dashboard-header">
           <button className="menu-toggle" onClick={toggleSidebar}>
