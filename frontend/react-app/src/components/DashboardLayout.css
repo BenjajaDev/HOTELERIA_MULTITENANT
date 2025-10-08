@@ -2,14 +2,14 @@
 .dashboard-layout {
   display: flex;
   min-height: 100vh;
-  background: #f3f4f6;
+  background: var(--color-background);
   position: relative;
 }
 
 /* Sidebar */
 .dashboard-sidebar {
   width: 280px;
-  background: linear-gradient(135deg, #2563eb 0%, #0891b2 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
   color: white;
   display: flex;
   flex-direction: column;
@@ -18,8 +18,8 @@
   left: 0;
   height: 100vh;
   z-index: 100;
-  transition: transform 0.3s ease;
-  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, background 0.3s ease;
+  box-shadow: 4px 0 16px var(--color-shadow);
 }
 
 @media (max-width: 1023px) {
@@ -229,15 +229,16 @@
 
 /* Top Header */
 .dashboard-header {
-  background: white;
+  background: var(--color-surface);
   padding: 16px 24px;
   display: flex;
   align-items: center;
   gap: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px var(--color-shadow);
   position: sticky;
   top: 0;
   z-index: 50;
+  transition: background-color 0.3s ease;
 }
 
 .menu-toggle {
@@ -251,11 +252,11 @@
   align-items: center;
   justify-content: center;
   transition: background 0.2s ease;
-  color: #4b5563;
+  color: var(--color-text-secondary);
 }
 
 .menu-toggle:hover {
-  background: #f3f4f6;
+  background: var(--color-surface-secondary);
 }
 
 .menu-toggle svg {
@@ -276,14 +277,16 @@
 .header-title h2 {
   font-size: 24px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--color-text-primary);
   margin: 0;
+  transition: color 0.3s ease;
 }
 
 .header-subtitle {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-text-secondary);
   margin: 4px 0 0 0;
+  transition: color 0.3s ease;
 }
 
 .header-actions {
@@ -303,15 +306,16 @@
   align-items: center;
   gap: 12px;
   padding: 8px 12px;
-  background: #f3f4f6;
+  background: var(--color-surface-secondary);
   border-radius: 10px;
+  transition: background-color 0.3s ease;
 }
 
 .user-badge-avatar {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #2563eb 0%, #0891b2 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -328,16 +332,18 @@
 .user-badge-name {
   font-size: 14px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-text-primary);
   margin: 0;
+  transition: color 0.3s ease;
 }
 
 .user-badge-role {
   font-size: 11px;
-  color: #6b7280;
+  color: var(--color-text-secondary);
   margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  transition: color 0.3s ease;
 }
 
 /* Content Area */
@@ -360,7 +366,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--color-overlay);
   z-index: 99;
   display: none;
 }
@@ -396,7 +402,7 @@
   top: 50%;
   right: -15px;
   transform: translateY(-50%);
-  background: white;
+  background: var(--color-surface);
   border: none;
   width: 30px;
   height: 30px;
@@ -405,7 +411,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px var(--color-shadow-lg);
   z-index: 101;
   transition: all 0.3s ease;
 }
@@ -417,12 +423,12 @@
 }
 
 .collapse-toggle:hover {
-  background: #f3f4f6;
+  background: var(--color-surface-secondary);
   transform: translateY(-50%) scale(1.1);
 }
 
 .collapse-arrow {
-  color: #2563eb;
+  color: var(--color-primary);
   font-size: 14px;
   transition: transform 0.3s ease;
 }
@@ -469,6 +475,58 @@
   .dashboard-main.main-collapsed {
     margin-left: 80px;
   }
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  color: var(--color-text-secondary);
+}
+
+.theme-toggle:hover {
+  background: var(--color-surface-secondary);
+  color: var(--color-primary);
+  transform: scale(1.05);
+}
+
+.theme-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: var(--color-surface-secondary);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  color: var(--color-text-secondary);
+}
+
+.theme-toggle:hover {
+  background: var(--color-border-light);
+  color: var(--color-text-primary);
+  transform: scale(1.05);
+}
+
+.theme-toggle svg {
+  width: 20px;
+  height: 20px;
 }
 
 /* Tooltips para elementos colapsados */

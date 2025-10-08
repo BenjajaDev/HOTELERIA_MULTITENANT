@@ -4,6 +4,7 @@ import AdminDashboard from "./components/AdminDashboard";
 import ReceptionistDashboard from "./components/ReceptionistDashboard";
 import GuestDashboard from "./components/GuestDashboard";
 import GerenteDashboard from "./components/GerenteDashboard";
+import { ThemeProvider } from "./contexts/ThemeContext";
 
 const normalizeUser = (user) => {
   if (!user) return null;
@@ -44,7 +45,11 @@ function App() {
   }, []);
 
   if (!user) {
-    return <AuthPage onLogin={(data) => setUser(normalizeUser(data))} />;
+    return (
+      <ThemeProvider>
+        <AuthPage onLogin={(data) => setUser(normalizeUser(data))} />
+      </ThemeProvider>
+    );
   }
 
   // Render role-specific dashboard
@@ -70,7 +75,7 @@ function App() {
   }
 
   return (
-    <>
+    <ThemeProvider>
       {user.rol === "admin" && <AdminDashboard user={user} onLogout={logout} />}
       {user.rol === "recepcionista" && <ReceptionistDashboard user={user} onLogout={logout} />}
       {user.rol === "gerente" && <GerenteDashboard user={user} onLogout={logout} />}
@@ -81,7 +86,7 @@ function App() {
           onProfileUpdate={handleGuestProfileUpdate}
         />
       )}
-    </>
+    </ThemeProvider>
   );
 }
 

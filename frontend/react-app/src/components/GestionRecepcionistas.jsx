@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
+import { useTheme } from "../contexts/ThemeContext";
 
 export default function GestionRecepcionistas({ hoteles = [], restrictHotelId = "", userContext = {} }) {
   const [sucursales, setSucursales] = useState([]);
   const [recepcionistas, setRecepcionistas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const { isDarkMode } = useTheme();
   const [filters, setFilters] = useState({ hotelId: restrictHotelId || "", sucursalId: "" });
   const [formHotelId, setFormHotelId] = useState(restrictHotelId || "");
   const [form, setForm] = useState({
@@ -503,10 +505,10 @@ export default function GestionRecepcionistas({ hoteles = [], restrictHotelId = 
                                 {(recepcionista.nombre || recepcionista.email).charAt(0).toUpperCase()}
                               </div>
                               <div>
-                                <div style={{ fontWeight: 600, color: '#1f2937' }}>
+                                <div style={{ fontWeight: 600, color: isDarkMode ? '#ffffff' : '#1f2937' }}>
                                   {recepcionista.nombre || "Sin nombre"}
                                 </div>
-                                <div style={{ fontSize: 13, color: '#6b7280' }}>
+                                <div style={{ fontSize: 13, color: isDarkMode ? '#e2e8f0' : '#6b7280' }}>
                                   ID: {recepcionista.recepcionista_sucursal_id}
                                 </div>
                               </div>
@@ -514,10 +516,10 @@ export default function GestionRecepcionistas({ hoteles = [], restrictHotelId = 
                           </td>
                           <td>
                             <div style={{ fontSize: 13 }}>
-                              <div style={{ color: '#6b7280', marginBottom: 4 }}>
+                              <div style={{ color: isDarkMode ? '#e2e8f0' : '#6b7280', marginBottom: 4 }}>
                                 ✉️ {recepcionista.email}
                               </div>
-                              <div style={{ color: '#6b7280' }}>
+                              <div style={{ color: isDarkMode ? '#e2e8f0' : '#6b7280' }}>
                                 📞 {recepcionista.telefono || "—"}
                               </div>
                             </div>

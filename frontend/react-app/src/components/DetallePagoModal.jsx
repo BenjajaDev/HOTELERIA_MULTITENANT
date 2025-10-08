@@ -1,5 +1,7 @@
 ﻿import React, { useState, useEffect } from "react";
 import { api } from "../api";
+import { useTheme } from "../contexts/ThemeContext";
+import "./DetallePagoModal.css";
 
 // Estilos para impresión
 const printStyles = `
@@ -123,6 +125,7 @@ const DetallePagoModal = ({ pagoId, isOpen, onClose, context = {} }) => {
   const [boleta, setBoleta] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { isDarkMode } = useTheme();
 
   useEffect(() => {
     if (isOpen && pagoId) {
@@ -359,10 +362,10 @@ const DetallePagoModal = ({ pagoId, isOpen, onClose, context = {} }) => {
   return (
     <>
       <style>{printStyles}</style>
-      <div className="modal show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+      <div className={`modal show d-block detalle-pago-modal ${isDarkMode ? 'dark-mode' : ''}`} style={{ backgroundColor: isDarkMode ? "rgba(0,0,0,0.7)" : "rgba(0,0,0,0.5)" }}>
         <div className="modal-dialog modal-xl" style={{ maxWidth: '90%', width: '1200px' }}>
           <div className="modal-content">
-            <div className="modal-header no-print bg-dark text-white">
+            <div className={`modal-header no-print ${isDarkMode ? 'bg-dark text-white' : 'bg-dark text-white'}`}>
               <h5 className="modal-title">
                 <i className="bi bi-receipt me-2"></i>
                 Boleta de Pago

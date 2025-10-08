@@ -5,6 +5,7 @@ import GestionSucursales from "./GestionSucursales";
 import GestionRecepcionistas from "./GestionRecepcionistas";
 import GestionGerentes from "./GestionGerentes";
 import DashboardLayout from "./DashboardLayout";
+import { useTheme } from "../contexts/ThemeContext";
 import "./DashboardContent.css";
 
 export default function AdminDashboard({ user, onLogout }) {
@@ -18,6 +19,7 @@ export default function AdminDashboard({ user, onLogout }) {
   const [reservas, setReservas] = useState([]);
   const [reservasMsg, setReservasMsg] = useState("");
   const [selectedReserva, setSelectedReserva] = useState(null);
+  const { isDarkMode } = useTheme();
 
   const currencyFormatter = useMemo(
     () => new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }),
@@ -267,13 +269,13 @@ export default function AdminDashboard({ user, onLogout }) {
                       {hoteles.map(h => (
                         <tr key={h.hotel_id}>
                           <td>
-                            <div style={{ fontWeight: 600, color: '#1f2937', marginBottom: '4px' }}>{h.nombre}</div>
-                            <div style={{ fontSize: '13px', color: '#6b7280' }}>{h.direccion}</div>
+                            <div style={{ fontWeight: 600, color: isDarkMode ? '#ffffff' : '#1f2937', marginBottom: '4px' }}>{h.nombre}</div>
+                            <div style={{ fontSize: '13px', color: isDarkMode ? '#e2e8f0' : '#6b7280' }}>{h.direccion}</div>
                           </td>
                           <td>
-                            <div style={{ fontSize: '13px', color: '#4b5563' }}>
+                            <div style={{ fontSize: '13px', color: isDarkMode ? '#ffffff' : '#4b5563' }}>
                               <div>{h.telefono}</div>
-                              <div style={{ color: '#6b7280' }}>{h.email}</div>
+                              <div style={{ color: isDarkMode ? '#e2e8f0' : '#6b7280' }}>{h.email}</div>
                             </div>
                           </td>
                           <td>
@@ -521,26 +523,26 @@ export default function AdminDashboard({ user, onLogout }) {
                       return (
                         <tr key={r.reserva_id}>
                           <td>
-                            <div style={{ fontWeight: 600, color: '#1f2937', marginBottom: '4px' }}>
+                            <div style={{ fontWeight: 600, color: isDarkMode ? '#ffffff' : '#1f2937', marginBottom: '4px' }}>
                               {r.hotel_nombre}
                             </div>
-                            <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                            <div style={{ fontSize: '13px', color: isDarkMode ? '#e2e8f0' : '#6b7280' }}>
                               Habitación {r.habitacion_numero}
                             </div>
                           </td>
                           <td>
-                            <div style={{ fontSize: '13px', color: '#4b5563' }}>
+                            <div style={{ fontSize: '13px', color: isDarkMode ? '#ffffff' : '#4b5563' }}>
                               <div>{formatDate(r.fecha_inicio)}</div>
-                              <div style={{ color: '#6b7280' }}>→ {formatDate(r.fecha_fin)}</div>
+                              <div style={{ color: isDarkMode ? '#e2e8f0' : '#6b7280' }}>→ {formatDate(r.fecha_fin)}</div>
                             </div>
                           </td>
                           <td>
-                            <span style={{ fontSize: '13px', fontWeight: 500, color: '#4b5563' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 500, color: isDarkMode ? '#ffffff' : '#4b5563' }}>
                               {formatNights(r)}
                             </span>
                           </td>
                           <td>
-                            <div style={{ fontWeight: 600, color: '#1f2937' }}>
+                            <div style={{ fontWeight: 600, color: isDarkMode ? '#ffffff' : '#1f2937' }}>
                               {formatMoney(r.total)}
                             </div>
                           </td>

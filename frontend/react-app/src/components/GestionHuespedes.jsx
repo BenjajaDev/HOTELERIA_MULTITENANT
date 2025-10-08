@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
+import { useTheme } from "../contexts/ThemeContext";
 
 export default function GestionHuespedes({ restrictTenantId = "", allowCreate = false, userContext = {} }) {
   const [huespedes, setHuespedes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const { isDarkMode } = useTheme();
   const [selectedHuesped, setSelectedHuesped] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [editingHuesped, setEditingHuesped] = useState(null);
@@ -360,10 +362,10 @@ export default function GestionHuespedes({ restrictTenantId = "", allowCreate = 
                             {(huesped.nombre_completo || huesped.email || "?").charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 600, color: '#1f2937' }}>
+                            <div style={{ fontWeight: 600, color: isDarkMode ? '#ffffff' : '#1f2937' }}>
                               {huesped.nombre_completo || "Sin nombre"}
                             </div>
-                            <div style={{ fontSize: 13, color: '#6b7280' }}>
+                            <div style={{ fontSize: 13, color: isDarkMode ? '#e2e8f0' : '#6b7280' }}>
                               ID: {huesped.id}
                             </div>
                           </div>
@@ -371,10 +373,10 @@ export default function GestionHuespedes({ restrictTenantId = "", allowCreate = 
                       </td>
                       <td>
                         <div style={{ fontSize: '13px' }}>
-                          <div style={{ color: '#6b7280', marginBottom: '4px' }}>
+                          <div style={{ color: isDarkMode ? '#e2e8f0' : '#6b7280', marginBottom: '4px' }}>
                             ✉️ {huesped.email || "—"}
                           </div>
-                          <div style={{ color: '#6b7280' }}>
+                          <div style={{ color: isDarkMode ? '#e2e8f0' : '#6b7280' }}>
                             📞 {huesped.telefono || "—"}
                           </div>
                         </div>

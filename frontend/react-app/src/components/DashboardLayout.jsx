@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import LogoutModal from './LogoutModal';
+import { useTheme } from '../contexts/ThemeContext';
 import './DashboardLayout.css';
 
 export default function DashboardLayout({ 
@@ -13,6 +14,7 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const { isDarkMode, toggleTheme } = useTheme();
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const toggleCollapse = () => setIsCollapsed(!isCollapsed);
@@ -116,6 +118,18 @@ export default function DashboardLayout({
           </div>
 
           <div className="header-actions">
+            <button className="theme-toggle" onClick={toggleTheme} title={isDarkMode ? 'Activar modo claro' : 'Activar modo oscuro'}>
+              {isDarkMode ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <circle cx="12" cy="12" r="5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+            </button>
             <div className="user-badge">
               <div className="user-badge-avatar">
                 {user?.nombre?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}

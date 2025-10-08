@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import DashboardLayout from "./DashboardLayout";
 import GuestProfile from "./GuestProfile";
+import { useTheme } from "../contexts/ThemeContext";
 import "./DashboardContent.css";
 
 const GATEWAY_INITIAL_STATE = {
@@ -16,6 +17,7 @@ const GATEWAY_INITIAL_STATE = {
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
+  const { isDarkMode } = useTheme();
   const [hotel, setHotel] = useState(null);
   const [loadingHotel, setLoadingHotel] = useState(false);
   const [habitaciones, setHabitaciones] = useState([]);
@@ -414,7 +416,7 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
                     <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
                   <div>
-                    <h3 style={{ fontSize: "18px", fontWeight: "600", color: "#1e293b", margin: 0 }}>
+                    <h3 style={{ fontSize: "18px", fontWeight: "600", color: isDarkMode ? "#ffffff" : "#1e293b", margin: 0 }}>
                       Tu Hotel
                     </h3>
                   </div>
@@ -427,47 +429,47 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
                 </div>
               ) : hotel ? (
                 <div>
-                  <div style={{ padding: "16px", backgroundColor: "#f8fafc", borderRadius: "8px", marginBottom: "16px" }}>
-                    <div style={{ fontSize: "16px", fontWeight: "600", color: "#1e293b", marginBottom: "12px" }}>
+                  <div style={{ padding: "16px", backgroundColor: isDarkMode ? "#374151" : "#f8fafc", borderRadius: "8px", marginBottom: "16px" }}>
+                    <div style={{ fontSize: "16px", fontWeight: "600", color: isDarkMode ? "#ffffff" : "#1e293b", marginBottom: "12px" }}>
                       {hotel.nombre}
                     </div>
                     
                     <div style={{ display: "flex", alignItems: "start", gap: "8px", marginBottom: "8px" }}>
-                      <svg width="16" height="16" fill="none" stroke="#64748b" strokeWidth="2" viewBox="0 0 24 24" style={{ marginTop: "2px", flexShrink: 0 }}>
+                      <svg width="16" height="16" fill="none" stroke={isDarkMode ? "#d1d5db" : "#64748b"} strokeWidth="2" viewBox="0 0 24 24" style={{ marginTop: "2px", flexShrink: 0 }}>
                         <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
-                      <span style={{ fontSize: "13px", color: "#64748b" }}>{hotel.direccion}</span>
+                      <span style={{ fontSize: "13px", color: isDarkMode ? "#d1d5db" : "#64748b" }}>{hotel.direccion}</span>
                     </div>
 
                     {hotel.telefono && (
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                        <svg width="16" height="16" fill="none" stroke="#64748b" strokeWidth="2" viewBox="0 0 24 24">
+                        <svg width="16" height="16" fill="none" stroke={isDarkMode ? "#d1d5db" : "#64748b"} strokeWidth="2" viewBox="0 0 24 24">
                           <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                         </svg>
-                        <span style={{ fontSize: "13px", color: "#64748b" }}>{hotel.telefono}</span>
+                        <span style={{ fontSize: "13px", color: isDarkMode ? "#d1d5db" : "#64748b" }}>{hotel.telefono}</span>
                       </div>
                     )}
 
                     {hotel.email && (
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <svg width="16" height="16" fill="none" stroke="#64748b" strokeWidth="2" viewBox="0 0 24 24">
+                        <svg width="16" height="16" fill="none" stroke={isDarkMode ? "#d1d5db" : "#64748b"} strokeWidth="2" viewBox="0 0 24 24">
                           <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
-                        <span style={{ fontSize: "13px", color: "#64748b" }}>{hotel.email}</span>
+                        <span style={{ fontSize: "13px", color: isDarkMode ? "#d1d5db" : "#64748b" }}>{hotel.email}</span>
                       </div>
                     )}
                   </div>
 
-                  <div style={{ padding: "12px", backgroundColor: "#eff6ff", borderLeft: "3px solid #3b82f6", borderRadius: "8px" }}>
-                    <div style={{ fontSize: "13px", color: "#1e40af", lineHeight: "1.5" }}>
+                  <div style={{ padding: "12px", backgroundColor: isDarkMode ? "#1f2937" : "#eff6ff", borderLeft: "3px solid #3b82f6", borderRadius: "8px" }}>
+                    <div style={{ fontSize: "13px", color: isDarkMode ? "#93c5fd" : "#1e40af", lineHeight: "1.5" }}>
                       💡 Podrás reservar solo habitaciones de este hotel
                     </div>
                   </div>
                 </div>
               ) : (
                 <div className="empty-state" style={{ padding: "32px 16px" }}>
-                  <svg width="48" height="48" fill="none" stroke="#cbd5e1" strokeWidth="2" viewBox="0 0 24 24">
+                  <svg width="48" height="48" fill="none" stroke={isDarkMode ? "#6b7280" : "#cbd5e1"} strokeWidth="2" viewBox="0 0 24 24">
                     <path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <p style={{ fontSize: "13px" }}>No se pudo cargar el hotel</p>
@@ -481,10 +483,10 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
                   <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 <div>
-                  <h3 style={{ fontSize: "18px", fontWeight: "600", color: "#1e293b", margin: 0 }}>
+                  <h3 style={{ fontSize: "18px", fontWeight: "600", color: isDarkMode ? "#ffffff" : "#1e293b", margin: 0 }}>
                     Mis Reservas
                   </h3>
-                  <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>
+                  <p style={{ fontSize: "13px", color: isDarkMode ? "#d1d5db" : "#64748b", margin: 0 }}>
                     Consulta o cancela tus reservas activas
                   </p>
                 </div>
@@ -511,10 +513,10 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
                 </div>
               ) : reservas.length === 0 ? (
                 <div className="empty-state" style={{ padding: "24px 12px" }}>
-                  <svg width="40" height="40" fill="none" stroke="#cbd5e1" strokeWidth="2" viewBox="0 0 24 24">
+                  <svg width="40" height="40" fill="none" stroke={isDarkMode ? "#6b7280" : "#cbd5e1"} strokeWidth="2" viewBox="0 0 24 24">
                     <path d="M3 5h18M8 21h8m-4-4v4m0-4a6 6 0 100-12 6 6 0 000 12z" />
                   </svg>
-                  <p style={{ fontSize: "13px", color: "#64748b" }}>Aún no tienes reservas registradas</p>
+                  <p style={{ fontSize: "13px", color: isDarkMode ? "#d1d5db" : "#64748b" }}>Aún no tienes reservas registradas</p>
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -544,18 +546,18 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
                       <div
                         key={reserva.reserva_id}
                         style={{
-                          border: "1px solid #e2e8f0",
+                          border: isDarkMode ? "1px solid #4b5563" : "1px solid #e2e8f0",
                           borderRadius: "12px",
                           padding: "14px",
-                          background: "#f8fafc"
+                          background: isDarkMode ? "#374151" : "#f8fafc"
                         }}
                       >
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
                           <div>
-                            <div style={{ fontSize: "14px", fontWeight: "600", color: "#111827" }}>
+                            <div style={{ fontSize: "14px", fontWeight: "600", color: isDarkMode ? "#ffffff" : "#111827" }}>
                               Habitación {reserva.habitacion_numero || "—"}
                             </div>
-                            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px" }}>
+                            <div style={{ fontSize: "12px", color: isDarkMode ? "#d1d5db" : "#64748b", marginTop: "4px" }}>
                               {formatDate(reserva.fecha_inicio)} → {formatDate(reserva.fecha_fin)}
                             </div>
                           </div>
@@ -576,7 +578,7 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
                         </div>
 
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", marginTop: "12px" }}>
-                          <div style={{ fontSize: "13px", color: "#1f2937" }}>
+                          <div style={{ fontSize: "13px", color: isDarkMode ? "#ffffff" : "#1f2937" }}>
                             Total: <span style={{ fontWeight: "600" }}>{formatMoney(reserva.total)}</span>
                           </div>
                           <button
@@ -635,10 +637,10 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
                 <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
               </svg>
               <div>
-                <h3 style={{ fontSize: "18px", fontWeight: "600", color: "#1e293b", margin: 0 }}>
+                <h3 style={{ fontSize: "18px", fontWeight: "600", color: isDarkMode ? "#ffffff" : "#1e293b", margin: 0 }}>
                   {hotel ? `Reservar en ${hotel.nombre}` : "Reservar Habitación"}
                 </h3>
-                <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>
+                <p style={{ fontSize: "13px", color: isDarkMode ? "#d1d5db" : "#64748b", margin: 0 }}>
                   Completa el formulario para crear tu reserva
                 </p>
               </div>
@@ -647,7 +649,7 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
             <form onSubmit={submitReserva}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#64748b", marginBottom: "6px" }}>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: isDarkMode ? "#d1d5db" : "#64748b", marginBottom: "6px" }}>
                     Habitación Disponible
                   </label>
                   <select
@@ -668,7 +670,7 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
                   {loadingRooms && (
                     <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "6px" }}>
                       <div className="spinner-border spinner-border-sm"></div>
-                      <span style={{ fontSize: "12px", color: "#64748b" }}>Cargando habitaciones...</span>
+                      <span style={{ fontSize: "12px", color: isDarkMode ? "#d1d5db" : "#64748b" }}>Cargando habitaciones...</span>
                     </div>
                   )}
                   {!loadingRooms && hotel && habitaciones.length === 0 && (
@@ -679,7 +681,7 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#64748b", marginBottom: "6px" }}>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: isDarkMode ? "#d1d5db" : "#64748b", marginBottom: "6px" }}>
                     Fecha de Entrada
                   </label>
                   <input
@@ -693,7 +695,7 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#64748b", marginBottom: "6px" }}>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: isDarkMode ? "#d1d5db" : "#64748b", marginBottom: "6px" }}>
                     Fecha de Salida
                   </label>
                   <input
@@ -707,7 +709,7 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#64748b", marginBottom: "6px" }}>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: isDarkMode ? "#d1d5db" : "#64748b", marginBottom: "6px" }}>
                     Método de Pago
                   </label>
                   <select
@@ -723,7 +725,7 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#64748b", marginBottom: "6px" }}>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: isDarkMode ? "#d1d5db" : "#64748b", marginBottom: "6px" }}>
                     Total Estimado
                   </label>
                   <div style={{ 
@@ -796,10 +798,10 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
                     <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                   <div>
-                    <h3 style={{ fontSize: "18px", fontWeight: "600", color: "#1e293b", margin: 0 }}>
+                    <h3 style={{ fontSize: "18px", fontWeight: "600", color: isDarkMode ? "#ffffff" : "#1e293b", margin: 0 }}>
                       Pasarela de Pago
                     </h3>
-                    <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>
+                    <p style={{ fontSize: "13px", color: isDarkMode ? "#d1d5db" : "#64748b", margin: 0 }}>
                       Simulación ficticia - No uses datos reales
                     </p>
                   </div>
@@ -812,7 +814,7 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
                     border: "none",
                     cursor: "pointer",
                     padding: "4px",
-                    color: "#64748b"
+                    color: isDarkMode ? "#d1d5db" : "#64748b"
                   }}
                 >
                   <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -837,7 +839,7 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
                 {form.metodo_pago === "tarjeta" ? (
                   <div style={{ display: "grid", gap: "16px" }}>
                     <div>
-                      <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#64748b", marginBottom: "6px" }}>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: isDarkMode ? "#d1d5db" : "#64748b", marginBottom: "6px" }}>
                         Nombre del Titular
                       </label>
                       <input
@@ -849,7 +851,7 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
                       />
                     </div>
                     <div>
-                      <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#64748b", marginBottom: "6px" }}>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: isDarkMode ? "#d1d5db" : "#64748b", marginBottom: "6px" }}>
                         Número de Tarjeta
                       </label>
                       <input
@@ -862,7 +864,7 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                       <div>
-                        <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#64748b", marginBottom: "6px" }}>
+                        <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: isDarkMode ? "#d1d5db" : "#64748b", marginBottom: "6px" }}>
                           Expiración
                         </label>
                         <input
@@ -874,7 +876,7 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
                         />
                       </div>
                       <div>
-                        <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#64748b", marginBottom: "6px" }}>
+                        <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: isDarkMode ? "#d1d5db" : "#64748b", marginBottom: "6px" }}>
                           CVV
                         </label>
                         <input
@@ -890,7 +892,7 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
                 ) : (
                   <div style={{ display: "grid", gap: "16px" }}>
                     <div>
-                      <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#64748b", marginBottom: "6px" }}>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: isDarkMode ? "#d1d5db" : "#64748b", marginBottom: "6px" }}>
                         Banco
                       </label>
                       <input
@@ -902,7 +904,7 @@ export default function GuestDashboard({ user, onLogout, onProfileUpdate }) {
                       />
                     </div>
                     <div>
-                      <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#64748b", marginBottom: "6px" }}>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: isDarkMode ? "#d1d5db" : "#64748b", marginBottom: "6px" }}>
                         Referencia/Comprobante
                       </label>
                       <input

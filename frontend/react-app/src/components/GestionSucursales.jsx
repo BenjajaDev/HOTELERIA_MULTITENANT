@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
+import { useTheme } from "../contexts/ThemeContext";
 
 export default function GestionSucursales({ hoteles = [], onHotelRefresh, restrictHotelId = "", userContext = {} }) {
   const [sucursales, setSucursales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const { isDarkMode } = useTheme();
   const [selectedHotelFilter, setSelectedHotelFilter] = useState("");
   const [form, setForm] = useState({
     hotelId: "",
@@ -330,7 +332,7 @@ export default function GestionSucursales({ hoteles = [], onHotelRefresh, restri
                       <React.Fragment key={sucursal.sucursal_id}>
                         <tr>
                           <td>
-                            <div style={{ fontWeight: '600', color: '#1f2937' }}>
+                            <div style={{ fontWeight: '600', color: isDarkMode ? '#ffffff' : '#1f2937' }}>
                               {sucursal.nombre}
                             </div>
                           </td>
@@ -340,16 +342,16 @@ export default function GestionSucursales({ hoteles = [], onHotelRefresh, restri
                             </span>
                           </td>
                           <td>
-                            <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                            <div style={{ fontSize: '14px', color: isDarkMode ? '#e2e8f0' : '#6b7280' }}>
                               {sucursal.direccion || "Sin dirección"}
                             </div>
                           </td>
                           <td>
                             <div style={{ fontSize: '13px' }}>
-                              <div style={{ color: '#6b7280' }}>
+                              <div style={{ color: isDarkMode ? '#e2e8f0' : '#6b7280' }}>
                                 📞 {sucursal.telefono || "—"}
                               </div>
-                              <div style={{ color: '#6b7280' }}>
+                              <div style={{ color: isDarkMode ? '#e2e8f0' : '#6b7280' }}>
                                 ✉️ {sucursal.email || "—"}
                               </div>
                             </div>

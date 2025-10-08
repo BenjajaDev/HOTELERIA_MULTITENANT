@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
+import { useTheme } from "../contexts/ThemeContext";
 
 export default function GestionGerentes({ hoteles = [] }) {
   const [gerentes, setGerentes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const { isDarkMode } = useTheme();
   const [form, setForm] = useState({
     hotelId: "",
     nombre: "",
@@ -307,17 +309,17 @@ export default function GestionGerentes({ hoteles = [] }) {
                                 {(gerente.nombre || gerente.email).charAt(0).toUpperCase()}
                               </div>
                               <div>
-                                <div style={{ fontWeight: 600, color: '#1f2937' }}>
+                                <div style={{ fontWeight: 600, color: isDarkMode ? '#ffffff' : '#1f2937' }}>
                                   {gerente.nombre || "Sin nombre"}
                                 </div>
-                                <div style={{ fontSize: 13, color: '#6b7280' }}>
+                                <div style={{ fontSize: 13, color: isDarkMode ? '#e2e8f0' : '#6b7280' }}>
                                   ID: {gerente.usuario_id}
                                 </div>
                               </div>
                             </div>
                           </td>
                           <td>
-                            <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                            <div style={{ fontSize: '14px', color: isDarkMode ? '#e2e8f0' : '#6b7280' }}>
                               {gerente.email}
                             </div>
                           </td>
