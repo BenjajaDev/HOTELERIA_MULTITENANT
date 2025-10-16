@@ -49,13 +49,6 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Contraseña incorrecta" });
     }
 
-    if (!user.email_verificado) {
-      return res.status(403).json({
-        error: "Debes confirmar tu correo electrónico antes de acceder",
-        needs_verification: true,
-      });
-    }
-
     const memberships = await pool.query(
       `SELECT tu.rol, tu.tenant_id, t.nombre AS tenant_nombre
        FROM tenant_usuario tu
@@ -83,6 +76,14 @@ router.post("/login", async (req, res) => {
     }
 
     const membership = tenantFromRequest || membershipList[0];
+
+    if (membership.rol === "huesped" && !user.email_verificado) {
+      return res.status(403).json({
+        error: "Debes confirmar tu correo electrónico antes de acceder",
+        needs_verification: true,
+      });
+    }
+
     const tenantId = membership.tenant_id;
 
     let hotelInfo = null;
