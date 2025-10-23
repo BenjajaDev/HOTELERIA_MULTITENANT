@@ -528,6 +528,17 @@ router.post("/", async (req, res) => {
       estado: estadoPago
     }, { transaction });
 
+    // Si el pago está confirmado (no es efectivo), marcar la habitación como ocupada
+    if (estadoPago === "pagado") {
+      await Habitacion.update(
+        { estado: 'ocupada' },
+        { 
+          where: { habitacion_id },
+          transaction 
+        }
+      );
+    }
+
     if (metodo !== "efectivo" || detalles_pago) {
       const descripcion = buildPaymentDescription(metodo, detalles_pago);
       const referencia =
@@ -634,6 +645,15 @@ router.post("/:id/cancelar", async (req, res) => {
 
     try {
       await reserva.update({ estado: 'cancelada' }, { transaction });
+
+      // Liberar la habitación marcándola como disponible
+      await Habitacion.update(
+        { estado: 'disponible' },
+        { 
+          where: { habitacion_id: reserva.habitacion_id },
+          transaction 
+        }
+      );
 
       const pagos = await Pago.findAll({
         where: { reserva_id: id },
@@ -759,7 +779,16 @@ router.put("/:id", async (req, res) => {
         }
       );
 
+      // Si el pago se marca como pagado, marcar la habitación como ocupada
       if (estado_pago === "pagado") {
+        await Habitacion.update(
+          { estado: 'ocupada' },
+          { 
+            where: { habitacion_id: reserva.habitacion_id },
+            transaction 
+          }
+        );
+
         const pago = await Pago.findOne({
           where: { reserva_id: id },
           transaction

@@ -195,6 +195,30 @@ router.post("/:pago_id/detalle", async (req, res) => {
       { where: { pago_id } }
     );
 
+    // Si el pago se confirma, marcar la habitación como ocupada
+    const pagoCompleto = await Pago.findOne({
+      where: { pago_id },
+      include: [
+        {
+          model: Reserva,
+          as: 'reserva',
+          include: [
+            {
+              model: Habitacion,
+              as: 'habitacion'
+            }
+          ]
+        }
+      ]
+    });
+
+    if (pagoCompleto?.reserva?.habitacion) {
+      await Habitacion.update(
+        { estado: 'ocupada' },
+        { where: { habitacion_id: pagoCompleto.reserva.habitacion.habitacion_id } }
+      );
+    }
+
     res.json(detalle);
   } catch (error) {
     console.error("Error al crear/actualizar detalle de pago:", error);
