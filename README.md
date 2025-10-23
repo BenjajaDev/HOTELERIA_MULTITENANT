@@ -61,7 +61,7 @@ Aplicación multi-tenant para gestión hotelera que centraliza la administració
    export REDIS_HOST=localhost
    npm run dev
    ```
-   El servidor escucha en `http://localhost:4000`.
+   El servidor escucha en `http://localhost:3000`.
 3. **Frontend**
    ```bash
    cd frontend/react-app
