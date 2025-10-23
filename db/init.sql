@@ -216,6 +216,76 @@ BEGIN
 END$$;
 
 
+-- Asegurar columnas activo para soft delete
+DO $$
+BEGIN
+  -- Tenant
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'tenant' AND column_name = 'activo'
+  ) THEN
+    ALTER TABLE tenant ADD COLUMN activo BOOLEAN DEFAULT TRUE;
+  END IF;
+
+  -- Usuario
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'usuario' AND column_name = 'activo'
+  ) THEN
+    ALTER TABLE usuario ADD COLUMN activo BOOLEAN DEFAULT TRUE;
+  END IF;
+
+  -- Hotel
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'hotel' AND column_name = 'activo'
+  ) THEN
+    ALTER TABLE hotel ADD COLUMN activo BOOLEAN DEFAULT TRUE;
+  END IF;
+
+  -- Sucursal
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'sucursal' AND column_name = 'activo'
+  ) THEN
+    ALTER TABLE sucursal ADD COLUMN activo BOOLEAN DEFAULT TRUE;
+  END IF;
+
+  -- Habitacion
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'habitacion' AND column_name = 'activo'
+  ) THEN
+    ALTER TABLE habitacion ADD COLUMN activo BOOLEAN DEFAULT TRUE;
+  END IF;
+
+  -- Huesped
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'huesped' AND column_name = 'activo'
+  ) THEN
+    ALTER TABLE huesped ADD COLUMN activo BOOLEAN DEFAULT TRUE;
+  END IF;
+
+  -- Reserva
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'reserva' AND column_name = 'activo'
+  ) THEN
+    ALTER TABLE reserva ADD COLUMN activo BOOLEAN DEFAULT TRUE;
+  END IF;
+
+  -- Actualizar registros existentes a activo=TRUE
+  UPDATE tenant SET activo = COALESCE(activo, TRUE) WHERE activo IS NULL;
+  UPDATE usuario SET activo = COALESCE(activo, TRUE) WHERE activo IS NULL;
+  UPDATE hotel SET activo = COALESCE(activo, TRUE) WHERE activo IS NULL;
+  UPDATE sucursal SET activo = COALESCE(activo, TRUE) WHERE activo IS NULL;
+  UPDATE habitacion SET activo = COALESCE(activo, TRUE) WHERE activo IS NULL;
+  UPDATE huesped SET activo = COALESCE(activo, TRUE) WHERE activo IS NULL;
+  UPDATE reserva SET activo = COALESCE(activo, TRUE) WHERE activo IS NULL;
+END$$;
+
+
 -- -------------------------
 -- ÍNDICES (consultas frecuentes / FKs)
 -- -------------------------
