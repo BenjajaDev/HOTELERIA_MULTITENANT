@@ -27,15 +27,18 @@
 }
 
 /* Variables para tema oscuro */
-.dark-mode {
-  --color-background: #0f1419;
-  --color-surface: #1a1f2e;
-  --color-surface-secondary: #252b3b;
-  --color-text-primary: #ffffff;
-  --color-text-secondary: #e2e8f0;
-  --color-text-muted: #cbd5e1;
-  --color-border: #374151;
-  --color-border-light: #4b5563;
+body.dark-mode {
+  --color-background: #0f172a;
+  --color-surface: #1e293b;
+  --color-surface-secondary: #334155;
+  --color-input-bg: #334155;
+  --color-input-text: #e2e8f0;
+  --color-input-border: #475569;
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+  --color-border: #475569;
+  --color-border-light: #64748b;
   --color-primary: #3b82f6;
   --color-primary-light: #60a5fa;
   --color-primary-dark: #2563eb;
@@ -43,9 +46,9 @@
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-error: #ef4444;
-  --color-shadow: rgba(0, 0, 0, 0.3);
-  --color-shadow-lg: rgba(0, 0, 0, 0.4);
-  --color-overlay: rgba(0, 0, 0, 0.7);
+  --color-shadow: rgba(0, 0, 0, 0.5);
+  --color-shadow-lg: rgba(0, 0, 0, 0.6);
+  --color-overlay: rgba(0, 0, 0, 0.8);
 }
 
 html, body, #root {

@@ -42,6 +42,11 @@ const Habitacion = sequelize.define('habitacion', {
   estado: {
     type: DataTypes.ENUM('disponible', 'ocupada', 'limpieza'),
     defaultValue: 'disponible'
+  },
+  activo: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    allowNull: false
   }
 }, {
   tableName: 'habitacion',

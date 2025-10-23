@@ -580,28 +580,71 @@ export default function AdminDashboard({ user, onLogout }) {
       )}
 
       {selectedReserva && (
-        <div className="modal fade show" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.35)" }}>
+        <div 
+          className="modal fade show" 
+          style={{ 
+            display: "block", 
+            backgroundColor: isDarkMode ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.35)" 
+          }}
+        >
           <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Detalle de reserva</h5>
-                <button type="button" className="btn-close" onClick={() => setSelectedReserva(null)}></button>
+            <div 
+              className="modal-content"
+              style={{
+                backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                color: isDarkMode ? '#e2e8f0' : '#212529'
+              }}
+            >
+              <div 
+                className="modal-header"
+                style={{
+                  backgroundColor: isDarkMode ? '#334155' : '#ffffff',
+                  borderBottom: `1px solid ${isDarkMode ? '#475569' : '#dee2e6'}`
+                }}
+              >
+                <h5 className="modal-title" style={{ color: isDarkMode ? '#f1f5f9' : '#212529' }}>
+                  Detalle de reserva
+                </h5>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={() => setSelectedReserva(null)}
+                  style={{
+                    filter: isDarkMode ? 'invert(1)' : 'none'
+                  }}
+                ></button>
               </div>
               <div className="modal-body">
-                <p><strong>Hotel:</strong> {selectedReserva.hotel_nombre}</p>
-                <p><strong>Habitación:</strong> {selectedReserva.habitacion_numero}</p>
-                <p><strong>Huésped:</strong> {selectedReserva.huesped_nombre || "Sin nombre registrado"}</p>
-                <p><strong>Email huésped:</strong> {selectedReserva.huesped_email || "—"}</p>
-                <p><strong>Ingreso:</strong> {formatDate(selectedReserva.fecha_inicio)}</p>
-                <p><strong>Salida:</strong> {formatDate(selectedReserva.fecha_fin)}</p>
-                <p><strong>Estadía:</strong> {formatNights(selectedReserva)}</p>
-                <p><strong>Total:</strong> {formatMoney(selectedReserva.total)}</p>
-                <p><strong>Método de pago:</strong> {selectedReserva.pago_metodo || "—"}</p>
-                <p><strong>Estado de pago:</strong> {selectedReserva.pago_estado || "—"}</p>
-                <p><strong>Estado de la reserva:</strong> {selectedReserva.estado}</p>
+                <p><strong style={{ color: isDarkMode ? '#cbd5e1' : '#495057' }}>Hotel:</strong> {selectedReserva.hotel_nombre}</p>
+                <p><strong style={{ color: isDarkMode ? '#cbd5e1' : '#495057' }}>Habitación:</strong> {selectedReserva.habitacion_numero}</p>
+                <p><strong style={{ color: isDarkMode ? '#cbd5e1' : '#495057' }}>Huésped:</strong> {selectedReserva.huesped_nombre || "Sin nombre registrado"}</p>
+                <p><strong style={{ color: isDarkMode ? '#cbd5e1' : '#495057' }}>Email huésped:</strong> {selectedReserva.huesped_email || "—"}</p>
+                <p><strong style={{ color: isDarkMode ? '#cbd5e1' : '#495057' }}>Ingreso:</strong> {formatDate(selectedReserva.fecha_inicio)}</p>
+                <p><strong style={{ color: isDarkMode ? '#cbd5e1' : '#495057' }}>Salida:</strong> {formatDate(selectedReserva.fecha_fin)}</p>
+                <p><strong style={{ color: isDarkMode ? '#cbd5e1' : '#495057' }}>Estadía:</strong> {formatNights(selectedReserva)}</p>
+                <p><strong style={{ color: isDarkMode ? '#cbd5e1' : '#495057' }}>Total:</strong> {formatMoney(selectedReserva.total)}</p>
+                <p><strong style={{ color: isDarkMode ? '#cbd5e1' : '#495057' }}>Método de pago:</strong> {selectedReserva.pago_metodo || "—"}</p>
+                <p><strong style={{ color: isDarkMode ? '#cbd5e1' : '#495057' }}>Estado de pago:</strong> {selectedReserva.pago_estado || "—"}</p>
+                <p><strong style={{ color: isDarkMode ? '#cbd5e1' : '#495057' }}>Estado de la reserva:</strong> {selectedReserva.estado}</p>
               </div>
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setSelectedReserva(null)}>Cerrar</button>
+              <div 
+                className="modal-footer"
+                style={{
+                  backgroundColor: isDarkMode ? '#1e293b' : '#f8f9fa',
+                  borderTop: `1px solid ${isDarkMode ? '#334155' : '#dee2e6'}`
+                }}
+              >
+                <button 
+                  className="btn" 
+                  onClick={() => setSelectedReserva(null)}
+                  style={{
+                    backgroundColor: isDarkMode ? '#475569' : '#6c757d',
+                    borderColor: isDarkMode ? '#475569' : '#6c757d',
+                    color: '#ffffff'
+                  }}
+                >
+                  Cerrar
+                </button>
               </div>
             </div>
           </div>

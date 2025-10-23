@@ -44,6 +44,11 @@ const Reserva = sequelize.define('reserva', {
   total: {
     type: DataTypes.INTEGER
   },
+  activo: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    allowNull: false
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW

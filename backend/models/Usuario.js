@@ -19,19 +19,10 @@ const Usuario = sequelize.define('usuario', {
   nombre: {
     type: DataTypes.STRING(255)
   },
-  email_verificado: {
+  activo: {
     type: DataTypes.BOOLEAN,
-    allowNull: false,
-    defaultValue: false
-  },
-  email_verificado_en: {
-    type: DataTypes.DATE
-  },
-  email_verification_token: {
-    type: DataTypes.UUID
-  },
-  email_verification_expires_at: {
-    type: DataTypes.DATE
+    defaultValue: true,
+    allowNull: false
   },
   created_at: {
     type: DataTypes.DATE,

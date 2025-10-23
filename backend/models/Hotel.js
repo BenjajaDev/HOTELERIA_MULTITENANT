@@ -27,6 +27,11 @@ const Hotel = sequelize.define('hotel', {
   email: {
     type: DataTypes.STRING(200)
   },
+  activo: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    allowNull: false
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW

@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { useTheme } from "../contexts/ThemeContext";
+import Modal from "./Modal";
+import FormInput from "./FormInput";
+import Button from "./Button";
 
 export default function GestionHuespedes({ restrictTenantId = "", allowCreate = false, userContext = {} }) {
   const [huespedes, setHuespedes] = useState([]);
@@ -454,73 +457,59 @@ export default function GestionHuespedes({ restrictTenantId = "", allowCreate = 
         </div>
       )}
 
-      {/* Modal de Edición */}
-      {editingHuesped && (
-        <div className="modal-overlay" onClick={cancelEdit}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-            <div className="modal-header">
-              <h3>Editar Huésped</h3>
-              <button className="modal-close" onClick={cancelEdit}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="24" height="24">
-                  <path d="M18 6L6 18M6 6l12 12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      {/* Modal de Edición con componentes independientes */}
+      <Modal
+        isOpen={editingHuesped !== null}
+        onClose={cancelEdit}
+        title="Editar Huésped"
+        size="md"
+        footer={
+          <>
+            <Button variant="secondary" onClick={cancelEdit}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="primary" 
+              onClick={saveEdit}
+              icon={
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <polyline points="17 21 17 13 7 13 7 21" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <polyline points="7 3 7 8 15 8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-              </button>
-            </div>
-            <div className="modal-body">
-              <form onSubmit={saveEdit}>
-                <div className="form-group">
-                  <label className="form-label">Nombre Completo</label>
-                  <input
-                    className="form-input"
-                    value={editForm.nombre_completo}
-                    onChange={e => setEditForm({...editForm, nombre_completo: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Email</label>
-                  <input
-                    type="email"
-                    className="form-input"
-                    value={editForm.email}
-                    onChange={e => setEditForm({...editForm, email: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Teléfono</label>
-                  <input
-                    className="form-input"
-                    value={editForm.telefono}
-                    onChange={e => setEditForm({...editForm, telefono: e.target.value})}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Documento</label>
-                  <input
-                    className="form-input"
-                    value={editForm.documento}
-                    onChange={e => setEditForm({...editForm, documento: e.target.value})}
-                  />
-                </div>
-                <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                  <button className="btn-primary-custom" type="submit" style={{ flex: 1 }}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
-                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <polyline points="17 21 17 13 7 13 7 21" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <polyline points="7 3 7 8 15 8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    Guardar Cambios
-                  </button>
-                  <button className="btn-secondary-custom" type="button" onClick={cancelEdit} style={{ flex: 1 }}>
-                    Cancelar
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+              }
+            >
+              Guardar Cambios
+            </Button>
+          </>
+        }
+      >
+        <form onSubmit={(e) => { e.preventDefault(); saveEdit(e); }}>
+          <FormInput
+            label="Nombre Completo"
+            value={editForm.nombre_completo}
+            onChange={e => setEditForm({...editForm, nombre_completo: e.target.value})}
+            required
+          />
+          <FormInput
+            label="Email"
+            type="email"
+            value={editForm.email}
+            onChange={e => setEditForm({...editForm, email: e.target.value})}
+            required
+          />
+          <FormInput
+            label="Teléfono"
+            value={editForm.telefono}
+            onChange={e => setEditForm({...editForm, telefono: e.target.value})}
+          />
+          <FormInput
+            label="Documento"
+            value={editForm.documento}
+            onChange={e => setEditForm({...editForm, documento: e.target.value})}
+          />
+        </form>
+      </Modal>
 
       {/* Modal de detalles */}
       {showModal && selectedHuesped && (
@@ -537,46 +526,103 @@ export default function GestionHuespedes({ restrictTenantId = "", allowCreate = 
             <div className="modal-body">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                 <div>
-                  <h4 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#1f2937' }}>
+                  <h4 style={{ 
+                    fontSize: '16px', 
+                    fontWeight: '600', 
+                    marginBottom: '16px', 
+                    color: isDarkMode ? '#f1f5f9' : '#1f2937' 
+                  }}>
                     Información Personal
                   </h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div>
-                      <span style={{ fontSize: '13px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Tipo</span>
+                      <span style={{ 
+                        fontSize: '13px', 
+                        color: isDarkMode ? '#94a3b8' : '#6b7280', 
+                        display: 'block', 
+                        marginBottom: '4px' 
+                      }}>Tipo</span>
                       <span className={`badge ${selectedHuesped.source === 'huesped_table' ? 'badge-primary' : 'badge-info'}`}>
                         {selectedHuesped.source === 'huesped_table' ? '📋 Ficha de Huésped' : '👤 Usuario Registrado'}
                       </span>
                     </div>
                     <div>
-                      <span style={{ fontSize: '13px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Nombre</span>
-                      <span style={{ fontWeight: '600', color: '#1f2937' }}>{selectedHuesped.nombre_completo || "—"}</span>
+                      <span style={{ 
+                        fontSize: '13px', 
+                        color: isDarkMode ? '#94a3b8' : '#6b7280', 
+                        display: 'block', 
+                        marginBottom: '4px' 
+                      }}>Nombre</span>
+                      <span style={{ 
+                        fontWeight: '600', 
+                        color: isDarkMode ? '#e2e8f0' : '#1f2937' 
+                      }}>{selectedHuesped.nombre_completo || "—"}</span>
                     </div>
                     <div>
-                      <span style={{ fontSize: '13px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Email</span>
-                      <span style={{ color: '#1f2937' }}>{selectedHuesped.email || "—"}</span>
+                      <span style={{ 
+                        fontSize: '13px', 
+                        color: isDarkMode ? '#94a3b8' : '#6b7280', 
+                        display: 'block', 
+                        marginBottom: '4px' 
+                      }}>Email</span>
+                      <span style={{ 
+                        color: isDarkMode ? '#cbd5e1' : '#1f2937' 
+                      }}>{selectedHuesped.email || "—"}</span>
                     </div>
                     <div>
-                      <span style={{ fontSize: '13px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Teléfono</span>
-                      <span style={{ color: '#1f2937' }}>{selectedHuesped.telefono || "—"}</span>
+                      <span style={{ 
+                        fontSize: '13px', 
+                        color: isDarkMode ? '#94a3b8' : '#6b7280', 
+                        display: 'block', 
+                        marginBottom: '4px' 
+                      }}>Teléfono</span>
+                      <span style={{ 
+                        color: isDarkMode ? '#cbd5e1' : '#1f2937' 
+                      }}>{selectedHuesped.telefono || "—"}</span>
                     </div>
                     {selectedHuesped.source === 'huesped_table' && (
                       <div>
-                        <span style={{ fontSize: '13px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Documento</span>
-                        <span style={{ color: '#1f2937' }}>{selectedHuesped.documento || "—"}</span>
+                        <span style={{ 
+                          fontSize: '13px', 
+                          color: isDarkMode ? '#94a3b8' : '#6b7280', 
+                          display: 'block', 
+                          marginBottom: '4px' 
+                        }}>Documento</span>
+                        <span style={{ 
+                          color: isDarkMode ? '#cbd5e1' : '#1f2937' 
+                        }}>{selectedHuesped.documento || "—"}</span>
                       </div>
                     )}
                     <div>
-                      <span style={{ fontSize: '13px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Registrado</span>
-                      <span style={{ color: '#1f2937' }}>{formatDate(selectedHuesped.created_at)}</span>
+                      <span style={{ 
+                        fontSize: '13px', 
+                        color: isDarkMode ? '#94a3b8' : '#6b7280', 
+                        display: 'block', 
+                        marginBottom: '4px' 
+                      }}>Registrado</span>
+                      <span style={{ 
+                        color: isDarkMode ? '#cbd5e1' : '#1f2937' 
+                      }}>{formatDate(selectedHuesped.created_at)}</span>
                     </div>
                   </div>
                 </div>
                 <div>
-                  <h4 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#1f2937' }}>
+                  <h4 style={{ 
+                    fontSize: '16px', 
+                    fontWeight: '600', 
+                    marginBottom: '16px', 
+                    color: isDarkMode ? '#f1f5f9' : '#1f2937' 
+                  }}>
                     Historial de Reservas
                   </h4>
                   {selectedHuesped.reservas && selectedHuesped.reservas.length > 0 ? (
-                    <div style={{ maxHeight: "300px", overflowY: "auto", border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                    <div style={{ 
+                      maxHeight: "300px", 
+                      overflowY: "auto", 
+                      border: `1px solid ${isDarkMode ? '#475569' : '#e5e7eb'}`, 
+                      borderRadius: '8px',
+                      background: isDarkMode ? '#334155' : '#ffffff'
+                    }}>
                       <table className="data-table" style={{ marginBottom: 0 }}>
                         <thead>
                           <tr>
@@ -592,7 +638,10 @@ export default function GestionHuespedes({ restrictTenantId = "", allowCreate = 
                             <tr key={reserva.reserva_id}>
                               <td style={{ fontSize: '13px' }}>{reserva.hotel_nombre}</td>
                               <td style={{ fontSize: '13px' }}>{reserva.habitacion_numero}</td>
-                              <td style={{ fontSize: '12px', color: '#6b7280' }}>
+                              <td style={{ 
+                                fontSize: '12px', 
+                                color: isDarkMode ? '#94a3b8' : '#6b7280' 
+                              }}>
                                 {formatDate(reserva.fecha_inicio)} - {formatDate(reserva.fecha_fin)}
                               </td>
                               <td>

@@ -11,6 +11,11 @@ const Tenant = sequelize.define('tenant', {
     type: DataTypes.STRING(80),
     allowNull: false
   },
+  activo: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    allowNull: false
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW

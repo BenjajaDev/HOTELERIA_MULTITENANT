@@ -283,12 +283,12 @@ router.get("/", async (req, res) => {
     }
 
     const reservas = await Reserva.findAll({
-      where: reservaWhere,
+      where: { ...reservaWhere, activo: true },
       include: [
         {
           model: Habitacion,
           as: 'habitacion',
-          where: habitacionWhere,
+          where: { ...habitacionWhere, activo: true },
           include: [
             {
               model: Hotel,
@@ -300,6 +300,7 @@ router.get("/", async (req, res) => {
         {
           model: Huesped,
           as: 'huesped',
+          where: { activo: true },
           attributes: ['nombre_completo', 'email']
         },
         {
@@ -489,6 +490,7 @@ router.post("/", async (req, res) => {
       where: {
         habitacion_id,
         estado: { [Op.ne]: 'cancelada' },
+        activo: true,
         [Op.not]: {
           [Op.or]: [
             { fecha_fin: { [Op.lte]: fecha_inicio } },
@@ -598,7 +600,7 @@ router.post("/:id/cancelar", async (req, res) => {
     }
 
     const reserva = await Reserva.findOne({
-      where: { reserva_id: id, tenant_id: tenantId },
+      where: { reserva_id: id, tenant_id: tenantId, activo: true },
       include: [
         {
           model: Pago,
@@ -826,14 +828,18 @@ router.put("/:id", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   const { id } = req.params;
   try {
-    const reserva = await Reserva.findByPk(id);
+    const reserva = await Reserva.findOne({
+      where: { reserva_id: id, activo: true }
+    });
     
     if (!reserva) {
       return res.status(404).json({ error: "Reserva no encontrada" });
     }
 
     const reservaId = reserva.reserva_id;
-    await reserva.destroy();
+    
+    // Soft delete - marcar como inactivo
+    await reserva.update({ activo: false });
 
     res.json({ message: "Reserva eliminada", reserva_id: reservaId });
   } catch (err) {

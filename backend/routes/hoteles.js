@@ -1,5 +1,5 @@
 import express from "express";
-import { Hotel, Tenant, Habitacion, Reserva, Pago } from "../models/index.js";
+import { Hotel, Tenant, Habitacion, Reserva, Pago, Sucursal } from "../models/index.js";
 import { ensureRedisConnection } from "../models/redisClient.js";
 import { Op } from "sequelize";
 
@@ -20,6 +20,7 @@ router.get("/", async (req, res) => {
     }
 
     const hotels = await Hotel.findAll({
+      where: { activo: true },
       include: [
         {
           model: Tenant,
@@ -34,7 +35,7 @@ router.get("/", async (req, res) => {
     // Calcular ganancias para cada hotel
     const hotelsWithStats = await Promise.all(hotels.map(async (hotel) => {
       const habitaciones = await Habitacion.findAll({
-        where: { hotel_id: hotel.hotel_id },
+        where: { hotel_id: hotel.hotel_id, activo: true },
         attributes: ['habitacion_id']
       });
 
@@ -45,7 +46,10 @@ router.get("/", async (req, res) => {
 
       if (habitacionIds.length > 0) {
         const reservas = await Reserva.findAll({
-          where: { habitacion_id: { [Op.in]: habitacionIds } },
+          where: { 
+            habitacion_id: { [Op.in]: habitacionIds },
+            activo: true
+          },
           include: [
             {
               model: Pago,
@@ -66,11 +70,17 @@ router.get("/", async (req, res) => {
         });
       }
 
+      // Contar sucursales activas del hotel
+      const sucursales_count = await Sucursal.count({
+        where: { hotel_id: hotel.hotel_id, activo: true }
+      });
+
       return {
         ...hotel.toJSON(),
         tenant_nombre: hotel.tenant?.nombre,
         total_ganancias,
-        total_pendiente
+        total_pendiente,
+        sucursales_count
       };
     }));
 
@@ -100,7 +110,8 @@ router.get("/:id", async (req, res) => {
       return res.json(JSON.parse(cachedHotel));
     }
 
-    const hotel = await Hotel.findByPk(id, {
+    const hotel = await Hotel.findOne({
+      where: { hotel_id: id, activo: true },
       include: [
         {
           model: Tenant,
@@ -116,7 +127,7 @@ router.get("/:id", async (req, res) => {
 
     // Calcular stats
     const habitaciones = await Habitacion.findAll({
-      where: { hotel_id: hotel.hotel_id },
+      where: { hotel_id: hotel.hotel_id, activo: true },
       attributes: ['habitacion_id']
     });
 
@@ -127,7 +138,10 @@ router.get("/:id", async (req, res) => {
 
     if (habitacionIds.length > 0) {
       const reservas = await Reserva.findAll({
-        where: { habitacion_id: { [Op.in]: habitacionIds } },
+        where: { 
+          habitacion_id: { [Op.in]: habitacionIds },
+          activo: true
+        },
         include: [
           {
             model: Pago,
@@ -148,11 +162,17 @@ router.get("/:id", async (req, res) => {
       });
     }
 
+    // Contar sucursales activas del hotel
+    const sucursales_count = await Sucursal.count({
+      where: { hotel_id: hotel.hotel_id, activo: true }
+    });
+
     const hotelWithStats = {
       ...hotel.toJSON(),
       tenant_nombre: hotel.tenant?.nombre,
       total_ganancias,
-      total_pendiente
+      total_pendiente,
+      sucursales_count
     };
 
     await redis.setEx(cacheKey, HOTEL_CACHE_TTL_SECONDS, JSON.stringify(hotelWithStats));
@@ -223,7 +243,9 @@ router.put("/:id", async (req, res) => {
   const { nombre, direccion, telefono, email } = req.body;
 
   try {
-    const hotel = await Hotel.findByPk(id);
+    const hotel = await Hotel.findOne({
+      where: { hotel_id: id, activo: true }
+    });
 
     if (!hotel) {
       return res.status(404).json({ error: "Hotel no encontrado" });
@@ -319,7 +341,9 @@ router.delete("/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
-    const hotel = await Hotel.findByPk(id);
+    const hotel = await Hotel.findOne({
+      where: { hotel_id: id, activo: true }
+    });
 
     if (!hotel) {
       return res.status(404).json({ error: "Hotel no encontrado" });
@@ -327,13 +351,14 @@ router.delete("/:id", async (req, res) => {
 
     const tenant_id = hotel.tenant_id;
 
-    // Eliminar hotel (cascade eliminará habitaciones, reservas, etc.)
-    await hotel.destroy();
+    // Soft delete del hotel
+    await hotel.update({ activo: false });
 
-    // Eliminar tenant asociado
-    await Tenant.destroy({
-      where: { tenant_id }
-    });
+    // Soft delete del tenant asociado
+    await Tenant.update(
+      { activo: false },
+      { where: { tenant_id } }
+    );
 
     const redis = await ensureRedisConnection();
     await Promise.all([

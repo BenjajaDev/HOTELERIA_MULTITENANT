@@ -74,7 +74,8 @@ router.get("/del-usuario", async (req, res) => {
 
     const where = {
       hotel_id: hotelRow.hotel_id,
-      tenant_id: tenant
+      tenant_id: tenant,
+      activo: true
     };
 
     if (sucursalRow) {
@@ -106,7 +107,8 @@ router.get("/:hotelId", async (req, res) => {
   try {
     const where = {
       hotel_id: hotelId,
-      estado: 'disponible'
+      estado: 'disponible',
+      activo: true
     };
 
     if (sucursalFilter) {
@@ -125,6 +127,7 @@ router.get("/:hotelId", async (req, res) => {
           required: false,
           where: {
             estado: { [Op.ne]: 'cancelada' },
+            activo: true,
             [Op.not]: {
               [Op.or]: [
                 { fecha_fin: { [Op.lte]: fecha_inicio } },
@@ -313,7 +316,8 @@ router.put("/:habitacionId", async (req, res) => {
       where: {
         habitacion_id: habitacionId,
         tenant_id: tenant,
-        hotel_id: hotel
+        hotel_id: hotel,
+        activo: true
       }
     });
 
@@ -434,7 +438,8 @@ router.delete("/:habitacionId", async (req, res) => {
       where: {
         habitacion_id: habitacionId,
         tenant_id: tenant,
-        hotel_id: hotel
+        hotel_id: hotel,
+        activo: true
       }
     });
 
@@ -454,7 +459,8 @@ router.delete("/:habitacionId", async (req, res) => {
       }
     }
 
-    await targetRoom.destroy();
+    // Soft delete - marcar como inactivo
+    await targetRoom.update({ activo: false });
 
     res.json({ message: "Habitación eliminada" });
   } catch (err) {

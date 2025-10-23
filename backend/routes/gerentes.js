@@ -331,6 +331,7 @@ router.delete("/:id", async (req, res) => {
 
     const tenantId = currentGerente.tenant_id;
 
+    // Soft delete del tenant_usuario (eliminar relación)
     await TenantUsuario.destroy({
       where: { tenant_id: tenantId, usuario_id: usuarioId, rol: 'gerente' },
       transaction: t
@@ -341,11 +342,15 @@ router.delete("/:id", async (req, res) => {
       transaction: t
     });
 
+    // Si no tiene otros roles, hacer soft delete del usuario
     if (remainingRoles === 0) {
-      await Usuario.destroy({
-        where: { usuario_id: usuarioId },
-        transaction: t
-      });
+      await Usuario.update(
+        { activo: false },
+        {
+          where: { usuario_id: usuarioId },
+          transaction: t
+        }
+      );
     }
 
     await t.commit();

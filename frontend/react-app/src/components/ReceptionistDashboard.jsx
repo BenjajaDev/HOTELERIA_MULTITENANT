@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import PagosManager from "./PagosManager";
 import DashboardLayout from "./DashboardLayout";
+import { useTheme } from "../contexts/ThemeContext";
 import "./DashboardContent.css";
 
 export default function ReceptionistDashboard({ user, onLogout }) {
@@ -16,6 +17,7 @@ export default function ReceptionistDashboard({ user, onLogout }) {
   const [reservasLoading, setReservasLoading] = useState(false);
   const [confirmingId, setConfirmingId] = useState(null);
   const [selectedReserva, setSelectedReserva] = useState(null);
+  const { isDarkMode } = useTheme();
 
   const currencyFormatter = useMemo(
     () => new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }),
@@ -631,17 +633,31 @@ export default function ReceptionistDashboard({ user, onLogout }) {
         )}
 
         {selectedReserva && (
-        <div className="modal fade show" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}>
+        <div className="modal fade show" style={{ display: "block", backgroundColor: isDarkMode ? "rgba(0,0,0,0.7)" : "rgba(0,0,0,0.5)" }}>
           <div className="modal-dialog modal-lg">
-            <div className="modal-content">
-              <div className="modal-header border-0 pb-0">
-                <h5 className="modal-title fw-bold">
+            <div className="modal-content" style={{
+              backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+              color: isDarkMode ? '#e2e8f0' : '#212529'
+            }}>
+              <div className="modal-header border-0 pb-0" style={{
+                borderBottom: `1px solid ${isDarkMode ? '#334155' : '#dee2e6'}`
+              }}>
+                <h5 className="modal-title fw-bold" style={{ color: isDarkMode ? '#f1f5f9' : '#212529' }}>
                   <i className="bi bi-info-circle me-2"></i>
                   Detalle de reserva
                 </h5>
-                <button type="button" className="btn-close" onClick={() => setSelectedReserva(null)}></button>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={() => setSelectedReserva(null)}
+                  style={{
+                    filter: isDarkMode ? 'invert(1)' : 'none'
+                  }}
+                ></button>
               </div>
-              <div className="modal-body">
+              <div className="modal-body" style={{
+                backgroundColor: isDarkMode ? '#1e293b' : '#ffffff'
+              }}>
                 <div className="row g-3">
                   <div className="col-md-6">
                     <div className="detail-item">
@@ -728,8 +744,22 @@ export default function ReceptionistDashboard({ user, onLogout }) {
                   </div>
                 </div>
               </div>
-              <div className="modal-footer border-0">
-                <button className="btn btn-secondary" onClick={() => setSelectedReserva(null)}>
+              <div 
+                className="modal-footer border-0"
+                style={{
+                  backgroundColor: isDarkMode ? '#1e293b' : '#f8f9fa',
+                  borderTop: `1px solid ${isDarkMode ? '#334155' : '#dee2e6'}`
+                }}
+              >
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={() => setSelectedReserva(null)}
+                  style={{
+                    backgroundColor: isDarkMode ? '#475569' : '#6c757d',
+                    borderColor: isDarkMode ? '#475569' : '#6c757d',
+                    color: '#ffffff'
+                  }}
+                >
                   Cerrar
                 </button>
               </div>

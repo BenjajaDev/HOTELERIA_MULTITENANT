@@ -34,6 +34,11 @@ const Huesped = sequelize.define('huesped', {
   documento: {
     type: DataTypes.TEXT
   },
+  activo: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    allowNull: false
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW

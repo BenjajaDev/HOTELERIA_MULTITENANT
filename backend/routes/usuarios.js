@@ -32,7 +32,7 @@ router.post("/login", async (req, res) => {
 
   try {
     const userResult = await pool.query(
-      `SELECT usuario_id, email, password_hash, nombre, email_verificado
+      `SELECT usuario_id, email, password_hash, nombre
        FROM usuario
        WHERE LOWER(email) = $1`,
       [normalizedEmail]
@@ -77,12 +77,13 @@ router.post("/login", async (req, res) => {
 
     const membership = tenantFromRequest || membershipList[0];
 
-    if (membership.rol === "huesped" && !user.email_verificado) {
-      return res.status(403).json({
-        error: "Debes confirmar tu correo electrónico antes de acceder",
-        needs_verification: true,
-      });
-    }
+    // Verificación de email deshabilitada - no existe la columna
+    // if (membership.rol === "huesped" && !user.email_verificado) {
+    //   return res.status(403).json({
+    //     error: "Debes confirmar tu correo electrónico antes de acceder",
+    //     needs_verification: true,
+    //   });
+    // }
 
     const tenantId = membership.tenant_id;
 
@@ -400,9 +401,9 @@ router.post("/register-huesped", async (req, res) => {
     }
 
     await client.query(
-      `INSERT INTO usuario (usuario_id, email, password_hash, nombre, email_verificado, email_verification_token, email_verification_expires_at, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
-      [usuario_id, normalizedEmail, hashedPassword, nombre, false, verificationToken, verificationExpiresAt]
+      `INSERT INTO usuario (usuario_id, email, password_hash, nombre, created_at)
+       VALUES ($1, $2, $3, $4, NOW())`,
+      [usuario_id, normalizedEmail, hashedPassword, nombre]
     );
 
     await client.query(
@@ -449,9 +450,41 @@ router.post("/register-huesped", async (req, res) => {
 });
 
 // -------------------------
-// VERIFICAR CORREO ELECTRÓNICO
+// VERIFICAR CORREO ELECTRÓNICO - DESHABILITADO
 // -------------------------
+/*
 router.get("/verify-email", async (req, res) => {
+  const { token } = req.query;
+
+  if (!token || typeof token !== "string") {
+    return res.status(400).json({ error: "Token de verificación requerido" });
+  }
+
+  try {
+    const result = await pool.query(
+      \`SELECT usuario_id, email, nombre
+       FROM usuario
+       WHERE email_verification_token = $1\`,
+      [token]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "El enlace de verificación no es válido" });
+    }
+
+    res.json({ message: "¡Tu correo fue verificado correctamente! Ya puedes iniciar sesión." });
+  } catch (err) {
+    console.error("Error al verificar correo:", err);
+    res.status(500).json({ error: "Error al verificar el correo" });
+  }
+});
+*/
+
+// -------------------------
+// REENVIAR VERIFICACIÓN DE CORREO - DESHABILITADO
+// -------------------------
+/*
+router.post("/resend-verification", async (req, res) {
   const { token } = req.query;
 
   if (!token || typeof token !== "string") {
@@ -561,6 +594,7 @@ router.post("/resend-verification", async (req, res) => {
     res.status(500).json({ error: "Error al reenviar el correo de verificación" });
   }
 });
+*/
 
 // -------------------------
 // OBTENER USUARIOS CON ROL DE HUÉSPED (solo admin)
@@ -600,12 +634,12 @@ router.delete("/huespedes/:id", async (req, res) => {
     
     await client.query('BEGIN');
     
-    // Verificar si el usuario existe con rol de huésped
+    // Verificar si el usuario existe con rol de huésped y está activo
     const checkQuery = `
       SELECT u.usuario_id 
       FROM usuario u
       JOIN tenant_usuario tu ON u.usuario_id = tu.usuario_id
-      WHERE u.usuario_id = $1 AND tu.rol = 'huesped'
+      WHERE u.usuario_id = $1 AND tu.rol = 'huesped' AND u.activo = TRUE
     `;
     const checkResult = await client.query(checkQuery, [id]);
     
@@ -621,6 +655,7 @@ router.delete("/huespedes/:id", async (req, res) => {
       WHERE huesped_id = $1 
       AND estado IN ('confirmada', 'pendiente')
       AND fecha_fin >= CURRENT_DATE
+      AND activo = TRUE
     `;
     
     const reservasActivasResult = await client.query(reservasActivasQuery, [id]);
@@ -632,19 +667,9 @@ router.delete("/huespedes/:id", async (req, res) => {
       });
     }
     
-    // Eliminar relación tenant-usuario
-    const deleteTenantUsuarioQuery = 'DELETE FROM tenant_usuario WHERE usuario_id = $1 AND rol = $2';
-    await client.query(deleteTenantUsuarioQuery, [id, 'huesped']);
-    
-    // Verificar si el usuario tiene otros roles
-    const otherRolesQuery = 'SELECT COUNT(*) as count FROM tenant_usuario WHERE usuario_id = $1';
-    const otherRolesResult = await client.query(otherRolesQuery, [id]);
-    
-    // Si no tiene otros roles, eliminar el usuario
-    if (parseInt(otherRolesResult.rows[0].count) === 0) {
-      const deleteUsuarioQuery = 'DELETE FROM usuario WHERE usuario_id = $1';
-      await client.query(deleteUsuarioQuery, [id]);
-    }
+    // Soft delete - marcar usuario como inactivo
+    const updateUsuarioQuery = 'UPDATE usuario SET activo = FALSE WHERE usuario_id = $1';
+    await client.query(updateUsuarioQuery, [id]);
     
     await client.query('COMMIT');
     res.status(204).send();
@@ -703,7 +728,10 @@ router.put('/:id/perfil', async (req, res) => {
   const transaction = await db.sequelize.transaction();
 
   try {
-    const usuario = await Usuario.findByPk(id, { transaction });
+    const usuario = await Usuario.findOne({
+      where: { usuario_id: id, activo: true },
+      transaction
+    });
     if (!usuario) {
       await transaction.rollback();
       return res.status(404).json({ error: 'Usuario no encontrado' });

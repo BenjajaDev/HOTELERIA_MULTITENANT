@@ -37,7 +37,7 @@ router.get("/", async (req, res) => {
   const { hotelId, tenantId } = req.query;
   
   try {
-    const where = {};
+    const where = { activo: true };
     if (hotelId) where.hotel_id = hotelId;
     if (tenantId) where.tenant_id = tenantId;
 
@@ -61,11 +61,11 @@ router.get("/", async (req, res) => {
     // Agregar conteos
     const sucursalesWithStats = await Promise.all(sucursales.map(async (sucursal) => {
       const recepcionistaCount = await RecepcionistaSucursal.count({
-        where: { sucursal_id: sucursal.sucursal_id }
+        where: { sucursal_id: sucursal.sucursal_id, activo: true }
       });
 
       const habitacionCount = await Habitacion.count({
-        where: { sucursal_id: sucursal.sucursal_id }
+        where: { sucursal_id: sucursal.sucursal_id, activo: true }
       });
 
       return {
@@ -89,7 +89,8 @@ router.get("/:id", async (req, res) => {
   const { id } = req.params;
   
   try {
-    const sucursal = await Sucursal.findByPk(id, {
+    const sucursal = await Sucursal.findOne({
+      where: { sucursal_id: id, activo: true },
       include: [
         {
           model: Hotel,
@@ -227,7 +228,9 @@ router.put("/:id", async (req, res) => {
 
   try {
     // Buscar sucursal actual
-    const sucursal = await Sucursal.findByPk(id);
+    const sucursal = await Sucursal.findOne({
+      where: { sucursal_id: id, activo: true }
+    });
 
     if (!sucursal) {
       return res.status(404).json({ error: "Sucursal no encontrada" });
@@ -332,7 +335,8 @@ router.delete("/:id", async (req, res) => {
 
   try {
     // Buscar sucursal
-    const sucursal = await Sucursal.findByPk(id, {
+    const sucursal = await Sucursal.findOne({
+      where: { sucursal_id: id, activo: true },
       include: [
         { model: Tenant, as: 'tenant', attributes: ['tenant_id'] }
       ]
@@ -354,9 +358,9 @@ router.delete("/:id", async (req, res) => {
       return res.status(err.status || 500).json({ error: err.message });
     }
 
-    // Verificar que no tenga recepcionistas asignados
+    // Verificar que no tenga recepcionistas asignados activos
     const recepcionistaCount = await RecepcionistaSucursal.count({
-      where: { sucursal_id: id }
+      where: { sucursal_id: id, activo: true }
     });
 
     if (recepcionistaCount > 0) {
@@ -365,8 +369,8 @@ router.delete("/:id", async (req, res) => {
       });
     }
 
-    // Eliminar sucursal
-    await sucursal.destroy();
+    // Soft delete de la sucursal
+    await sucursal.update({ activo: false });
 
     res.status(204).send();
   } catch (err) {

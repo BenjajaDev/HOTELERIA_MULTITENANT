@@ -461,7 +461,8 @@ router.delete("/:id", async (req, res) => {
   const transaction = await db.sequelize.transaction();
 
   try {
-    const current = await RecepcionistaSucursal.findByPk(id, {
+    const current = await RecepcionistaSucursal.findOne({
+      where: { recepcionista_sucursal_id: id, activo: true },
       attributes: ['recepcionista_sucursal_id', 'usuario_id', 'tenant_id'],
       transaction
     });
@@ -483,8 +484,10 @@ router.delete("/:id", async (req, res) => {
       return res.status(err.status || 500).json({ error: err.message });
     }
 
-    await current.destroy({ transaction });
+    // Soft delete de recepcionista_sucursal
+    await current.update({ activo: false }, { transaction });
 
+    // Eliminar la relación tenant_usuario
     await TenantUsuario.destroy({
       where: {
         tenant_id: current.tenant_id,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LogoutModal from './LogoutModal';
 import { useTheme } from '../contexts/ThemeContext';
 import './DashboardLayout.css';
@@ -15,6 +15,15 @@ export default function DashboardLayout({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const { isDarkMode, toggleTheme } = useTheme();
+
+  // Aplicar la clase dark-mode al body
+  useEffect(() => {
+    if (isDarkMode) {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+  }, [isDarkMode]);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const toggleCollapse = () => setIsCollapsed(!isCollapsed);

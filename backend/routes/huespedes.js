@@ -40,8 +40,9 @@ async function ensureTenantPermission({ usuarioId }, tenantId, allowedRoles = ["
 // GET /api/huespedes - Obtener todos los huéspedes (solo admin)
 router.get('/', async (req, res) => {
   try {
-    // Obtener huéspedes de la tabla huesped con sus estadísticas
+    // Obtener huéspedes de la tabla huesped con sus estadísticas (solo activos)
     const huespedes = await Huesped.findAll({
+      where: { activo: true },
       include: [
         {
           model: Tenant,
@@ -113,8 +114,11 @@ router.get('/', async (req, res) => {
         }
       ],
       where: huespedIds.length > 0 ? {
-        usuario_id: { [Op.notIn]: huespedIds }
-      } : {}
+        usuario_id: { [Op.notIn]: huespedIds },
+        activo: true
+      } : {
+        activo: true
+      }
     });
 
     const usuarioResults = usuarios.map(u => {
@@ -525,6 +529,7 @@ router.delete('/:id', async (req, res) => {
     const reservasActivas = await Reserva.count({
       where: {
         huesped_id: id,
+        activo: true,
         estado: { [Op.in]: ['confirmada', 'pendiente'] },
         fecha_fin: { [Op.gte]: new Date() }
       },
@@ -538,35 +543,20 @@ router.delete('/:id', async (req, res) => {
       });
     }
     
-    // Si existe en la tabla huesped, eliminarlo
+    // SOFT DELETE: Marcar como inactivo en lugar de eliminar
     if (checkHuesped) {
-      await checkHuesped.destroy({ transaction });
+      await checkHuesped.update({ activo: false }, { transaction });
     }
     
-    // Si existe como usuario con rol de huésped, eliminar la relación tenant-usuario y el usuario
+    // Si existe como usuario con rol de huésped, marcarlo como inactivo
     if (checkUsuario) {
-      // Eliminar relación tenant-usuario con rol huesped
-      await TenantUsuario.destroy({
-        where: {
-          usuario_id: id,
-          rol: 'huesped'
-        },
-        transaction
-      });
-      
-      // Verificar si el usuario tiene otros roles
-      const otherRoles = await TenantUsuario.count({
-        where: { usuario_id: id },
-        transaction
-      });
-      
-      // Si no tiene otros roles, eliminar el usuario
-      if (otherRoles === 0) {
-        await Usuario.destroy({
+      await Usuario.update(
+        { activo: false },
+        { 
           where: { usuario_id: id },
-          transaction
-        });
-      }
+          transaction 
+        }
+      );
     }
     
     await transaction.commit();

@@ -24,6 +24,15 @@ export default function AuthPage({ onLogin }) {
   const [resendFeedback, setResendFeedback] = useState('');
   const { isDarkMode, toggleTheme } = useTheme();
 
+  // Aplicar la clase dark-mode al body
+  useEffect(() => {
+    if (isDarkMode) {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+  }, [isDarkMode]);
+
   // Cargar hoteles al montar el componente
   useEffect(() => {
     const loadHoteles = async () => {
