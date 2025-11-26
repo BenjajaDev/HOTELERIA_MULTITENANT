@@ -11,6 +11,38 @@ Aplicación multi-tenant para gestión hotelera que centraliza la administració
 - **Alta segura de huéspedes**: creación de cuentas con contraseña y envío automático de correos de verificación antes de habilitar el acceso.
 - **Contenedores listos para producción**: `docker-compose` orquesta Postgres, Redis, backend y frontend (sirviendo el build estático con Nginx).
 
+## Demostración end-to-end
+1. **Start**: `./scripts/start.sh | docker compose up --build -d` construye y levanta los servicios.
+   <img width="1920" height="1080" alt="imagen" src="https://github.com/user-attachments/assets/507a4f18-52ec-44c7-a81e-bd0a64c1051f" />
+2. **Script**: Carga el script ./creacion_tenant.sh.
+   <img width="1920" height="1080" alt="imagen" src="https://github.com/user-attachments/assets/fe41ccc5-d85a-4710-9823-cec9b9ffd4a7" />
+
+3. **Onboarding**: Admin inicia sesión
+<img width="1920" height="1080" alt="imagen" src="https://github.com/user-attachments/assets/98dd7b86-df28-4ace-91a4-eebf79abf06e" />
+4. crea un hotel
+<img width="1920" height="1080" alt="imagen" src="https://github.com/user-attachments/assets/cb0529d6-406c-49c9-a7f3-cce72d24125f" />
+
+5. y registra personal/recepcionistas.
+<img width="1920" height="1080" alt="imagen" src="https://github.com/user-attachments/assets/c25ad766-6df8-42d1-985f-7c95621b51e5" />
+
+6. **Reserva**: Huésped registrado. .
+   <img width="1920" height="1080" alt="imagen" src="https://github.com/user-attachments/assets/1937eecb-30ea-44f8-aff6-88b2130b5926" />
+
+7. Huesped verificado.
+    <img width="1920" height="1080" alt="imagen" src="https://github.com/user-attachments/assets/5e1f8e57-015a-40d5-a9c9-d0fbc927b6ae" />
+    <img width="688" height="437" alt="imagen" src="https://github.com/user-attachments/assets/883e6b62-0795-4634-92b1-43e748ca69c4" />
+
+8. Huesped validado encuentra disponibilidad y crea la reserva.
+    <img width="1552" height="849" alt="imagen" src="https://github.com/user-attachments/assets/6b8cc57e-c016-46eb-9146-29c2cef43089" />
+
+9. **Cobro**: Recepcionista confirma el pago; el sistema genera la boleta y marca la reserva como pagada.
+    <img width="1517" height="408" alt="imagen" src="https://github.com/user-attachments/assets/de7b5db7-12c9-4ece-8f37-524a0e4b9f4a" />
+    <img width="1326" height="715" alt="imagen" src="https://github.com/user-attachments/assets/d78614cb-ee46-4765-910e-b0dfbedba45d" />
+
+
+
+Cada paso fue ejecutado durante la validación del MVP y se puede reproducir siguiendo la guía de ejecución.
+
 ## Estructura del repositorio
 - `backend/` – API REST Express, configuración Redis y rutas para hoteles, usuarios, reservas, pagos, habitaciones y huéspedes.
 - `frontend/react-app/` – SPA construida con React + Vite; dashboards por rol y consumo de la API.
